@@ -32,12 +32,15 @@ export function applyWallpaper(override) {
   dim.style.background = bg;
   root.style.backgroundColor = w.type === 'mica' || w.type === 'acrylic' ? 'transparent' : bg;
 
+  // (a Blue Archive lobby kept aside belongs to the student shown)
+  if (spare && !(w.type === 'web' && w.web?.preset === 'bluearchive' && w.web.model === spare.model)) dropSpare();
   const key = keyOf(w, st);
   if (key !== current.key) {
     current.key = key;
-    swap(w, st);
+    if (spare && spare.key === key) useSpare(w, st);
+    else swap(w, st);
   } else restyle(w);
-  syncLive(w);
+  if (!switching) syncLive(w);
   if (w.web?.lobbyPick === 'season' && !normalLobby(w)) setTimeout(measureLobbyLight, 5000);
   updateMotion();
   // the lobby's volumes are shared with Settings and the lobby music panel
@@ -93,14 +96,23 @@ async function swap(w, st) {
   if (seq !== swapSeq) return layer?.remove();
   const kind = layer?.tagName === 'VIDEO' ? 'video' : layer?.tagName === 'WEBVIEW' ? 'web' : 'static';
   current = { ...current, el: layer, kind, wcId: 0, frozen: false };
-  if (layer) root.insertBefore(layer, $('#wallpaper-dim'));
+  if (layer) {
+    layer.style.zIndex = '1'; // (above a Blue Archive lobby kept out of sight)
+    root.insertBefore(layer, $('#wallpaper-dim'));
+  }
   await ready;
   if (seq !== swapSeq) return;
   requestAnimationFrame(() => layer?.classList.add('in'));
   // (a lobby gives its colours once it starts: setupBlueArchive; another web page once drawn)
   if (kind !== 'web') updateAutoColors();
   else if (w.web?.preset !== 'bluearchive') setTimeout(updateAutoColors, 3000);
-  const old = [...root.querySelectorAll('.wp-layer')].filter((l) => l !== layer);
+  const old = [...root.querySelectorAll('.wp-layer')].filter((l) => l !== layer && l !== spare?.el);
+  // (the same student's other lobby, just left, is kept)
+  const left = old.find((l) => !spare && l.tagName === 'WEBVIEW' && l.dataset.started && l.dataset.model === w.web?.model && l.dataset.ba === otherMode(w));
+  if (left) {
+    old.splice(old.indexOf(left), 1);
+    keepSpare(left, w, 'started');
+  }
   setTimeout(() => old.forEach((l) => l.remove()), 700);
   updateMotion();
 }
@@ -163,6 +175,7 @@ async function buildWeb(w) {
   wv.setAttribute('partition', WALLPAPER_PARTITION);
   wv.setAttribute('src', url);
   wv.style.filter = filterOf(w);
+  markBa(wv, w);
   if (w.web?.preset === 'bluearchive' && !normalLobby(w)) loadingStart(w.web);
   else loadingDone();
   if (normalLobby(w)) emit('lobby-loading'); // (its song waits for her to be shown)
@@ -183,6 +196,12 @@ async function buildWeb(w) {
     wv.addEventListener('did-fail-load', (e) => e.isMainFrame !== false && done(), { once: true });
     setTimeout(done, instant ? 20000 : 8000);
   });
+  watchLive(wv);
+  return [wv, ready];
+}
+
+// What a live page says and does while it is the one shown
+function watchLive(wv) {
   // the Blue Archive page says when a student starts and stops talking (the lobby music dips meanwhile)
   wv.addEventListener('console-message', (e) => {
     const msg = String(e.message ?? '');
@@ -193,6 +212,7 @@ async function buildWeb(w) {
     else if (msg === 'tyran:intro' && !liveBusy) emit('lobby-start');
   });
   wv.addEventListener('dom-ready', () => {
+    if (current.el !== wv) return; // (a lobby loaded ahead, out of sight: see preloadSpare)
     emit('lobby-talk', false); // a reloaded page is not talking
     current.wcId = wv.getWebContentsId();
     // a (re)loaded page starts running and visible
@@ -202,7 +222,6 @@ async function buildWeb(w) {
     syncLive(S.settings.wallpaper, true);
     updateMotion();
   });
-  return [wv, ready];
 }
 
 function restyle(w) {
@@ -217,21 +236,25 @@ function restyle(w) {
 
 // ---------------------------------------------------------------- live pages
 let liveState = '';
-// the touch areas on or off, and the top of the part of the lobby the browser's bars leave visible
+// the touch areas on or off, the top of the part of the lobby the browser's bars leave visible, and
+// where the address bar starts when it is above it (NIKKE: her head there, her face under it)
 function zonesScript(on) {
   const views = $('#views')?.getBoundingClientRect();
   const wall = current.el?.getBoundingClientRect();
   const top = S.lobby || !views || !wall ? 0 : Math.max(0, Math.round(views.top - wall.top));
-  return `__tyran.zones(${!!on}, ${top})`;
+  const omni = top ? $('.omnibox')?.getBoundingClientRect() : null;
+  const bar = omni && omni.height && omni.bottom <= views.top + 1 ? Math.max(0, Math.round(omni.top - wall.top)) : 0;
+  return `__tyran.zones(${!!on}, ${top}, ${bar})`;
 }
 on('lobby-mode', () => {
   if (current.kind === 'web' && current.wcId) current.el.executeJavaScript(`window.__tyran && ${zonesScript(S.settings.wallpaper.web?.touchZones)}`).catch(() => {});
 });
 
+const liveKey = (w, web = w.web || {}) => JSON.stringify([web.audio, web.model, web.preset, voiceVolume(web), !!web.touchZones, web.nikkeStance, web.nikkeTint, web.nikkeColor, web.nikkeImage, songVolume(web), web.azurMusic, !!web.azurChatter, !!ownMusic(w), web.baMode, web.senseiBirthday]);
 function syncLive(w, force = false) {
   if (current.kind !== 'web' || !current.wcId) return;
   const web = w.web || {};
-  const state = JSON.stringify([web.audio, web.model, web.preset, voiceVolume(web), !!web.touchZones, web.nikkeStance, web.nikkeColor, web.nikkeImage, songVolume(web), web.azurMusic, !!web.azurChatter, !!ownMusic(w), web.baMode, web.senseiBirthday]);
+  const state = liveKey(w);
   if (state === liveState && !force) return;
   const prev = force ? null : JSON.parse(liveState || 'null');
   liveState = state;
@@ -260,6 +283,7 @@ function syncLive(w, force = false) {
     // a new student gets a fresh page: the viewer never frees the previous lobby's textures
     $('#wallpaper').classList.add('framing');
     loadingStart(web);
+    markBa(wv, w);
     wv.reload();
   } else setupBlueArchive(wv, web);
 }
@@ -274,7 +298,7 @@ const CHAR_GAMES = {
 // A downloaded character (TyranWeb's own page beside her files, src/live/<game>): all it needs in one
 // call, whenever any of it changes (an Azur Lane page takes only what it uses).
 function nikkeScript(web) {
-  const o = { audio: !!web.audio, volume: voiceVolume(web), stance: web.nikkeStance === 'battle' ? 'battle' : 'lobby', color: web.nikkeColor || '#141b29', image: web.nikkeImage || '' };
+  const o = { audio: !!web.audio, volume: voiceVolume(web), stance: web.nikkeStance === 'battle' ? 'battle' : 'lobby', tint: web.nikkeTint === 'own' ? 'own' : 'auto', color: web.nikkeColor || '#141b29', image: web.nikkeImage || '' };
   // (Azur Lane: the lobby's song, unless the wallpaper has music of the user's own; her idle chatter)
   if (web.preset === 'azurlane') Object.assign(o, { music: ownMusic(S.settings.wallpaper) ? '' : (web.azurMusic ?? 'game'), musicVolume: songVolume(web), chatter: !!web.azurChatter });
   return `window.__tyran && (__tyran.set(${JSON.stringify(o)}), ${zonesScript(web.touchZones)})`;
@@ -369,8 +393,163 @@ async function afterNormal(wv) {
   if (run !== normalRun || current.el !== wv) return;
   emit('lobby-start');
   await js('__tyran.begin()').catch(() => {});
+  wv.dataset.started = '1';
   await sleep(1500);
   if (run === normalRun && current.el === wv && !current.frozen) updateAutoColors();
+  // (her memorial lobby, loaded ahead)
+  if (run === normalRun) setTimeout(() => preloadSpare(wv), 1500);
+}
+
+// ---------------------------------------------------------------- Blue Archive: both lobbies
+// A student with a normal lobby has two (memorial: Live2D; normal: TyranWeb's page). The one not
+// shown is loaded beside the shown one once that has started (underneath it, then paused), and the
+// one left on a switch is kept, paused, so that the game's lobby button switches at once: back in
+// the memorial lobby without loading again and without its opening.
+let spare = null; // { model, mode, key, el, state: 'loading' | 'prepared' | 'started', ready }
+let switching = false; // (waiting for the spare to be ready)
+const baModeOf = (w) => (normalLobby(w) ? 'normal' : 'memorial');
+const otherMode = (w) => (normalLobby(w) ? 'memorial' : 'normal');
+const inMode = (w, mode) => ({ ...w, web: { ...w.web, baMode: mode } });
+function markBa(wv, w) {
+  if (w.type !== 'web' || w.web?.preset !== 'bluearchive') return;
+  wv.dataset.ba = baModeOf(w);
+  wv.dataset.model = w.web.model;
+}
+// out of sight and silent (a hidden page draws nothing), under the shown one
+function rest(wv) {
+  try {
+    wv.setAudioMuted(true);
+  } catch {
+    /* not attached yet */
+  }
+  wv.style.visibility = 'hidden';
+  wv.style.zIndex = '';
+  if (wv.previousElementSibling?.classList.contains('wp-snap')) wv.previousElementSibling.remove();
+}
+function keepSpare(wv, w, state) {
+  dropSpare();
+  rest(wv);
+  const mode = wv.dataset.ba;
+  spare = { model: w.web.model, mode, key: keyOf(inMode(w, mode)), el: wv, state, ready: Promise.resolve(true) };
+}
+function dropSpare() {
+  spare?.el.remove();
+  spare = null;
+}
+
+// the other lobby of the student shown, loaded out of sight
+async function preloadSpare(shown) {
+  const w = S.settings.wallpaper;
+  if (spare || current.el !== shown || w.type !== 'web' || w.web?.preset !== 'bluearchive') return;
+  const model = w.web.model;
+  const info = await lobbyInfo(model);
+  if (!info?.normal || info.hidden) return;
+  const other = inMode(w, otherMode(w));
+  const url = await api.invoke('wallpapers:liveUrl', other.web).catch(() => null);
+  if (!url || spare || current.el !== shown || S.settings.wallpaper.web?.model !== model) return;
+  const wv = document.createElement('webview');
+  wv.className = 'wp-layer wp-web in instant';
+  wv.setAttribute('partition', WALLPAPER_PARTITION);
+  wv.setAttribute('src', url);
+  wv.style.filter = filterOf(w);
+  markBa(wv, other);
+  watchLive(wv);
+  const me = { model, mode: otherMode(w), key: keyOf(other), el: wv, state: 'loading' };
+  const alive = () => spare === me || current.el === wv; // (the spare still, or shown by now)
+  me.ready = new Promise((resolve) => {
+    wv.addEventListener(
+      'dom-ready',
+      async () => {
+        try {
+          wv.setAudioMuted(true);
+        } catch {
+          /* gone */
+        }
+        let ok = false;
+        try {
+          if (me.mode === 'normal') {
+            for (let i = 0; i < 160 && alive(); i++) {
+              if (await wv.executeJavaScript('!!(window.__tyran && (__tyran.ready || __tyran.failed))').catch(() => false)) break;
+              await sleep(250);
+            }
+            ok = await wv.executeJavaScript('!!__tyran.ready').catch(() => false);
+          } else ok = (await prepareBlueArchive(wv, other.web, { ui: false, alive, info })) === 'ok';
+        } catch {
+          ok = false;
+        }
+        if (spare === me) {
+          if (ok) {
+            me.state = 'prepared';
+            rest(wv);
+          } else dropSpare();
+        }
+        resolve(ok);
+      },
+      { once: true }
+    );
+  });
+  spare = me;
+  // (drawn underneath everything while it loads: a hidden page would not get there)
+  $('#wallpaper').prepend(wv);
+}
+
+// The game's lobby button with the other lobby at hand: shown at once; the one left kept aside
+async function useSpare(w, st) {
+  const next = spare;
+  if (next.state === 'loading') {
+    switching = true;
+    if (next.mode === 'memorial') {
+      $('#wallpaper').classList.add('framing');
+      loadingStart(w.web);
+    }
+    const ok = await next.ready;
+    switching = false;
+    if (current.key !== next.key) return; // (switched again meanwhile)
+    if (!ok || spare !== next) {
+      current.key = '';
+      return applyWallpaper();
+    }
+  }
+  spare = null;
+  const leaving = current.el;
+  if (leaving?.tagName === 'WEBVIEW' && leaving.dataset.started && leaving.dataset.model === w.web.model && leaving.dataset.ba === otherMode(w)) keepSpare(leaving, w, 'started');
+  else if (leaving) {
+    // (a lobby left before it had started: dropped, its loading stopped)
+    if (leaving.dataset.ba === 'memorial') ++baRun;
+    liveBusy = false;
+    if (leaving.previousElementSibling?.classList.contains('wp-snap')) leaving.previousElementSibling.remove();
+    leaving.remove();
+  }
+  const wv = next.el;
+  current = { ...current, el: wv, kind: 'web', wcId: wv.getWebContentsId(), frozen: false };
+  wv.style.zIndex = '1';
+  wv.style.visibility = '';
+  $('#wallpaper').classList.remove('framing');
+  loadingDone();
+  emit('lobby-talk', false);
+  const web = w.web;
+  liveState = liveKey(w);
+  try {
+    wv.setAudioMuted(!web.audio);
+  } catch {
+    /* detached */
+  }
+  wv.executeJavaScript(liveVolumeScript(voiceVolume(web))).catch(() => {});
+  if (next.mode === 'normal') {
+    wv.executeJavaScript(`window.__tyran && (__tyran.set(${JSON.stringify({ audio: !!web.audio, volume: voiceVolume(web), senseiBirthday: web.senseiBirthday || '' })}), ${zonesScript(web.touchZones)})`).catch(() => {});
+    if (next.state !== 'started') {
+      emit('lobby-loading'); // (its song waits for her greeting)
+      afterNormal(wv);
+    }
+  } else {
+    wv.executeJavaScript(`window.__tyran && (__tyran.audio(${!!web.audio}), __tyran.volume(${voiceVolume(web)}), ${zonesScript(web.touchZones)})`).catch(() => {});
+    if (next.state !== 'started') {
+      emit('lobby-loading'); // (its song and its opening start together)
+      startBlueArchive(wv, web, ++baRun).catch(() => {});
+    }
+  }
+  updateMotion();
+  setTimeout(() => current.el === wv && !current.frozen && updateAutoColors(), 800);
 }
 
 for (const [preset, G] of Object.entries(CHAR_GAMES)) {
@@ -1796,8 +1975,8 @@ let liveBusy = false; // a paused (hidden) page cannot finish loading the scene
 
 async function setupBlueArchive(wv, web) {
   const run = ++baRun;
-  const js = (code) => wv.executeJavaScript(code);
   let failed = false;
+  markBa(wv, { type: 'web', web });
   // cover the scene with the dim layer until it is loaded and sized
   $('#wallpaper').classList.add('framing');
   loadingStart(web); // (already showing for a new lobby; back from a failure after Tải lại)
@@ -1811,96 +1990,9 @@ async function setupBlueArchive(wv, web) {
   liveBusy = true;
   updateMotion();
   try {
-    await wv.insertCSS(BA_CSS);
-    loadingStep(0.2, t('Đang mở trình xem…'));
-    for (let i = 0; i < 150 && !(await js(`(${blueArchivePage})() && __tyran.ready()`)); i++) {
-      // a lobby the viewer cannot read never lists any animation
-      if (i > 25 && (await js('__tyran.attach() && __tyran.empty()'))) break;
-      await sleep(150);
-    }
-    if (run !== baRun) return;
-    if (!namesSaved) {
-      namesSaved = true;
-      api.invoke('wallpapers:baNames', await js('[...document.getElementById("model").options].map((o) => o.text)')).catch(() => {});
-    }
-    loadingStep(0.4, t('Đang tải học sinh…'));
-    const before = await js('__tyran.anims()');
-    const pick = JSON.stringify([web.model || 'shiroko_home', info?.urls || null, info?.voices || '']).slice(1, -1);
-    const changed = (await js(`((r) => (r < 0 ? __tyran.pick('shiroko_home') : r))(__tyran.pick(${pick}))`)) > 0;
-    // wait for the new student's animations to replace the old list
-    for (let i = 0; changed && i < 100 && (await js('__tyran.anims()')) === before; i++) await sleep(150);
-    await js(`__tyran.audio(${!!web.audio}); ${zonesScript(S.settings.wallpaper.web?.touchZones)}; __tyran.loading = true`); // no opening until it is shown
-    loadingStep(0.7, t('Đang dựng cảnh…'));
-    // wait for the student; a slow connection only makes this longer (up to about a minute)
-    for (let i = 0; i < 400 && !(await js('__tyran.attach()')); i++) {
-      if (run !== baRun) return;
-      if (i === 60) loadingStep(0.72, t('Mạng chậm, vẫn đang tải…'));
-      await sleep(150);
-    }
-    // a few lobbies use files the viewer cannot read (their skeleton comes out empty)
-    if (await js('__tyran.empty()')) {
-      failed = true;
-      const next = await brokenLobby(web.model);
-      if (next === 'retry') return void setTimeout(() => setupBlueArchive(wv, web));
-      if (next === true) return;
-      loadingFail(t('Trình xem Blue Archive chưa đọc được dữ liệu của sảnh này.'), next === 'later' ? t('Bấm Tải lại ở thanh Lobby để thử lại.') : t('Hãy chọn học sinh khác ở thanh Lobby hoặc Cài đặt → Hình nền.'));
-      return;
-    }
-    if (!(await js('__tyran.attach()'))) {
-      failed = true;
-      loadingFail(t('Sảnh chưa tải xong sau một phút (mạng chậm hoặc trang ba.svdex.moe không phản hồi).'), t('Bấm Tải lại ở thanh Lobby để thử lại.'));
-      return;
-    }
-    await js(`__tyran.volume(${voiceVolume(web)})`);
-    await sleep(300); // extra layers (backgrounds) are added right after the student
-    // their pictures (the framing is measured from them) may take a little longer
-    for (let i = 0; i < 33 && !(await js('__tyran.texturesReady()')); i++) await sleep(150);
-    loadingStep(0.9, t('Đang căn khung hình…'));
-    await js('__tyran.fit()');
-    // measure until the picture holds still (at most ~3 s), then play the intro from its start
-    for (let i = 0, still = 0; i < 10 && still < 2; i++) {
-      await sleep(300);
-      still = (await js('__tyran.settle()')) ? 0 : still + 1;
-    }
-    loadingStep(0.93, t('Đang chuẩn bị đoạn mở đầu…'));
-    await js('__tyran.measureIntro()').catch(() => 0);
-    // some lobbies load without drawing anything (missing pictures in the viewer's data)
-    if (await js('!(__tyran.measured && (__tyran.measured.drawn ?? __tyran.measured.slots))')) {
-      failed = true;
-      const next = await brokenLobby(web.model);
-      if (next === 'retry') return void setTimeout(() => setupBlueArchive(wv, web));
-      if (next === true) return;
-      loadingFail(t('Trình xem Blue Archive không vẽ được hình nào của sảnh này.'), next === 'later' ? t('Bấm Tải lại ở thanh Lobby để thử lại.') : t('Hãy chọn học sinh khác ở thanh Lobby hoặc Cài đặt → Hình nền.'));
-      return;
-    }
-    // The lobby and its song start together: wait (at most 10 s) for the song to be buffered at
-    // its start, start it, and start the intro at the point the song has really reached.
-    loadingStep(0.95, t('Đang tải nhạc sảnh…'));
-    const ask = (event, fallback, ms) =>
-      new Promise((resolve) => {
-        const timer = setTimeout(() => resolve(fallback), ms);
-        emit(event, { resolve: (v) => (clearTimeout(timer), resolve(v)) });
-      });
-    const ready = await ask('lobby-music-prepare', false, 10000);
-    if (run !== baRun) return;
-    const at = ready ? await ask('lobby-start-music', -1, 2000) : -1;
-    await js(`__tyran.loading = false; __tyran.animate(${at > 0 ? at + 0.015 : 0})`); // + the trip from the music to here
-    emit('lobby-start');
-    updateAutoColors();
-    // YouTube's clock only really gets going a moment after it says it plays: line the intro up with
-    // where the music actually is, a few times while its clock settles (moving the picture never
-    // stalls, seeking the music does); within about 10 ms after the last one
-    if (ready) {
-      for (const ms of [1000, 2000, 3500]) {
-        setTimeout(async () => {
-          const m = run === baRun ? await ask('lobby-music-time', null, 600) : null;
-          if (m && m.t > 0) js(`__tyran.seekIntro(${m.t + (performance.now() - m.when) / 1000 + 0.008})`).catch(() => {});
-        }, ms);
-      }
-    }
-    loadingStep(1, '');
-    api.invoke('wallpapers:baWorks', web.model || 'shiroko_home').catch(() => {}); // (its failures, if any, forgotten)
-    afterIntro(wv, js, web.model || 'shiroko_home', run);
+    const r = await prepareBlueArchive(wv, web, { ui: true, alive: () => run === baRun, info });
+    failed = r !== 'ok';
+    if (r === 'ok') await startBlueArchive(wv, web, run);
   } catch {
     /* viewer changed or went away */
   } finally {
@@ -1911,6 +2003,109 @@ async function setupBlueArchive(wv, web) {
       updateMotion();
     }
   }
+}
+
+// The memorial lobby made ready to show: the viewer opened, the student picked and loaded, the scene
+// framed and its opening measured, waiting at its first frame (__tyran.loading). With `ui` the
+// loading screen tells how far it is and why it failed (a lobby the viewer cannot read is counted,
+// and may switch to its working twin); without (loaded ahead, out of sight) it only answers.
+// 'ok', 'failed', or 'gone' (not wanted any more, or handed on).
+async function prepareBlueArchive(wv, web, { ui, alive, info }) {
+  const js = (code) => wv.executeJavaScript(code);
+  const step = (p, text) => ui && loadingStep(p, text);
+  const broken = async (why) => {
+    if (!ui) return 'failed';
+    const next = await brokenLobby(web.model);
+    if (next === 'retry') {
+      setTimeout(() => setupBlueArchive(wv, web)); // (the same lobby, from the other source)
+      return 'gone';
+    }
+    if (next === true) return 'gone';
+    loadingFail(why, next === 'later' ? t('Bấm Tải lại ở thanh Lobby để thử lại.') : t('Hãy chọn học sinh khác ở thanh Lobby hoặc Cài đặt → Hình nền.'));
+    return 'failed';
+  };
+  await wv.insertCSS(BA_CSS);
+  step(0.2, t('Đang mở trình xem…'));
+  for (let i = 0; i < 150 && !(await js(`(${blueArchivePage})() && __tyran.ready()`)); i++) {
+    // a lobby the viewer cannot read never lists any animation
+    if (i > 25 && (await js('__tyran.attach() && __tyran.empty()'))) break;
+    await sleep(150);
+  }
+  if (!alive()) return 'gone';
+  if (!namesSaved) {
+    namesSaved = true;
+    api.invoke('wallpapers:baNames', await js('[...document.getElementById("model").options].map((o) => o.text)')).catch(() => {});
+  }
+  step(0.4, t('Đang tải học sinh…'));
+  const before = await js('__tyran.anims()');
+  const pick = JSON.stringify([web.model || 'shiroko_home', info?.urls || null, info?.voices || '']).slice(1, -1);
+  const changed = (await js(`((r) => (r < 0 ? __tyran.pick('shiroko_home') : r))(__tyran.pick(${pick}))`)) > 0;
+  // wait for the new student's animations to replace the old list
+  for (let i = 0; changed && i < 100 && (await js('__tyran.anims()')) === before; i++) await sleep(150);
+  await js(`__tyran.audio(${!!web.audio}); ${zonesScript(S.settings.wallpaper.web?.touchZones)}; __tyran.loading = true`); // no opening until it is shown
+  step(0.7, t('Đang dựng cảnh…'));
+  // wait for the student; a slow connection only makes this longer (up to about a minute)
+  for (let i = 0; i < 400 && !(await js('__tyran.attach()')); i++) {
+    if (!alive()) return 'gone';
+    if (i === 60) step(0.72, t('Mạng chậm, vẫn đang tải…'));
+    await sleep(150);
+  }
+  // a few lobbies use files the viewer cannot read (their skeleton comes out empty)
+  if (await js('__tyran.empty()')) return broken(t('Trình xem Blue Archive chưa đọc được dữ liệu của sảnh này.'));
+  if (!(await js('__tyran.attach()'))) {
+    if (ui) loadingFail(t('Sảnh chưa tải xong sau một phút (mạng chậm hoặc trang ba.svdex.moe không phản hồi).'), t('Bấm Tải lại ở thanh Lobby để thử lại.'));
+    return 'failed';
+  }
+  await js(`__tyran.volume(${voiceVolume(web)})`);
+  await sleep(300); // extra layers (backgrounds) are added right after the student
+  // their pictures (the framing is measured from them) may take a little longer
+  for (let i = 0; i < 33 && !(await js('__tyran.texturesReady()')); i++) await sleep(150);
+  step(0.9, t('Đang căn khung hình…'));
+  await js('__tyran.fit()');
+  // measure until the picture holds still (at most ~3 s), then play the intro from its start
+  for (let i = 0, still = 0; i < 10 && still < 2; i++) {
+    await sleep(300);
+    still = (await js('__tyran.settle()')) ? 0 : still + 1;
+  }
+  step(0.93, t('Đang chuẩn bị đoạn mở đầu…'));
+  await js('__tyran.measureIntro()').catch(() => 0);
+  // some lobbies load without drawing anything (missing pictures in the viewer's data)
+  if (await js('!(__tyran.measured && (__tyran.measured.drawn ?? __tyran.measured.slots))')) return broken(t('Trình xem Blue Archive không vẽ được hình nào của sảnh này.'));
+  return alive() ? 'ok' : 'gone';
+}
+
+// The memorial lobby started: its song buffered at its start (at most 10 s), started, and the intro
+// started at the point the song has really reached.
+async function startBlueArchive(wv, web, run) {
+  const js = (code) => wv.executeJavaScript(code);
+  loadingStep(0.95, t('Đang tải nhạc sảnh…'));
+  const ask = (event, fallback, ms) =>
+    new Promise((resolve) => {
+      const timer = setTimeout(() => resolve(fallback), ms);
+      emit(event, { resolve: (v) => (clearTimeout(timer), resolve(v)) });
+    });
+  const ready = await ask('lobby-music-prepare', false, 10000);
+  if (run !== baRun) return;
+  const at = ready ? await ask('lobby-start-music', -1, 2000) : -1;
+  await js(`__tyran.loading = false; __tyran.animate(${at > 0 ? at + 0.015 : 0})`); // + the trip from the music to here
+  wv.dataset.started = '1';
+  emit('lobby-start');
+  updateAutoColors();
+  // YouTube's clock only really gets going a moment after it says it plays: line the intro up with
+  // where the music actually is, a few times while its clock settles (moving the picture never
+  // stalls, seeking the music does); within about 10 ms after the last one
+  if (ready) {
+    for (const ms of [1000, 2000, 3500]) {
+      setTimeout(async () => {
+        const m = run === baRun ? await ask('lobby-music-time', null, 600) : null;
+        if (m && m.t > 0) js(`__tyran.seekIntro(${m.t + (performance.now() - m.when) / 1000 + 0.008})`).catch(() => {});
+      }, ms);
+    }
+  }
+  loadingStep(1, '');
+  api.invoke('wallpapers:baWorks', web.model || 'shiroko_home').catch(() => {}); // (its failures, if any, forgotten)
+  // (her normal lobby loaded ahead once the opening is over)
+  afterIntro(wv, js, web.model || 'shiroko_home', run).finally(() => run === baRun && preloadSpare(wv));
 }
 
 // ---------------------------------------------------------------- loading screen

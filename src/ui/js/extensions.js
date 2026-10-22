@@ -62,7 +62,8 @@ async function openExtension(x, anchor) {
     wv.setAttribute('partition', 'persist:tyran');
     wv.setAttribute('src', p.popup);
     wv.className = 'ext-popup';
-    const pop = openPopover(h('div', { class: 'ext-popup-wrap' }, wv), anchor, { align: 'end', className: 'ext-popover', focus: false });
+    // (on a plain, solid card: the popup's own frosted panes cannot blur through a frosted card)
+    const pop = openPopover(h('div', { class: 'ext-popup-wrap' }, wv), anchor, { align: 'end', className: 'ext-popover ext-popup-pop', focus: false });
     // as big as the popup's page wants (Chrome's limits: 800 × 600)
     const fit = async () => {
       const [w, hgt] = await wv.executeJavaScript('[document.documentElement.scrollWidth, document.documentElement.scrollHeight]').catch(() => [360, 480]);

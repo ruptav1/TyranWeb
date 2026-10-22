@@ -371,8 +371,6 @@
  " · từ thư mục trên máy": " · from a folder on this computer",
  " · không nạp được": " · failed to load",
  "Tùy chọn": "Options",
- "Tiện ích này không có trang tùy chọn": "This extension has no options page",
- "Hãy bật tiện ích trước": "Enable the extension first",
  "Gỡ": "Remove",
  "Gỡ thật?": "Really remove?",
  "Bật / tắt": "On / off",
@@ -995,5 +993,6 @@
  "Hình nền: Blue Archive · Sảnh chính (© NEXON Games / Yostar)": "Wallpaper: Blue Archive · Main Lobby (© NEXON Games / Yostar)",
  "Sảnh L2D": "L2D lobby",
  "Sảnh thường": "Normal lobby",
- "Sinh nhật Sensei": "Sensei's birthday"
+ "Sinh nhật Sensei": "Sensei's birthday",
+ "Theo nhân vật": "Match character"
 }

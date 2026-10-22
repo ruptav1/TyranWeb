@@ -1,4 +1,4 @@
-TyranWeb 1.1.1 — trình duyệt anime (Windows 10/11, 64-bit)
+TyranWeb 1.1.2 — trình duyệt anime (Windows 10/11, 64-bit)
 ==========================================================
 
 CÁCH CHẠY
@@ -24,8 +24,9 @@ CẦN INTERNET CHO
 - Hình nền NIKKE (152 nhân vật, 215 trang phục): mỗi nhân vật (cùng mọi trang phục của mình) phải
   tải về một lần trước khi dùng, ở Cài đặt → Hình nền → Web động → NIKKE (5-80 MB, thường khoảng
   27 MB mỗi nhân vật; mô hình từ Nikke-db, giọng
-  nói từ I6RaVeN9I/nikke-wallpaper-packs, bộ chạy Spine chính thức của Esoteric Software).
-  Không có sẵn trong file zip này.
+  nói từ I6RaVeN9I/nikke-wallpaper-packs, bộ chạy Spine chính thức của Esoteric Software;
+  logo NIKKE phía sau lấy từ ảnh màn hình chờ của trang chính thức nikke-en.com, chuyển thành
+  hình vector khi dùng lần đầu). Không có sẵn trong file zip này.
 - Hình nền Azur Lane (156 tàu, 221 skin Live2D, cả các skin tương tác: chạm, kéo, giữ như
   trong game): mỗi tàu (cùng mọi skin của mình) tải về một lần ở Cài đặt → Hình nền → Web động
   → Azur Lane (4-105 MB, thường khoảng 16 MB mỗi tàu; mô hình từ MilkyLan/AzurLane-Live2d, giọng

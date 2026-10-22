@@ -2,7 +2,8 @@
 // Chrome extensions under Electron: Electron leaves parts of the chrome.* API out (windows, most tab
 // events, the toolbar button, context menus, alarms...), and an extension that touches one of them
 // often stops at startup. This fills only what is missing, inside the extension's own pages and
-// its background service worker, with stand-ins that answer sensibly. Web pages are left alone.
+// its background service worker (on `chrome` and on `browser`), with stand-ins that answer sensibly;
+// the tabs and their events are the browser's real ones. Web pages are left alone.
 const { contextBridge, ipcRenderer } = require('electron');
 
 function shim(bridge) {
@@ -284,10 +285,33 @@ function shim(bridge) {
       const s = await bridge.windows();
       return Promise.all(s.all.map((id) => win(() => id, opts)));
     }));
+    // the tabs' own events, as the browser tells them (src/main/extensions.js: tabEvents)
+    const TAB_EVENTS = ['onCreated', 'onUpdated', 'onActivated', 'onRemoved'];
+    bridge.onTabEvent((name, ...args) => TAB_EVENTS.includes(name) && t[name]?.dispatch?.(...args));
   }
 
   const fonts = ns('fontSettings');
   def(fonts, 'getFontList', api(() => []));
+
+  // Chromium's `browser` namespace (what WebExtension-style code calls first: WXT's, for one, as
+  // PreMiD's) is an object of its own here, with only some of chrome's parts (no alarms, permissions,
+  // windows...): the ones it lacks, Electron's or these stand-ins, go on it too, and so do their
+  // members it lacks (tab events, storage.sync)
+  const b = globalThis.browser;
+  if (b && b !== c && typeof b === 'object') {
+    for (const k of Object.keys(c)) {
+      if (k === '__tyranShim') continue;
+      if (b[k] === undefined) def(b, k, c[k]);
+      else if (b[k] !== c[k] && b[k] && c[k] && typeof b[k] === 'object' && typeof c[k] === 'object') for (const m of Object.keys(c[k])) if (b[k][m] === undefined) def(b[k], m, c[k][m]);
+    }
+    if (b.storage && b.storage !== c.storage && c.storage?.sync) {
+      try {
+        Object.defineProperty(b.storage, 'sync', { value: c.storage.sync, configurable: true, writable: true });
+      } catch {
+        /* left as it is */
+      }
+    }
+  }
 }
 
 // (a service worker's preload runs in a realm of its own, without location: shim() itself returns
@@ -301,6 +325,7 @@ if (worker || (typeof location !== 'undefined' && location.protocol === 'chrome-
       create: (p) => ipcRenderer.invoke('crx:tab-create', p),
       update: (id, p) => ipcRenderer.invoke('crx:tab-update', id, p),
       remove: (ids) => ipcRenderer.invoke('crx:tab-remove', ids),
+      onTabEvent: (fn) => ipcRenderer.on('crx:tab-event', (e, name, ...args) => fn(name, ...args)),
     };
     contextBridge.executeInMainWorld({ func: shim, args: [bridge] });
   } catch (err) {

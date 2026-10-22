@@ -61,7 +61,7 @@ const SETTINGS = {
     // and once all of them have played, from the first again (repeat) or the last one stays
     // baMode: the lobby of the student (or outfit) of model shown as her memorial lobby ('memorial') or
     // her normal one in Schale's office ('normal'; the lobby button switches); senseiBirthday: 'M/D'
-    web: { preset: 'bluearchive', baMode: 'memorial', senseiBirthday: '', url: '', package: '', model: 'shiroko_home', audio: false, volume: 0.6, musicVolume: 1, voiceVolume: 1, touchZones: false, randomLobby: false, lobbyPick: 'fixed', pickFavorites: false, autoPeriod: '', favorites: [], nextOnSongEnd: false, nextLobby: { school: '', student: '', outfit: '', favorites: false, order: 'list', repeat: true }, nikke: 'c010', nikkeOutfit: '', azur: '', azurSkin: '', azurMusic: 'game', azurChatter: false, sekai: '', sekaiOutfit: '', nikkeStance: 'lobby', nikkeColor: '#141b29', nikkeImage: '' },
+    web: { preset: 'bluearchive', baMode: 'memorial', senseiBirthday: '', url: '', package: '', model: 'shiroko_home', audio: false, volume: 0.6, musicVolume: 1, voiceVolume: 1, touchZones: false, randomLobby: false, lobbyPick: 'fixed', pickFavorites: false, autoPeriod: '', favorites: [], nextOnSongEnd: false, nextLobby: { school: '', student: '', outfit: '', favorites: false, order: 'list', repeat: true }, nikke: 'c010', nikkeOutfit: '', azur: '', azurSkin: '', azurMusic: 'game', azurChatter: false, sekai: '', sekaiOutfit: '', nikkeStance: 'lobby', nikkeTint: 'auto', nikkeColor: '#141b29', nikkeImage: '' },
     color: '#f7eeea',
     gradientFrom: '#ffd6e0',
     gradientTo: '#c9e4ff',

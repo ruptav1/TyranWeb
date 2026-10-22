@@ -337,8 +337,81 @@ const TABS = new Map(); // window id -> [{ wcId, active, pinned, favicon }]
 
 function setTabs(win, list) {
   if (!win) return;
-  TABS.set(win.id, (Array.isArray(list) ? list : []).slice(0, 500));
-  win.once('closed', () => TABS.delete(win.id));
+  const before = TABS.get(win.id) || [];
+  const now = (Array.isArray(list) ? list : []).slice(0, 500);
+  TABS.set(win.id, now);
+  if (!before.length && !closedHooked.has(win.id)) {
+    closedHooked.add(win.id);
+    win.once('closed', () => {
+      for (const t of TABS.get(win.id) || []) tell('onRemoved', Number(t.wcId), { windowId: win.id, isWindowClosing: true });
+      TABS.delete(win.id);
+      closedHooked.delete(win.id);
+    });
+  }
+  tabEvents(win.id, before, now);
+}
+const closedHooked = new Set();
+
+// The tabs' events for the extensions (their chrome.tabs.onCreated / onUpdated / onActivated /
+// onRemoved, see src/preload/crx-shim.js): from the windows' tab lists as they change, and from
+// each tab's page as it loads, moves and is renamed.
+function tell(name, ...args) {
+  if (!ses) return;
+  for (const wc of webContents.getAllWebContents()) {
+    if (!wc.isDestroyed() && wc.session === ses && wc.getURL().startsWith('chrome-extension://')) wc.send('crx:tab-event', name, ...args);
+  }
+  for (const v of Object.keys(ses.serviceWorkers.getAllRunning?.() || {})) {
+    const sw = ses.serviceWorkers.getWorkerFromVersionID(Number(v));
+    if (!sw || sw.isDestroyed?.() || !sw.scope.startsWith('chrome-extension://')) continue;
+    try {
+      sw.send('crx:tab-event', name, ...args);
+    } catch {
+      /* stopping */
+    }
+  }
+}
+const tabOf = (id) => allTabs().tabs.find((t) => t.id === id);
+const watched = new Set(); // tabs whose pages are listened to
+function watchTab(wc) {
+  if (watched.has(wc.id)) return;
+  watched.add(wc.id);
+  const id = wc.id;
+  const update = (change) => {
+    const tab = tabOf(id);
+    if (tab) tell('onUpdated', id, change, tab);
+  };
+  wc.on('did-start-loading', () => update({ status: 'loading' }));
+  wc.on('did-stop-loading', () => update({ status: 'complete' }));
+  wc.on('did-navigate', (e, url) => update({ url }));
+  wc.on('did-navigate-in-page', (e, url, isMainFrame) => isMainFrame && update({ url }));
+  wc.on('page-title-updated', (e, title) => update({ title }));
+  wc.on('page-favicon-updated', (e, icons) => icons?.[0] && update({ favIconUrl: icons[0] }));
+  wc.on('audio-state-changed', (e) => update({ audible: !!e.audible }));
+  wc.once('destroyed', () => watched.delete(id));
+}
+function tabEvents(windowId, before, now) {
+  const had = new Map(before.map((t) => [Number(t.wcId), t]));
+  const has = new Map(now.map((t) => [Number(t.wcId), t]));
+  for (const [id] of has) {
+    const wc = webContents.fromId(id);
+    if (!wc || wc.isDestroyed()) continue;
+    watchTab(wc);
+    if (!had.has(id)) {
+      const tab = tabOf(id);
+      if (tab) tell('onCreated', tab);
+    }
+  }
+  for (const [id] of had) if (!has.has(id)) tell('onRemoved', id, { windowId, isWindowClosing: false });
+  const was = before.find((t) => t.active);
+  const is = now.find((t) => t.active);
+  if (is && Number(is.wcId) !== Number(was?.wcId)) tell('onActivated', { tabId: Number(is.wcId), windowId });
+  for (const t of now) {
+    const p = had.get(Number(t.wcId));
+    if (p && p.pinned !== t.pinned) {
+      const tab = tabOf(Number(t.wcId));
+      if (tab) tell('onUpdated', tab.id, { pinned: !!t.pinned }, tab);
+    }
+  }
 }
 
 const matches = (pattern, url) => {

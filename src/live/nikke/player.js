@@ -1,7 +1,7 @@
 // TyranWeb's NIKKE lobby page (TyranWeb's own, copied next to the character it downloaded): one
 // Nikke, in her own outfit or another one downloaded beside her (?o=<outfit>), drawn with the
-// official Spine runtime for the web her models were made for (spine-webgl 4.0 or 4.1), over a
-// colour or a picture of the user's.
+// official Spine runtime for the web her models were made for (spine-webgl 4.0 or 4.1), over the
+// game's logo on a colour (hers, or one the user chose) or over a picture of the user's.
 //
 // Sảnh (lobby): she stands and breathes. A tap on her plays one of her lobby lines with her
 // reaction (the rig's "action") while her mouth moves; tapping her again and again makes her cross
@@ -16,16 +16,16 @@
   'use strict';
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const now = () => performance.now() / 1000;
-  const cfg = { audio: false, volume: 0.6, stance: 'lobby', zones: false, top: 0, color: '#141b29', image: '' };
+  const cfg = { audio: false, volume: 0.6, stance: 'lobby', zones: false, top: 0, bar: 0, tint: 'auto', color: '#141b29', image: '' };
   const T = (window.__tyran = { ready: false, failed: '', log: [] });
   let started = false;
   let hideZones = false;
 
   // ---------------------------------------------------------------- what TyranWeb sets
   T.set = (o = {}) => {
-    const top = cfg.top;
+    const [top, bar] = [cfg.top, cfg.bar];
     Object.assign(cfg, o);
-    if (started && cfg.top !== top) reframe = true; // (she moves down below the browser's bars, or back up)
+    if (started && (cfg.top !== top || cfg.bar !== bar)) reframe = true; // (the browser's bars shown or hidden)
     cfg.volume = clamp(Number(cfg.volume) || 0, 0, 1);
     backdrop();
     if (voice) voice.el.volume = cfg.volume;
@@ -35,16 +35,115 @@
   };
   T.volume = (v) => T.set({ volume: v });
   T.audio = (on) => T.set({ audio: !!on });
-  T.zones = (on, top) => T.set(typeof top === 'number' ? { zones: !!on, top } : { zones: !!on });
+  T.zones = (on, top, bar = 0) => T.set(typeof top === 'number' ? { zones: !!on, top, bar } : { zones: !!on });
   T.zonesHide = (h) => ((hideZones = !!h), true);
 
+  // Behind her: the user's picture; else the game's logo (nikke-logo.svg, put beside her by
+  // TyranWeb) in the middle of what the browser's bars leave visible, on a colour: hers (tintOf,
+  // once she is drawn) or the user's, lighter at the top left and darker at the bottom right.
+  let tint = null;
+  let hasLogo = false;
+  const logo = document.getElementById('logo');
+  const logoPic = new Image();
+  logoPic.onload = () => ((hasLogo = true), backdrop());
+  logoPic.src = 'nikke-logo.svg';
+  const hsl = (h, s, l) => `hsl(${Math.round((h + 360) % 360)} ${Math.round(clamp(s, 0, 1) * 100)}% ${Math.round(clamp(l, 0, 1) * 100)}%)`;
+  function hexHsl(hex) {
+    const n = hex.slice(1);
+    const [r, g, b] = n.length < 6 ? [0, 1, 2].map((i) => parseInt(n[i] + n[i], 16) / 255) : [0, 2, 4].map((i) => parseInt(n.slice(i, i + 2), 16) / 255);
+    const max = Math.max(r, g, b);
+    const d = max - Math.min(r, g, b);
+    const l = max - d / 2;
+    const h = !d ? 0 : max === r ? 60 * (((g - b) / d + 6) % 6) : max === g ? 60 * ((b - r) / d + 2) : 60 * ((r - g) / d + 4);
+    return { h, s: d ? d / (1 - Math.abs(2 * l - 1)) : 0, l };
+  }
   function backdrop() {
     const b = document.body.style;
-    b.backgroundColor = /^#[0-9a-f]{3,8}$/i.test(cfg.color) ? cfg.color : '#141b29';
-    // the user's picture, else a soft light from above on the colour
-    b.backgroundImage = /^[\w.-]+$/.test(cfg.image || '') ? `url("${cfg.image}")` : 'radial-gradient(120% 95% at 50% 28%, rgba(255,255,255,.12), rgba(0,0,0,.42))';
+    const own = /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(cfg.color) ? cfg.color : '#141b29';
+    const c = /^[\w.-]+$/.test(cfg.image || '') ? null : cfg.tint === 'own' ? hexHsl(own) : tint;
+    logo.style.display = c && hasLogo ? 'block' : 'none';
+    if (!c) {
+      // (her colour is not known yet: the plain dark one)
+      b.backgroundColor = '#141b29';
+      b.backgroundImage = /^[\w.-]+$/.test(cfg.image || '') ? `url("${cfg.image}")` : 'none';
+      return;
+    }
+    b.backgroundColor = hsl(c.h, c.s, c.l);
+    b.backgroundImage = `radial-gradient(130% 100% at 50% 50%, transparent 55%, rgba(0,0,0,.26)), linear-gradient(135deg, ${hsl(c.h - 8, c.s * 0.92, c.l + 0.1)}, ${hsl(c.h, c.s, c.l)} 50%, ${hsl(c.h + 10, c.s * 1.08, c.l - 0.12)})`;
+    placeLogo();
+  }
+  // (in the middle of the window, a little above, its size set with her framing)
+  let logoScale = 0.6;
+  function placeLogo() {
+    logo.style.width = Math.round(Math.min(innerWidth * logoScale, innerHeight * 1.67)) + 'px';
+    logo.style.top = Math.round(innerHeight * 0.46) + 'px';
   }
   backdrop();
+
+  // The colour behind her when it is hers, from what she wears (her opaque pixels standing in the
+  // lobby, her skin — light, warm, pale — left out; each counted by how much colour it has): her own
+  // hue when nearly all of her colour is of it, else the one of a few calm colours the white logo
+  // shows on that sets her off best — far enough from her lightness, and with little of her colour
+  // near its hue (a girl in black gets a light blue, one in white and blue a red, one in yellow a
+  // cobalt blue).
+  const BACKDROPS = [
+    { name: 'teal', h: 184, s: 0.45, l: 0.56 },
+    { name: 'sky', h: 204, s: 0.55, l: 0.5 },
+    { name: 'slate', h: 220, s: 0.38, l: 0.4 },
+    { name: 'cobalt', h: 222, s: 0.55, l: 0.42 },
+    { name: 'navy', h: 228, s: 0.45, l: 0.22 },
+    { name: 'red', h: 5, s: 0.56, l: 0.4 },
+    { name: 'wine', h: 345, s: 0.42, l: 0.3 },
+    { name: 'violet', h: 268, s: 0.38, l: 0.38 },
+    { name: 'green', h: 152, s: 0.32, l: 0.3 },
+    { name: 'charcoal', h: 0, s: 0, l: 0.13 },
+  ];
+  const turn = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
+  function tintOf(px) {
+    const bins = new Float64Array(36);
+    const sats = new Float64Array(36);
+    let seen = 0;
+    let light = 0;
+    let colour = 0;
+    for (let i = 0; i < px.length; i += 12) {
+      const a = px[i + 3];
+      if (a < 200) continue;
+      const [r, g, b] = [px[i] / a, px[i + 1] / a, px[i + 2] / a]; // (drawn premultiplied)
+      const max = Math.max(r, g, b);
+      const c = max - Math.min(r, g, b);
+      const h = c ? (max === r ? ((g - b) / c + 6) % 6 : max === g ? (b - r) / c + 2 : (r - g) / c + 4) * 60 : 0;
+      if (c >= 0.04 && h > 4 && h < 48 && c / max < 0.5 && max > 0.6) continue; // (skin)
+      seen++;
+      light += max - c / 2;
+      if (c < 0.08) continue;
+      bins[Math.floor(h / 10) % 36] += c;
+      sats[Math.floor(h / 10) % 36] += c * (c / max);
+      colour += c;
+    }
+    if (!seen) return null;
+    light /= seen;
+    const vivid = clamp(colour / seen / 0.1, 0, 1); // (how much of her is coloured)
+    // (the share of her colour within 50° of a hue)
+    const near = (hue) => (colour ? bins.reduce((n, w, k) => n + w * Math.max(0, 1 - turn(k * 10 + 5, hue) / 50), 0) / colour : 0);
+    // her own colour, when nearly all of the colour she wears is of one hue (Alice's pink, Red Hood's
+    // red): that hue, darker under light clothes, lighter under dark ones
+    let peak = 0;
+    for (let k = 1; k < 36; k++) if (bins[(k + 35) % 36] + bins[k] + bins[(k + 1) % 36] > bins[(peak + 35) % 36] + bins[peak] + bins[(peak + 1) % 36]) peak = k;
+    let [x, y] = [0, 0];
+    for (const j of [(peak + 35) % 36, peak, (peak + 1) % 36]) [x, y] = [x + bins[j] * Math.cos(((j * 10 + 5) * Math.PI) / 180), y + bins[j] * Math.sin(((j * 10 + 5) * Math.PI) / 180)];
+    const own = ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+    const share = colour ? bins.reduce((n, w, k) => n + (turn(k * 10 + 5, own) <= 40 ? w : 0), 0) / colour : 0;
+    const facts = { light: +light.toFixed(2), vivid: +vivid.toFixed(2), share: +share.toFixed(2) };
+    if (vivid >= 0.6 && share >= 0.75) {
+      const sat = sats.reduce((n, v, k) => n + (turn(k * 10 + 5, own) <= 40 ? v : 0), 0) / (share * colour);
+      return { name: 'own', h: Math.round(own), s: +clamp(sat * 0.9, 0.45, 0.62).toFixed(2), l: light > 0.5 ? 0.24 : 0.5, ...facts };
+    }
+    // else the one that sets her off: lightness far enough from hers is all it needs; then the more
+    // colour, unlike hers, the better
+    const score = (b) => Math.min(Math.abs(b.l - light), 0.15) / 0.15 + 0.8 * b.s * (1 - 2.5 * vivid * near(b.h));
+    return { ...BACKDROPS.reduce((best, b) => (score(b) > score(best) ? b : best)), ...facts };
+  }
+  T.tint = () => tint && { ...tint };
 
   // ---------------------------------------------------------------- voices
   let voice = null; // { el, name }
@@ -279,6 +378,15 @@
       const named = data.skins.filter((x) => x !== data.defaultSkin);
       const used = data.slots.filter((x) => x.attachmentName).length;
       if (named.length && (data.defaultSkin?.getAttachments().length || 0) < used * 0.5) wear(skeleton, ['default', (named.find((x) => ['00', 'acc', 'bg', 'weapon_1'].includes(x.name)) || named[0]).name]);
+      else {
+        // (pieces some keep out of the default skin: the gun she normally holds, weapon_1 beside
+        // weapon_2 — Snow White's arm and gun behind cover; her face in parts of its own, the first
+        // one her usual face — Nayuta behind cover: part_0 eyes shut, part_1 open. Other parts, the
+        // states of a gadget, are left out.)
+        const face = named.filter((x) => /^part_\d+$/.test(x.name) && x.getAttachments().some((a) => /eye|brow|mouth/i.test(data.slots[a.slotIndex].name)));
+        const extra = [named.find((x) => x.name === 'weapon_1'), face.sort((a, b) => a.name.localeCompare(b.name, 'en', { numeric: true }))[0]].filter(Boolean);
+        if (extra.length) wear(skeleton, ['default', ...extra.map((x) => x.name)]);
+      }
     }
     const state = new spine.AnimationState(new spine.AnimationStateData(data));
     state.data.defaultMix = 0.2;
@@ -330,6 +438,10 @@
     const px = pixels.buf;
     gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px);
     gl.clear(gl.COLOR_BUFFER_BIT);
+    if (r === rigs.lobby && anim === 'idle') {
+      tint = tintOf(px);
+      backdrop();
+    }
     let [x0, y0, x1, y1] = [W, H, -1, -1];
     for (let y = 0; y < H; y += 2) {
       for (let x = 0, i = (y * W) * 4 + 3; x < W; x += 2, i += 8) {
@@ -370,10 +482,22 @@
     }
     const lb = sizes.lobby;
     if (lb) {
-      const zoom = Math.max((lb.h * 0.66) / vh, (lb.w * 1.08) / W);
-      const head = lb.y + lb.h + lb.h * 0.015;
-      rigs.lobby.goal = { cx: lb.head ? (lb.head.x + lb.x + lb.w / 2) / 2 : lb.x + lb.w / 2, cy: head - (H / 2 - top) * zoom, zoom };
+      // big, as the game's wallpapers show them: the top of her head where the address bar starts
+      // (her face below it), down to just under her knees, a quarter of her below the window's
+      // edge; one in a wide pose (sitting, arms or hair spread out) as wide as the window allows,
+      // on its bottom edge when the whole of her fits
+      const bar = cfg.bar > 0 ? clamp(cfg.bar * dpr, 0, H * 0.3) : H * 0.03;
+      const big = (lb.h * 0.76) / (H - bar);
+      const zoom = Math.max(big, (lb.w * 1.08) / W);
+      const cx = lb.head ? (lb.head.x + lb.x + lb.w / 2) / 2 : lb.x + lb.w / 2;
+      const cy = zoom > big && lb.h / zoom <= H - bar ? lb.y - lb.h * 0.01 + (H / 2) * zoom : lb.y + lb.h - (H / 2 - bar) * zoom;
+      rigs.lobby.goal = { cx, cy, zoom };
       rigs.lobby.bounds = lb;
+      // the logo behind her the bigger the slimmer she stands: around her, or a smaller one under
+      // a wide pose
+      const wide = lb.w / zoom / W;
+      logoScale = wide < 0.42 ? 0.88 : wide < 0.56 ? 0.6 : 0.34;
+      placeLogo();
     }
     // in battle: standing up to aim she is about 85% of the height, her feet at the bottom; behind
     // cover (drawn in the same place, the two rigs are made to line up) she is lower
@@ -402,6 +526,7 @@
     const w = Math.round(innerWidth * dpr);
     const h = Math.round(innerHeight * dpr);
     for (const c of [canvas, hud, zonesCanvas]) if (c.width !== w || c.height !== h) [c.width, c.height] = [w, h];
+    placeLogo();
     if (w === W && h === H) return;
     [W, H] = [w, h];
     framed = false; // (a new size: straight there)

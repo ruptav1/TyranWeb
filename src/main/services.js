@@ -28,7 +28,7 @@ async function suggest(text) {
   const engine = SEARCH_ENGINES[g.searchEngine];
   if (!g.searchSuggestions || !engine?.suggest || !text.trim()) return [];
   try {
-    const json = await getJson(engine.suggest.replace('%s', encodeURIComponent(text)));
+    const json = await getJson(engine.suggest.replace('%s', encodeURIComponent(text)), { signal: AbortSignal.timeout(3000) });
     const list = Array.isArray(json) ? json[1] : [];
     return (Array.isArray(list) ? list : []).filter((s) => typeof s === 'string').slice(0, 6);
   } catch {

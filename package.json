@@ -1,7 +1,7 @@
 {
   "name": "tyranweb",
   "productName": "TyranWeb",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Trình duyệt web chủ đề anime 2000–2010, UI clean và tùy biến tự do.",
   "main": "src/main/main.js",
   "author": "TyranWeb",

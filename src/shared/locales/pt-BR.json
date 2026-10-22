@@ -371,8 +371,6 @@
  " · từ thư mục trên máy": " · de uma pasta do computador",
  " · không nạp được": " · falha ao carregar",
  "Tùy chọn": "Opções",
- "Tiện ích này không có trang tùy chọn": "Esta extensão não tem página de opções",
- "Hãy bật tiện ích trước": "Ative a extensão primeiro",
  "Gỡ": "Remover",
  "Gỡ thật?": "Remover mesmo?",
  "Bật / tắt": "Ligar / desligar",
@@ -995,5 +993,6 @@
  "Hình nền: Blue Archive · Sảnh chính (© NEXON Games / Yostar)": "Papel de parede: Blue Archive · Lobby principal (© NEXON Games / Yostar)",
  "Sảnh L2D": "Lobby L2D",
  "Sảnh thường": "Lobby normal",
- "Sinh nhật Sensei": "Aniversário do Sensei"
+ "Sinh nhật Sensei": "Aniversário do Sensei",
+ "Theo nhân vật": "De acordo com a personagem"
 }

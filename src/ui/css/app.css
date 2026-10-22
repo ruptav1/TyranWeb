@@ -2282,6 +2282,12 @@ body.blurred #toolbar {
   padding: 4px;
   overflow: hidden;
 }
+/* an extension's popup page: on a solid card (a page's own backdrop blur is not drawn through a
+   frosted parent; its blurred panes came out see-through, everything behind them showing) */
+.popover.ext-popup-pop {
+  backdrop-filter: none;
+  background: var(--surface-solid);
+}
 .ext-popup {
   display: flex;
   flex: none;

@@ -371,8 +371,6 @@
  " · từ thư mục trên máy": " · このコンピューターのフォルダーから",
  " · không nạp được": " · 読み込めません",
  "Tùy chọn": "オプション",
- "Tiện ích này không có trang tùy chọn": "この拡張機能にはオプションページがありません",
- "Hãy bật tiện ích trước": "先に拡張機能を有効にしてください",
  "Gỡ": "削除",
  "Gỡ thật?": "本当に削除?",
  "Bật / tắt": "オン / オフ",
@@ -995,5 +993,6 @@
  "Hình nền: Blue Archive · Sảnh chính (© NEXON Games / Yostar)": "壁紙: ブルーアーカイブ · メインロビー (© NEXON Games / Yostar)",
  "Sảnh L2D": "L2D ロビー",
  "Sảnh thường": "通常ロビー",
- "Sinh nhật Sensei": "先生の誕生日"
+ "Sinh nhật Sensei": "先生の誕生日",
+ "Theo nhân vật": "キャラクターに合わせる"
 }

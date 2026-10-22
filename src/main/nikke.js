@@ -92,7 +92,7 @@ function cardOf(id, look = id) {
 
 // Her look drawn by the player page in a hidden window: the whole of her, standing, on nothing.
 async function drawCard(id, outfit = '') {
-  const url = pageUrl(id, outfit);
+  const url = await pageUrl(id, outfit);
   if (!url) return false;
   const { BrowserWindow } = require('electron');
   const win = new BrowserWindow({ show: false, width: 360, height: 600, webPreferences: { offscreen: true, partition: 'persist:tyran-wallpaper', sandbox: true, backgroundThrottling: false } });
@@ -467,12 +467,15 @@ function copyPage(dir) {
 }
 
 // The page a NIKKE wallpaper shows (null until the character is downloaded), in one of her
-// outfits when that one is downloaded.
-function pageUrl(id, outfit = '') {
+// outfits when that one is downloaded. (The logo behind her is made first, the first time: a few
+// seconds at most, without it when the sites are out of reach.)
+async function pageUrl(id, outfit = '') {
   if (!installed(id)) return null;
+  await Promise.race([ensureLogo(), new Promise((r) => setTimeout(r, 12000))]);
   try {
     copyPage(dirOf(id));
     syncBackdrop(dirOf(id));
+    syncLogo(dirOf(id));
     // (what TyranWeb knows of her now: her gun, for a character downloaded before it did)
     const m = manifestOf(id);
     const before = JSON.stringify(m);
@@ -507,6 +510,86 @@ function setBackdrop(file) {
   // (Project SEKAI's characters stand on the same backdrop)
   for (const d of fs.existsSync(LIVE_WALLPAPERS) ? fs.readdirSync(LIVE_WALLPAPERS) : []) if (/^sekai-\d+$/.test(d)) syncBackdrop(path.join(LIVE_WALLPAPERS, d));
   return name;
+}
+
+// The game's logo behind her (NIKKE · GODDESS OF VICTORY), white, cut out of the official site's
+// loading picture (nikke-en.com), where it is drawn dark on light; else Wikimedia Commons' copy of
+// it (PD-textlogo, from the same site, smaller). Its shape is traced into an SVG (outline.js) so
+// that it stays sharp however big it is drawn: made once into userData/live/nikke-logo/logo.svg,
+// then copied beside each character as nikke-logo.svg.
+const LOGO = path.join(LIVE_WALLPAPERS, 'nikke-logo', 'logo.svg');
+const LOGO_SITE = 'https://nikke-en.com/';
+const LOGO_PICTURE = 'https://nikke-en.com/assets/loading_bg-839b2d01.jpg';
+const LOGO_COMMONS = 'https://upload.wikimedia.org/wikipedia/commons/archive/2/24/20241104160848%21Nikke_%E2%80%93_Goddess_of_Victory_logo.png';
+// the site's loading picture under its current name (it changes with the site's builds)
+async function loadingPicture() {
+  try {
+    return Buffer.from(await (await fetchOk(LOGO_PICTURE, { signal: AbortSignal.timeout(15000) })).arrayBuffer());
+  } catch {
+    const html = await (await fetchOk(LOGO_SITE, { signal: AbortSignal.timeout(15000) })).text();
+    const scripts = [...html.matchAll(/<script[^>]+src=["']([^"']+\.js)["']/g)].map((m) => new URL(m[1], LOGO_SITE).href);
+    for (const s of scripts) {
+      const name = /loading_bg-[\w-]+\.jpg/.exec(await (await fetchOk(s, { signal: AbortSignal.timeout(15000) })).text())?.[0];
+      if (name) return Buffer.from(await (await fetchOk(new URL('/assets/' + name, LOGO_SITE).href, { signal: AbortSignal.timeout(15000) })).arrayBuffer());
+    }
+    throw new Error('no loading picture');
+  }
+}
+// The logo's shape out of a picture of it: dark ink (on light, or on nothing) in the middle of a
+// big picture, or anywhere in a small one; as opaque as the ink is dark (the background's light
+// texture left out), then traced.
+function cutLogo(buf) {
+  const { nativeImage } = require('electron');
+  const img = nativeImage.createFromBuffer(buf);
+  const { width: w, height: h } = img.getSize();
+  if (!w || !h) return null;
+  const px = img.toBitmap(); // (BGRA)
+  const ink = (i) => (px[i + 3] / 255) * (1 - (px[i] + px[i + 1] + px[i + 2]) / 765);
+  const [ax, ay, bx, by] = w >= 1200 ? [0.3, 0.2, 0.7, 0.52].map((f, k) => Math.round(f * (k % 2 ? h : w))) : [0, 0, w, h];
+  let [x0, y0, x1, y1] = [w, h, -1, -1];
+  for (let y = ay; y < by; y++) {
+    for (let x = ax; x < bx; x++) {
+      if (ink((y * w + x) * 4) < 0.6) continue;
+      [x0, x1, y0, y1] = [Math.min(x0, x), Math.max(x1, x), Math.min(y0, y), Math.max(y1, y)];
+    }
+  }
+  const [cw, ch] = [x1 - x0 + 7, y1 - y0 + 7];
+  if (x1 < 0 || cw < 150 || cw / ch < 1.5 || cw / ch > 2.5) return null;
+  const a = new Float32Array(cw * ch);
+  for (let y = 0; y < ch; y++) {
+    for (let x = 0; x < cw; x++) {
+      const [sx, sy] = [x0 - 3 + x, y0 - 3 + y];
+      a[y * cw + x] = sx < 0 || sy < 0 || sx >= w || sy >= h ? 0 : Math.min(1, Math.max(0, (ink((sy * w + sx) * 4) - 0.2) / 0.62));
+    }
+  }
+  const d = require('./outline').trace(a, cw, ch);
+  return d ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${cw} ${ch}" width="${cw * 8}" height="${ch * 8}"><path fill="#fff" fill-rule="evenodd" d="${d}"/></svg>` : null;
+}
+let logoJob = null;
+function ensureLogo() {
+  if (fs.existsSync(LOGO)) return Promise.resolve(true);
+  logoJob ||= (async () => {
+    let svg = null;
+    try {
+      svg = cutLogo(await loadingPicture());
+    } catch {
+      /* the site is out of reach: Commons' copy */
+    }
+    if (!svg) svg = cutLogo(Buffer.from(await (await fetchOk(LOGO_COMMONS, { signal: AbortSignal.timeout(15000), headers: { 'user-agent': 'TyranWeb' } })).arrayBuffer()));
+    if (!svg) return false;
+    fs.mkdirSync(path.dirname(LOGO), { recursive: true });
+    fs.rmSync(path.join(path.dirname(LOGO), 'logo.png'), { force: true }); // (an enlarged picture, before)
+    fs.writeFileSync(LOGO, svg);
+    return true;
+  })()
+    .catch(() => false)
+    .finally(() => (logoJob = null));
+  return logoJob;
+}
+function syncLogo(dir) {
+  const there = path.join(dir, 'nikke-logo.svg');
+  fs.rmSync(path.join(dir, 'nikke-logo.png'), { force: true });
+  if (fs.existsSync(LOGO) && fs.statSync(LOGO).size !== (fs.existsSync(there) ? fs.statSync(there).size : -1)) fs.copyFileSync(LOGO, there);
 }
 
 module.exports = { list, install, installOutfit, cancel, remove, removeOutfit, pageUrl, setBackdrop, installed, makeCards, drawCard, CHARACTERS, helpers: { fetchOk, readBody, saver, folderBytes, syncBackdrop } };

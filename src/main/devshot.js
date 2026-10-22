@@ -35,6 +35,15 @@ module.exports = function devshot() {
     if (done) return;
     done = true;
     win.webContents.once('did-finish-load', async () => {
+      // TYRAN_SHOT_FOCUS=1: the shell acts as the focused window even when it is behind others
+      if (process.env.TYRAN_SHOT_FOCUS) {
+        try {
+          win.webContents.debugger.attach('1.3');
+          await win.webContents.debugger.sendCommand('Emulation.setFocusEmulationEnabled', { enabled: true });
+        } catch (err) {
+          console.log('[shot-focus]', err.message);
+        }
+      }
       await sleep(delay / 2);
       const steps = (process.env.TYRAN_SHOT_JS || '').split('||').filter(Boolean);
       for (const js of steps) {

@@ -470,7 +470,7 @@ function wallpaperSection() {
         row(t('Âm thanh'), '', sw('wallpaper.web.audio')),
         volume,
         row(t('Tư thế'), '', seg('wallpaper.web.nikkeStance', [['lobby', t('Sảnh')], ['battle', t('Chiến đấu')]])),
-        row(t('Màu nền'), '', color('wallpaper.web.nikkeColor')),
+        row(t('Màu nền'), '', seg('wallpaper.web.nikkeTint', [['auto', t('Theo nhân vật')], ['own', t('Tự chọn')]], () => render()), ...(w.web?.nikkeTint === 'own' ? [color('wallpaper.web.nikkeColor')] : [])),
         nikkeImageRow()
       );
     else if (preset === 'azurlane')
@@ -667,14 +667,17 @@ function extensionsSection() {
           const on = h('input', { type: 'checkbox', checked: x.enabled !== false });
           on.addEventListener('change', () => api.invoke('ext:setEnabled', x.id, on.checked).catch((err) => toast(errText(err) || t('Không bật được tiện ích này'))));
           const state = t('Phiên bản {0}{1}{2}', x.version || '?', x.storeId ? '' : t(' · từ thư mục trên máy'), x.enabled !== false && !x.loaded ? t(' · không nạp được') : '');
+          // (only for one that has an options page, as Chrome shows it)
+          const options = button(t('Tùy chọn'), async () => {
+            const p = await api.invoke('ext:pages', x.id).catch(() => null);
+            if (p?.options) openUrl(p.options, true);
+          }, { cls: 'small ghost' });
+          options.hidden = true;
+          api.invoke('ext:pages', x.id).then((p) => (options.hidden = !p?.options), () => {});
           const r = row(
             x.name,
             state,
-            button(t('Tùy chọn'), async () => {
-              const p = await api.invoke('ext:pages', x.id).catch(() => null);
-              if (p?.options) openUrl(p.options, true);
-              else toast(x.loaded ? t('Tiện ích này không có trang tùy chọn') : t('Hãy bật tiện ích trước'));
-            }, { cls: 'small ghost' }),
+            options,
             confirmButton(t('Gỡ'), t('Gỡ thật?'), () => api.invoke('ext:remove', x.id)),
             h('label', { class: 'switch', title: t('Bật / tắt') }, on, h('span'))
           );

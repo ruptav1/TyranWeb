@@ -28,14 +28,20 @@ export function buildOmnibox() {
 
   input.addEventListener('focus', () => {
     box.classList.add('focused');
+    // (the page's address again: suggestions for what was typed before are gone)
+    closeDropdown();
     const t = active();
     input.value = t && !isNewTab(t.url) ? prettyUrl(t.url) : '';
+    sync();
     requestAnimationFrame(() => input.select());
   });
   input.addEventListener('blur', () => {
     box.classList.remove('focused');
+    // Gone elsewhere, or the window itself left (another app: the input stays the focused element
+    // of the page, but it is not being typed in): the list closes and the page's address is back.
+    // (A blur followed at once by focus again, as when a suggestion is clicked, keeps it.)
     setTimeout(() => {
-      if (document.activeElement !== input) {
+      if (!typing()) {
         closeDropdown();
         sync();
       }
@@ -54,8 +60,18 @@ export function buildOmnibox() {
   return box;
 }
 
-on('active', sync);
-on('tab:update', (t) => t.id === T.activeId && sync());
+// Another tab: what was typed and suggested was for the one before (still in the bar, it gets the
+// new tab's address, selected). The page going elsewhere closes them only when not typing.
+on('active', () => {
+  closeDropdown();
+  if (typing()) {
+    const t = active();
+    input.value = t && !isNewTab(t.url) ? prettyUrl(t.url) : '';
+    input.select();
+  }
+  sync();
+});
+on('tab:update', (t) => t.id === T.activeId && (typing() || closeDropdown(), sync()));
 on('bookmarks', sync);
 on('focus-omnibox', focus);
 
@@ -65,12 +81,15 @@ export function focus() {
   input.select();
 }
 
+// typed in now: focused, in a window that has the focus
+const typing = () => document.activeElement === input && document.hasFocus();
+
 // Reflect the active tab in the (unfocused) address bar.
 export function sync() {
   if (!box) return;
   const tab = active();
   const url = tab?.url || '';
-  const focused = document.activeElement === input;
+  const focused = typing();
   if (!focused) input.value = isNewTab(url) ? '' : prettyUrl(url);
   const parts = displayParts(url);
   display.innerHTML = parts && !focused ? `<span class="scheme">${esc(parts.scheme)}</span><span class="host">${esc(parts.host)}</span><span class="rest">${esc(parts.rest)}</span>` : '';
@@ -139,8 +158,8 @@ async function update(allowInline) {
   }
   render(list);
 
-  const hist = S.private || active()?.incognito ? [] : await api.invoke('history:suggest', text);
-  if (id !== queryId) return;
+  const hist = S.private || active()?.incognito ? [] : await api.invoke('history:suggest', text).catch(() => []);
+  if (id !== queryId || !typing()) return;
   for (const v of hist) push({ type: 'history', url: v.url, title: v.title, favicon: v.favicon });
 
   // inline completion with the best matching host (not once a space is typed, even a trailing one:
@@ -160,8 +179,12 @@ async function update(allowInline) {
   }
   render(list.slice(0, 8));
 
-  const remote = S.private || active()?.incognito ? [] : await api.invoke('suggest', text);
+  // the search engine's, once typing pauses (not a request per key)
+  if (S.private || active()?.incognito) return;
+  await new Promise((ok) => setTimeout(ok, 150));
   if (id !== queryId) return;
+  const remote = await api.invoke('suggest', text).catch(() => []);
+  if (id !== queryId || !typing()) return;
   for (const s of remote) if (s.toLowerCase() !== q) push({ type: 'search', query: s, url: searchUrl().replace('%s', encodeURIComponent(s)) });
   render(list.slice(0, 10));
 }

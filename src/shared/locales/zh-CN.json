@@ -371,8 +371,6 @@
  " · từ thư mục trên máy": " · 来自本机文件夹",
  " · không nạp được": " · 无法加载",
  "Tùy chọn": "选项",
- "Tiện ích này không có trang tùy chọn": "此扩展程序没有选项页",
- "Hãy bật tiện ích trước": "请先启用扩展程序",
  "Gỡ": "移除",
  "Gỡ thật?": "确定移除？",
  "Bật / tắt": "开 / 关",
@@ -995,5 +993,6 @@
  "Hình nền: Blue Archive · Sảnh chính (© NEXON Games / Yostar)": "壁纸：蔚蓝档案 · 主大厅 (© NEXON Games / Yostar)",
  "Sảnh L2D": "L2D 大厅",
  "Sảnh thường": "普通大厅",
- "Sinh nhật Sensei": "老师的生日"
+ "Sinh nhật Sensei": "老师的生日",
+ "Theo nhân vật": "跟随角色"
 }

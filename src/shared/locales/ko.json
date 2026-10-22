@@ -371,8 +371,6 @@
  " · từ thư mục trên máy": " · 이 컴퓨터의 폴더에서",
  " · không nạp được": " · 불러오지 못함",
  "Tùy chọn": "옵션",
- "Tiện ích này không có trang tùy chọn": "이 확장 프로그램에는 옵션 페이지가 없습니다",
- "Hãy bật tiện ích trước": "먼저 확장 프로그램을 켜세요",
  "Gỡ": "삭제",
  "Gỡ thật?": "정말 삭제할까요?",
  "Bật / tắt": "켜기 / 끄기",
@@ -995,5 +993,6 @@
  "Hình nền: Blue Archive · Sảnh chính (© NEXON Games / Yostar)": "배경화면: 블루 아카이브 · 메인 로비 (© NEXON Games / Yostar)",
  "Sảnh L2D": "L2D 로비",
  "Sảnh thường": "일반 로비",
- "Sinh nhật Sensei": "선생님의 생일"
+ "Sinh nhật Sensei": "선생님의 생일",
+ "Theo nhân vật": "캐릭터에 맞춤"
 }

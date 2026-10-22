@@ -7,12 +7,14 @@
       html, body { margin: 0; height: 100%; overflow: hidden; user-select: none; background: #141b29 center / cover no-repeat; }
       * { -webkit-user-drag: none; }
       canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; touch-action: none; }
+      #logo { position: fixed; left: 50%; transform: translate(-50%, -50%); aspect-ratio: 1.96; background: #fff; -webkit-mask: url(nikke-logo.svg) center / contain no-repeat; pointer-events: none; display: none; }
       #c { opacity: 0; transition: opacity 0.5s; }
       #c.in { opacity: 1; }
       #zones, #hud { pointer-events: none; }
     </style>
   </head>
   <body>
+    <div id="logo"></div>
     <canvas id="c"></canvas>
     <canvas id="hud"></canvas>
     <canvas id="zones"></canvas>

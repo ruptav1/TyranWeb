@@ -371,8 +371,6 @@
  " · từ thư mục trên máy": " · из папки на компьютере",
  " · không nạp được": " · не загрузилось",
  "Tùy chọn": "Параметры",
- "Tiện ích này không có trang tùy chọn": "У расширения нет страницы параметров",
- "Hãy bật tiện ích trước": "Сначала включите расширение",
  "Gỡ": "Удалить",
  "Gỡ thật?": "Точно удалить?",
  "Bật / tắt": "Вкл. / выкл.",
@@ -995,5 +993,6 @@
  "Hình nền: Blue Archive · Sảnh chính (© NEXON Games / Yostar)": "Обои: Blue Archive · Главное лобби (© NEXON Games / Yostar)",
  "Sảnh L2D": "Лобби L2D",
  "Sảnh thường": "Обычное лобби",
- "Sinh nhật Sensei": "День рождения Сэнсэя"
+ "Sinh nhật Sensei": "День рождения Сэнсэя",
+ "Theo nhân vật": "По персонажу"
 }

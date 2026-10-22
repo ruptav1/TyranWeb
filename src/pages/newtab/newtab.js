@@ -470,7 +470,7 @@ onSettings((s) => {
   if (!game) $('#outfit').hidden = true;
   else
     api.invoke(game.api + ':list').then(
-      (list) => ($('#outfit').hidden = !(list.find((c) => c.id === nk) || (!nk && list.find((c) => c.installed)))?.outfits.some((o) => o.installed)),
+      (list) => ($('#outfit').hidden = !(list.find((c) => c.id === nk) || (!nk && list.find((c) => c.installed)))?.outfits?.some((o) => o.installed)),
       () => {}
     );
   document.documentElement.classList.toggle('hero-plain', n.heroGlass === false);
