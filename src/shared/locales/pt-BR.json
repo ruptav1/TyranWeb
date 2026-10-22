@@ -155,8 +155,6 @@
  "Đổi biểu cảm": "Trocar expressão",
  "Sắp xếp: kéo đồng hồ, thanh tìm kiếm, lối tắt tới chỗ bạn muốn": "Organizar: arraste o relógio, a barra de pesquisa e os atalhos para onde quiser",
  "Chế độ Lobby — ngắm / tương tác với hình nền (Ctrl+Shift+L)": "Modo Lobby — ver / interagir com o papel de parede (Ctrl+Shift+L)",
- "Hình nền tiếp theo (Ctrl+Shift+W)": "Próximo papel de parede (Ctrl+Shift+W)",
- "Theme tiếp theo (Ctrl+Shift+Y)": "Próximo tema (Ctrl+Shift+Y)",
  "Chủ nhật": "Domingo",
  "Thứ hai": "Segunda-feira",
  "Thứ ba": "Terça-feira",
@@ -994,5 +992,6 @@
  "Sảnh L2D": "Lobby L2D",
  "Sảnh thường": "Lobby normal",
  "Sinh nhật Sensei": "Aniversário do Sensei",
- "Theo nhân vật": "De acordo com a personagem"
+ "Theo nhân vật": "De acordo com a personagem",
+ "Nền desktop": "Fundo da área de trabalho"
 }

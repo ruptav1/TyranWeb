@@ -31,18 +31,21 @@
     <footer id="foot">
       <div id="credit"></div>
       <div class="foot-actions">
-        <button class="glass-btn" id="toggle-dial"></button>
-        <button class="glass-btn" id="zones" data-icon="target" data-size="16" hidden></button>
-        <button class="glass-btn" id="stance" data-icon="shield" data-size="16" hidden></button>
-        <button class="glass-btn wide" id="ba-mode" hidden></button>
-        <button class="glass-btn" id="outfit" data-icon="layers" data-size="16" title="Đổi trang phục" hidden></button>
-        <button class="glass-btn" id="face" data-icon="heart" data-size="16" title="Đổi biểu cảm" hidden></button>
-        <button class="glass-btn" id="arrange" title="Sắp xếp: kéo đồng hồ, thanh tìm kiếm, lối tắt tới chỗ bạn muốn" data-icon="layout" data-size="16"></button>
-        <button class="glass-btn" id="lobby" title="Chế độ Lobby — ngắm / tương tác với hình nền (Ctrl+Shift+L)" data-icon="tv" data-size="16"></button>
-        <button class="glass-btn" id="next-wp" title="Hình nền tiếp theo (Ctrl+Shift+W)" data-icon="shuffle" data-size="16"></button>
-        <button class="glass-btn" id="next-theme" title="Theme tiếp theo (Ctrl+Shift+Y)" data-icon="palette" data-size="16"></button>
-        <button class="glass-btn" id="spectrum" data-icon="spectrum" data-size="16"></button>
-        <button class="glass-btn wide" id="customize"><span data-icon="sparkles" data-size="15"></span><span>Tùy biến</span></button>
+        <div class="foot-row">
+          <button class="glass-btn" id="toggle-dial"></button>
+          <button class="glass-btn" id="arrange" title="Sắp xếp: kéo đồng hồ, thanh tìm kiếm, lối tắt tới chỗ bạn muốn" data-icon="layout" data-size="16"></button>
+          <button class="glass-btn" id="lobby" title="Chế độ Lobby — ngắm / tương tác với hình nền (Ctrl+Shift+L)" data-icon="tv" data-size="16"></button>
+          <button class="glass-btn" id="spectrum" data-icon="spectrum" data-size="16"></button>
+          <button class="glass-btn wide" id="customize"><span data-icon="sparkles" data-size="15"></span><span>Tùy biến</span></button>
+        </div>
+        <!-- (the live wallpaper's own buttons, a row of their own) -->
+        <div class="foot-row" id="live-tools">
+          <button class="glass-btn" id="zones" data-icon="target" data-size="16" hidden></button>
+          <button class="glass-btn" id="stance" data-icon="shield" data-size="16" hidden></button>
+          <button class="glass-btn wide" id="ba-mode" hidden></button>
+          <button class="glass-btn" id="outfit" data-icon="layers" data-size="16" title="Đổi trang phục" hidden></button>
+          <button class="glass-btn" id="face" data-icon="heart" data-size="16" title="Đổi biểu cảm" hidden></button>
+        </div>
       </div>
     </footer>
   </body>

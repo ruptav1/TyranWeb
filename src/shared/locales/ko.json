@@ -155,8 +155,6 @@
  "Đổi biểu cảm": "표정 변경",
  "Sắp xếp: kéo đồng hồ, thanh tìm kiếm, lối tắt tới chỗ bạn muốn": "배치: 시계, 검색창, 바로가기를 원하는 곳으로 끌어 놓기",
  "Chế độ Lobby — ngắm / tương tác với hình nền (Ctrl+Shift+L)": "로비 모드 — 배경화면 감상 / 상호작용 (Ctrl+Shift+L)",
- "Hình nền tiếp theo (Ctrl+Shift+W)": "다음 배경화면 (Ctrl+Shift+W)",
- "Theme tiếp theo (Ctrl+Shift+Y)": "다음 테마 (Ctrl+Shift+Y)",
  "Chủ nhật": "일요일",
  "Thứ hai": "월요일",
  "Thứ ba": "화요일",
@@ -994,5 +992,6 @@
  "Sảnh L2D": "L2D 로비",
  "Sảnh thường": "일반 로비",
  "Sinh nhật Sensei": "선생님의 생일",
- "Theo nhân vật": "캐릭터에 맞춤"
+ "Theo nhân vật": "캐릭터에 맞춤",
+ "Nền desktop": "바탕 화면 배경"
 }

@@ -394,11 +394,19 @@ async function loadWallpapers() {
 
 const errText = (e) => String(e?.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
 
+// the desktop's picture (Nền desktop), asked for once it is the wallpaper
+let desktopPic = null;
+let desktopAsked = false;
+
 function wallpaperSection() {
   const w = S.wallpaper;
   const preview = h('div', { class: 'wp-preview' }, h('div', { class: 'wp-preview-img' }), h('div', { class: 'wp-preview-dim' }), h('div', { class: 'wp-preview-ui' }, h('i'), h('i'), h('div', { class: 'wp-preview-card' })));
   bind(preview, () => {
     const W = S.wallpaper;
+    if (W.type === 'desktop' && !desktopAsked) {
+      desktopAsked = true;
+      api.invoke('desktop:wallpaper').then((p) => ((desktopPic = p), refresh()), () => {});
+    }
     const img = preview.querySelector('.wp-preview-img');
     img.style.background =
       W.type === 'image' ? `${frameCss(W).position}/cover url("${W.image}")`
@@ -409,6 +417,7 @@ function wallpaperSection() {
       : W.type === 'web' && gameOf(W.web?.preset) && charShown(W)?.preview ? `center/cover url("${charShown(W).preview}")`
       : W.type === 'web' ? 'linear-gradient(135deg, rgba(var(--accent-rgb), .35), rgba(var(--accent-rgb), .08))'
       : W.type === 'video' ? '#000'
+      : W.type === 'desktop' && desktopPic ? `center/cover url("${desktopPic.url}")`
       : 'repeating-conic-gradient(var(--hover) 0 25%, transparent 0 50%) 0 0/16px 16px';
     img.style.filter = `blur(${W.blur / 3}px) saturate(${W.saturate})`;
     const framed = W.type === 'image' || W.type === 'video';
@@ -505,7 +514,7 @@ function wallpaperSection() {
     ...head(t('Hình nền'), t('Ảnh anime 2000–2010 bản 4K gốc (không AI, không upscale), video của bạn, trang web động như sảnh Blue Archive, hoặc màu trơn / Mica.')),
     preview,
     section_(
-      row(t('Loại hình nền'), '', seg('wallpaper.type', [['image', t('Ảnh')], ['video', t('Video')], ['web', t('Web động')], ['color', t('Màu trơn')], ['gradient', t('Gradient')], ['mica', t('Mica')], ['acrylic', t('Acrylic')]], () => render())),
+      row(t('Loại hình nền'), '', seg('wallpaper.type', [['image', t('Ảnh')], ['video', t('Video')], ['web', t('Web động')], ['color', t('Màu trơn')], ['gradient', t('Gradient')], ['mica', t('Mica')], ['acrylic', t('Acrylic')], ['transparent', t('Trong suốt')], ['desktop', t('Nền desktop')]], () => render())),
       ...typeRows
     ),
     musicSection(),

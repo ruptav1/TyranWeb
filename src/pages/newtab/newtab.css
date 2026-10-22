@@ -423,7 +423,17 @@ html.tools-hidden #greeting {
   top: 16px;
   right: 18px;
   display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   gap: 6px;
+}
+.foot-row {
+  display: flex;
+  gap: 6px;
+}
+/* (the live wallpaper's row, when none of its buttons is there) */
+.foot-row:not(:has(> :not([hidden]))) {
+  display: none;
 }
 .glass-btn {
   display: inline-flex;

@@ -155,8 +155,6 @@
  "Đổi biểu cảm": "表情を変更",
  "Sắp xếp: kéo đồng hồ, thanh tìm kiếm, lối tắt tới chỗ bạn muốn": "配置: 時計、検索バー、ショートカットを好きな場所へドラッグ",
  "Chế độ Lobby — ngắm / tương tác với hình nền (Ctrl+Shift+L)": "ロビーモード — 壁紙を眺める・触れる (Ctrl+Shift+L)",
- "Hình nền tiếp theo (Ctrl+Shift+W)": "次の壁紙 (Ctrl+Shift+W)",
- "Theme tiếp theo (Ctrl+Shift+Y)": "次のテーマ (Ctrl+Shift+Y)",
  "Chủ nhật": "日曜日",
  "Thứ hai": "月曜日",
  "Thứ ba": "火曜日",
@@ -994,5 +992,6 @@
  "Sảnh L2D": "L2D ロビー",
  "Sảnh thường": "通常ロビー",
  "Sinh nhật Sensei": "先生の誕生日",
- "Theo nhân vật": "キャラクターに合わせる"
+ "Theo nhân vật": "キャラクターに合わせる",
+ "Nền desktop": "デスクトップの背景"
 }

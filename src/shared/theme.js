@@ -198,6 +198,7 @@ export function wallpaperStyle(w, appearance) {
       break;
     case 'video':
     case 'web':
+    case 'desktop':
       // drawn by a <video> / <webview> layer; the colour shows while it loads
       style.backgroundColor = appearance.bg;
       style.backgroundImage = 'none';

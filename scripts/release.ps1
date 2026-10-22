@@ -3,12 +3,15 @@
 # writes dist/TyranWeb-<version>-win-x64.zip (everything of dist/win-unpacked under TyranWeb/) and its
 # SHA-256 beside it (…zip.sha256). Both go up to a GitHub release tagged v<version> of the repository
 # named in package.json "updates.github" (the version comes from package.json too: raise it first).
+# -From another build folder (e.g. dist\next\win-unpacked, built with
+# -c.directories.output=dist/next while the one in dist\win-unpacked is in use).
+param([string]$From = 'dist\win-unpacked')
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
 $root = Split-Path -Parent $PSScriptRoot
 $pkg = Get-Content -Raw (Join-Path $root 'package.json') | ConvertFrom-Json
 $version = $pkg.version
-$src = Join-Path $root 'dist\win-unpacked'
+$src = Join-Path $root $From
 if (-not (Test-Path (Join-Path $src 'TyranWeb.exe'))) { throw "Build first: $src\TyranWeb.exe not found" }
 $name = "TyranWeb-$version-win-x64.zip"
 $dst = Join-Path $root "dist\$name"

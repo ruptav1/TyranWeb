@@ -48,7 +48,7 @@ const SETTINGS = {
     customCSS: '',
   },
   wallpaper: {
-    type: 'image', // image | video | web | color | gradient | mica | acrylic
+    type: 'image', // image | video | web | color | gradient | mica | acrylic | transparent
     image: 'tyran://assets/wallpapers/clannad-nagisa-sakura.jpg',
     video: '',
     videoRate: 1,

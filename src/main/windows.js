@@ -9,9 +9,10 @@ const { t } = require('./i18n');
 const ICON = path.join(__dirname, '..', '..', 'assets', 'icon', 'icon.png');
 const windows = new Map(); // id -> { win, private, tabs, active }
 
+// (Mica, Acrylic: Windows' own materials behind the window; transparent: nothing, the desktop shows)
 function backgroundFor(settings) {
   const type = settings.wallpaper.type;
-  return type === 'mica' || type === 'acrylic' ? '#00000000' : settings.appearance.bg;
+  return type === 'mica' || type === 'acrylic' || type === 'transparent' ? '#00000000' : settings.appearance.bg;
 }
 
 function materialFor(settings) {
@@ -43,6 +44,8 @@ function createWindow({ isPrivate = false, restore = null, url = null } = {}) {
     icon: ICON,
     backgroundColor: backgroundFor(s),
     backgroundMaterial: materialFor(s),
+    // (a window is see-through or not from the start: switching to or from it restarts TyranWeb)
+    transparent: s.wallpaper.type === 'transparent',
     titleBarStyle: 'hidden',
     titleBarOverlay: { color: '#00000000', symbolColor: s.appearance.text, height: 40 },
     webPreferences: {
@@ -73,6 +76,9 @@ function createWindow({ isPrivate = false, restore = null, url = null } = {}) {
   };
   win.on('resize', remember);
   win.on('move', remember);
+  // (where it is on the screen, for the desktop's picture behind it: Nền desktop)
+  const placed = () => !win.isDestroyed() && win.webContents.send('win:placement', placement(win));
+  for (const ev of ['move', 'resize', 'maximize', 'unmaximize', 'enter-full-screen', 'leave-full-screen']) win.on(ev, placed);
   win.on('maximize', () => { remember(); win.webContents.send('win:state', state(win)); });
   win.on('unmaximize', () => { remember(); win.webContents.send('win:state', state(win)); });
   win.on('enter-full-screen', () => win.webContents.send('win:state', state(win)));
@@ -95,6 +101,13 @@ function createWindow({ isPrivate = false, restore = null, url = null } = {}) {
 
 function state(win) {
   return { maximized: win.isMaximized(), fullscreen: win.isFullScreen(), focused: win.isFocused() };
+}
+
+// The window's page on the screen, the screen it is on and all of them (in the same units)
+function placement(win) {
+  const content = win.getContentBounds();
+  const all = screen.getAllDisplays().map((d) => d.bounds);
+  return { content, display: screen.getDisplayMatching(content).bounds, all };
 }
 
 // Remember open tabs for "restore last session" (private windows are never saved).
@@ -151,4 +164,5 @@ module.exports = {
   applyChrome,
   applyBackground,
   state,
+  placement,
 };

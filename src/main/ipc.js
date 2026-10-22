@@ -51,7 +51,9 @@ function afterSettingsChange(prev) {
   onSettingsChanged(s, prev);
   // another language (Settings → Chung): TyranWeb starts again in it, its tabs restored (the first
   // pick, on the first start, only reloads the window that asked)
-  if (prev.general.language && prev.general.language !== s.general.language && !process.env.TYRAN_SHOT) {
+  // ...as it does for a see-through window, or back from one (only made so: see windows.js)
+  const clear = (x) => x.wallpaper.type === 'transparent';
+  if (((prev.general.language && prev.general.language !== s.general.language) || clear(prev) !== clear(s)) && !process.env.TYRAN_SHOT) {
     data.flushAll();
     setTimeout(() => (app.relaunch(), app.exit(0)), 400);
   }
@@ -467,6 +469,8 @@ function register({ onSettings } = {}) {
       state: windows.state(win),
     };
   }, { uiOnly: true });
+  handle('win:placement', (e) => windows.placement(BrowserWindow.fromWebContents(e.sender)), { uiOnly: true });
+  handle('desktop:wallpaper', () => require('./desktop').desktopWallpaper());
 
   handle('win:action', (e, action) => {
     const win = BrowserWindow.fromWebContents(e.sender);

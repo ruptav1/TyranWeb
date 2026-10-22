@@ -155,8 +155,6 @@
  "Đổi biểu cảm": "Сменить выражение",
  "Sắp xếp: kéo đồng hồ, thanh tìm kiếm, lối tắt tới chỗ bạn muốn": "Расположить: перетащите часы, строку поиска и ярлыки куда угодно",
  "Chế độ Lobby — ngắm / tương tác với hình nền (Ctrl+Shift+L)": "Режим Лобби — смотреть / взаимодействовать с обоями (Ctrl+Shift+L)",
- "Hình nền tiếp theo (Ctrl+Shift+W)": "Следующие обои (Ctrl+Shift+W)",
- "Theme tiếp theo (Ctrl+Shift+Y)": "Следующая тема (Ctrl+Shift+Y)",
  "Chủ nhật": "Воскресенье",
  "Thứ hai": "Понедельник",
  "Thứ ba": "Вторник",
@@ -994,5 +992,6 @@
  "Sảnh L2D": "Лобби L2D",
  "Sảnh thường": "Обычное лобби",
  "Sinh nhật Sensei": "День рождения Сэнсэя",
- "Theo nhân vật": "По персонажу"
+ "Theo nhân vật": "По персонажу",
+ "Nền desktop": "Фон рабочего стола"
 }

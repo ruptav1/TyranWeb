@@ -155,8 +155,6 @@
  "Đổi biểu cảm": "更换表情",
  "Sắp xếp: kéo đồng hồ, thanh tìm kiếm, lối tắt tới chỗ bạn muốn": "排列：把时钟、搜索栏和快捷方式拖到你想要的位置",
  "Chế độ Lobby — ngắm / tương tác với hình nền (Ctrl+Shift+L)": "大厅模式 — 欣赏 / 互动壁纸 (Ctrl+Shift+L)",
- "Hình nền tiếp theo (Ctrl+Shift+W)": "下一张壁纸 (Ctrl+Shift+W)",
- "Theme tiếp theo (Ctrl+Shift+Y)": "下一个主题 (Ctrl+Shift+Y)",
  "Chủ nhật": "星期日",
  "Thứ hai": "星期一",
  "Thứ ba": "星期二",
@@ -994,5 +992,6 @@
  "Sảnh L2D": "L2D 大厅",
  "Sảnh thường": "普通大厅",
  "Sinh nhật Sensei": "老师的生日",
- "Theo nhân vật": "跟随角色"
+ "Theo nhân vật": "跟随角色",
+ "Nền desktop": "桌面背景"
 }

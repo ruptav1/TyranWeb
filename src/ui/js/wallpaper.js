@@ -30,7 +30,7 @@ export function applyWallpaper(override) {
   dim.style.opacity = String(S.lobby ? 0 : st.dim);
   const bg = colorsOf(S.settings.appearance).bg;
   dim.style.background = bg;
-  root.style.backgroundColor = w.type === 'mica' || w.type === 'acrylic' ? 'transparent' : bg;
+  root.style.backgroundColor = w.type === 'mica' || w.type === 'acrylic' || w.type === 'transparent' ? 'transparent' : bg;
 
   // (a Blue Archive lobby kept aside belongs to the student shown)
   if (spare && !(w.type === 'web' && w.web?.preset === 'bluearchive' && w.web.model === spare.model)) dropSpare();
@@ -63,6 +63,7 @@ const normalLobby = (w) => w.type === 'web' && w.web?.preset === 'bluearchive' &
 
 function keyOf(w, st) {
   if (w.type === 'video') return JSON.stringify(['video', w.video]);
+  if (w.type === 'desktop') return JSON.stringify(['desktop']);
   const G = w.type === 'web' && CHAR_GAMES[w.web?.preset];
   if (w.type === 'web') return JSON.stringify(['web', w.web?.preset, w.web?.url, w.web?.package, G ? [w.web?.[G.who], w.web?.[G.outfit]] : '', normalLobby(w) ? w.web.model : '']);
   return JSON.stringify([st.backgroundImage, st.backgroundColor, st.backgroundPosition, st.transform, st.filter]);
@@ -88,13 +89,14 @@ async function swap(w, st) {
   let ready;
   if (w.type === 'video' && w.video) [layer, ready] = buildVideo(w);
   else if (w.type === 'web') [layer, ready] = await buildWeb(w);
+  else if (w.type === 'desktop') [layer, ready] = await buildDesktop(w);
   else [layer, ready] = buildStatic(st);
   if (w.type !== 'web') {
     loadingDone();
     emit('lobby-talk', false);
   }
   if (seq !== swapSeq) return layer?.remove();
-  const kind = layer?.tagName === 'VIDEO' ? 'video' : layer?.tagName === 'WEBVIEW' ? 'web' : 'static';
+  const kind = layer?.dataset.kind || (layer?.tagName === 'VIDEO' ? 'video' : layer?.tagName === 'WEBVIEW' ? 'web' : 'static');
   current = { ...current, el: layer, kind, wcId: 0, frozen: false };
   if (layer) {
     layer.style.zIndex = '1'; // (above a Blue Archive lobby kept out of sight)
@@ -144,6 +146,66 @@ function buildStatic(st) {
     }),
   ];
 }
+
+// The desktop's own picture (Nền desktop), laid out as Windows lays it out on the screen the window
+// is on, and seen through the window where it stands (it follows the window as it moves); blurred,
+// dimmed and saturated as the user likes it (Làm mờ, Làm dịu, Độ bão hòa màu).
+let desktopPic = null; // { url, style }
+let desktopSeen = ''; // (its picture's version, to see when the desktop has another one)
+let placed = null; // the window's page on the screen, the screen it is on, all screens
+async function buildDesktop(w) {
+  const [pic, place] = await Promise.all([api.invoke('desktop:wallpaper').catch(() => null), api.invoke('win:placement').catch(() => null)]);
+  desktopPic = pic;
+  desktopSeen = pic?.url || '';
+  placed = place || placed;
+  const layer = h('div', { class: 'wp-layer wp-desktop' });
+  layer.dataset.kind = 'desktop';
+  if (!pic) return [layer, Promise.resolve()];
+  layer.dataset.url = pic.url;
+  const img = h('div', { class: 'wp-desktop-pic' });
+  img.style.backgroundImage = `url("${pic.url}")`;
+  img.style.filter = filterOf(w);
+  layer.append(img);
+  placeDesktop(layer);
+  return [
+    layer,
+    new Promise((resolve) => {
+      const im = new Image();
+      im.onload = im.onerror = resolve;
+      im.src = pic.url;
+    }),
+  ];
+}
+function placeDesktop(layer = current.kind === 'desktop' ? current.el : null) {
+  const img = layer?.firstElementChild;
+  if (!img || !placed) return;
+  const style = desktopPic?.style || 'fill';
+  const all = placed.all?.length ? placed.all : [placed.display];
+  const x0 = Math.min(...all.map((d) => d.x));
+  const y0 = Math.min(...all.map((d) => d.y));
+  const span = { x: x0, y: y0, width: Math.max(...all.map((d) => d.x + d.width)) - x0, height: Math.max(...all.map((d) => d.y + d.height)) - y0 };
+  const area = style === 'span' ? span : placed.display;
+  // (a blurred picture reaches past the screen's edges, just enough that the blur does not fade them)
+  const m = Math.ceil((Number(S.settings.wallpaper.blur) || 0) * 2);
+  Object.assign(img.style, {
+    left: `${area.x - placed.content.x - m}px`,
+    top: `${area.y - placed.content.y - m}px`,
+    width: `${area.width + 2 * m}px`,
+    height: `${area.height + 2 * m}px`,
+    backgroundSize: { fill: 'cover', span: 'cover', fit: 'contain', stretch: '100% 100%' }[style] || 'auto',
+    backgroundRepeat: style === 'tile' ? 'repeat' : 'no-repeat',
+    backgroundPosition: style === 'tile' ? `${m}px ${m}px` : 'center',
+  });
+}
+api.on('win:placement', (p) => {
+  placed = p;
+  placeDesktop();
+});
+// (another desktop picture, set while TyranWeb was out of sight)
+window.addEventListener('focus', () => {
+  if (S.settings.wallpaper.type !== 'desktop') return;
+  api.invoke('desktop:wallpaper').then((pic) => pic && pic.url !== desktopSeen && ((current.key = ''), applyWallpaper()), () => {});
+});
 
 function buildVideo(w) {
   const v = h('video', { class: 'wp-layer wp-video', muted: true, loop: true, playsInline: true, preload: 'auto', disablePictureInPicture: true });
@@ -227,6 +289,10 @@ function watchLive(wv) {
 function restyle(w) {
   const el = current.el;
   if (!el || current.kind === 'static') return;
+  if (current.kind === 'desktop') {
+    if (el.firstElementChild) el.firstElementChild.style.filter = filterOf(w);
+    return placeDesktop();
+  }
   el.style.filter = filterOf(w);
   if (current.kind === 'video') {
     frameVideo(el, w);
@@ -2453,6 +2519,7 @@ async function wallpaperPicture() {
     return m?.preview || zonesHidden((code) => current.el.executeJavaScript(code), () => api.invoke('wallpaper:snapshot', current.wcId));
   }
   if (current.kind === 'video') return videoFrame(current.el.currentSrc || current.el.src);
+  if (current.kind === 'desktop') return current.el.dataset.url || null;
   if (current.kind === 'static') {
     const url = /url\("(.+)"\)/.exec(current.el?.style.backgroundImage || '')?.[1];
     if (url) return url;

@@ -155,8 +155,6 @@
  "Đổi biểu cảm": "Change expression",
  "Sắp xếp: kéo đồng hồ, thanh tìm kiếm, lối tắt tới chỗ bạn muốn": "Arrange: drag the clock, the search bar and the shortcuts where you like",
  "Chế độ Lobby — ngắm / tương tác với hình nền (Ctrl+Shift+L)": "Lobby mode — view / interact with the wallpaper (Ctrl+Shift+L)",
- "Hình nền tiếp theo (Ctrl+Shift+W)": "Next wallpaper (Ctrl+Shift+W)",
- "Theme tiếp theo (Ctrl+Shift+Y)": "Next theme (Ctrl+Shift+Y)",
  "Chủ nhật": "Sunday",
  "Thứ hai": "Monday",
  "Thứ ba": "Tuesday",
@@ -994,5 +992,6 @@
  "Sảnh L2D": "L2D lobby",
  "Sảnh thường": "Normal lobby",
  "Sinh nhật Sensei": "Sensei's birthday",
- "Theo nhân vật": "Match character"
+ "Theo nhân vật": "Match character",
+ "Nền desktop": "Desktop"
 }

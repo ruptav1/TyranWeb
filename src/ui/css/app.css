@@ -65,6 +65,14 @@ body.ready #app {
   background-size: 100% 100%;
   transition: none;
 }
+/* the desktop's picture, where the window stands on the screen (see buildDesktop) */
+.wp-desktop {
+  overflow: hidden;
+  background: #000;
+}
+.wp-desktop-pic {
+  position: absolute;
+}
 #wallpaper.framing #wallpaper-dim {
   opacity: 1 !important;
 }

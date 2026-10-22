@@ -247,7 +247,6 @@ async function renderCredit() {
 S = await boot();
 setupSearch();
 setupDialDrag();
-$('#next-wp').onclick = () => host('command', 'wallpaper.next');
 $('#lobby').onclick = () => host('command', 'wallpaper.lobby');
 $('#zones').onclick = () => api.invoke('settings:set', { wallpaper: { web: { touchZones: !S.wallpaper.web?.touchZones } } });
 $('#spectrum').onclick = () => api.invoke('settings:set', { newtab: { visualizer: !S.newtab.visualizer } });
@@ -257,7 +256,6 @@ $('#stance').onclick = () => api.invoke('settings:set', { wallpaper: { web: { ni
 // Blue Archive: the game's lobby button, between the chosen student's memorial lobby and her normal one
 let baLobbies = null; // (the lobbies, once: which have a normal lobby)
 $('#ba-mode').onclick = () => api.invoke('settings:set', { wallpaper: { web: { baMode: S.wallpaper.web?.baMode === 'normal' ? 'memorial' : 'normal' } } });
-$('#next-theme').onclick = () => host('command', 'theme.next');
 $('#customize').onclick = () => openUrl('tyran://settings/#appearance');
 // hide / show the search bar and the shortcuts from the page itself (remembered like a setting)
 $('#toggle-dial').addEventListener('click', () => api.invoke('settings:set', { newtab: { hideTools: !S.newtab.hideTools } }));
