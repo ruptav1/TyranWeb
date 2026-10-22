@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' tyran:; script-src 'self' tyran:; style-src 'self' tyran: 'unsafe-inline'; img-src * data: blob: tyran:; connect-src 'self' tyran:" />
+    <title>Cài đặt</title>
+    <link rel="icon" href="tyran://shared/logo.svg" />
+    <link rel="stylesheet" href="tyran://shared/base.css" />
+    <link rel="stylesheet" href="tyran://shared/page.css" />
+    <link rel="stylesheet" href="settings.css" />
+    <script type="module" src="settings.js"></script>
+  </head>
+  <body>
+    <div class="page">
+      <nav class="page-nav" id="nav">
+        <div class="page-brand"><img src="tyran://shared/logo.svg" alt="" /><span>Cài đặt</span></div>
+        <input id="find" class="input" type="search" placeholder="Tìm cài đặt…" />
+      </nav>
+      <main class="page-main" id="main"></main>
+      <button type="button" id="close-page" class="icon-btn page-close" title="Đóng cài đặt (Esc)" data-icon="x" data-size="18"></button>
+    </div>
+  </body>
+</html>

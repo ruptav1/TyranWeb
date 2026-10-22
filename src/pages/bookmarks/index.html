@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' tyran:; script-src 'self' tyran:; style-src 'self' tyran: 'unsafe-inline'; img-src * data: blob: tyran:; connect-src 'self' tyran:" />
+    <title>Dấu trang</title>
+    <link rel="icon" href="tyran://shared/logo.svg" />
+    <link rel="stylesheet" href="tyran://shared/base.css" />
+    <link rel="stylesheet" href="tyran://shared/page.css" />
+    <link rel="stylesheet" href="tyran://shared/listpage.css" />
+    <script type="module" src="bookmarks.js"></script>
+  </head>
+  <body>
+    <main class="single">
+      <header class="single-head">
+        <img src="tyran://shared/logo.svg" alt="" />
+        <h1 class="page-title">Dấu trang</h1>
+        <span class="grow"></span>
+        <button class="btn" id="import"><span data-icon="download" data-size="15"></span><span>Nhập</span></button>
+        <button class="btn" id="export"><span data-icon="upload" data-size="15"></span><span>Xuất</span></button>
+      </header>
+      <input id="q" class="input search-big" type="search" placeholder="Tìm dấu trang…" />
+      <div class="cols">
+        <aside class="folders" id="folders"></aside>
+        <section id="list" class="list"></section>
+      </div>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,629 @@
+/* parts switched off in Settings (or by the show/hide button) */
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: transparent;
+}
+html {
+  opacity: 0;
+  transition: opacity 140ms;
+}
+html.ready {
+  opacity: 1;
+}
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: safe center; /* (taller than the window: from the top, not cut off above) */
+  overflow: hidden auto;
+  user-select: none;
+  --glass: rgba(var(--surface-rgb), 0.72);
+  --glass-strong: rgba(var(--surface-rgb), 0.9);
+  --glow: 0 1px 2px rgba(var(--surface-rgb), 0.55), 0 4px 28px rgba(var(--surface-rgb), 0.9);
+}
+
+#center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: min(760px, 92vw);
+  margin-top: -5vh;
+  /* (a window too narrow for the clock and the buttons in the corner side by side: the clock comes
+     down below them) */
+  --clear-corner: clamp(0px, calc((1320px - 100vw) * 0.5), 64px);
+  padding-top: var(--clear-corner);
+  animation: rise 300ms var(--ease);
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+#hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+#clock-wrap {
+  text-align: center;
+}
+/* with the search bar and shortcuts hidden, the clock, date and greeting sit smaller in the
+   top-left corner, just under the address bar (newtab.js glides them there) */
+html.tools-hidden #hero {
+  position: fixed;
+  top: 30px;
+  left: 38px;
+  z-index: 2;
+  align-items: flex-start;
+  gap: 6px;
+}
+/* ...on a pane of the same glass as the buttons beside it; it fades in slowly while the block
+   glides into the corner */
+#hero {
+  position: relative;
+}
+#hero::before {
+  content: '';
+  position: absolute;
+  inset: -14px -20px;
+  z-index: -1;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--glass);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 900ms var(--ease);
+}
+html.tools-hidden #hero::before {
+  opacity: 1;
+}
+html.tools-hidden #hero,
+html:not(.arranging) #hero {
+  cursor: pointer;
+}
+html.tools-hidden.hero-plain #hero::before {
+  opacity: 0;
+}
+/* ...and in the middle too, when asked (the search bar and shortcuts shown) */
+html.hero-mid #hero::before {
+  opacity: 1;
+}
+html.hero-mid #center {
+  padding-top: calc(18px + var(--clear-corner));
+}
+html[data-chrome='clear'] #hero::before {
+  border-color: transparent;
+  background: linear-gradient(180deg, var(--liquid-hi), transparent 62%), var(--liquid-fill);
+  backdrop-filter: blur(var(--island-blur)) saturate(1.2) brightness(1.03);
+  box-shadow: inset 0 1px 0 var(--liquid-rim), inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+html[data-chrome='clear'].tools-hidden #hero,
+html[data-chrome='clear'].tools-hidden #hero * {
+  text-shadow: 0 1px 2px var(--liquid-shade), 0 0 10px var(--liquid-shade);
+}
+/* liquid glass turned off for the clock: its pane frosted, readable on any picture */
+html[data-chrome='clear'].hero-frost #hero::before {
+  border-color: var(--line);
+  background: var(--glass);
+  backdrop-filter: blur(var(--frost-blur)) saturate(1.4);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+html[data-chrome='clear'].hero-frost.tools-hidden:not(.hero-plain) #hero,
+html[data-chrome='clear'].hero-frost.tools-hidden:not(.hero-plain) #hero *,
+html[data-chrome='clear'].hero-frost.hero-mid #hero,
+html[data-chrome='clear'].hero-frost.hero-mid #hero * {
+  text-shadow: none;
+}
+html.tools-hidden #clock-wrap {
+  text-align: left;
+}
+html.tools-hidden #clock {
+  font-size: clamp(40px, 5vw, 64px);
+}
+html.tools-hidden #date {
+  margin-top: 4px;
+  font-size: 13px;
+}
+html.tools-hidden #greeting {
+  font-size: 15px;
+}
+#clock {
+  font-family: 'Segoe UI Variable Display', var(--font);
+  font-size: clamp(60px, 9vw, 108px);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  text-shadow: var(--glow);
+}
+#clock .sec {
+  margin-left: 6px;
+  font-size: 0.36em;
+  color: var(--text-2);
+  letter-spacing: 0;
+}
+#date {
+  margin-top: 8px;
+  color: var(--text-2);
+  font-size: 15px;
+  font-weight: 500;
+  text-shadow: var(--glow);
+}
+#greeting {
+  font-size: 18px;
+  font-weight: 600;
+  text-shadow: var(--glow);
+}
+#greeting .jp {
+  margin-left: 8px;
+  color: var(--accent-strong);
+  font-weight: 500;
+  font-size: 0.9em;
+}
+
+#search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(620px, 100%);
+  height: 52px;
+  margin-top: 8px;
+  padding: 0 10px 0 18px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 14px);
+  background: var(--glass-strong);
+  box-shadow: 0 10px 40px var(--shadow-color);
+  transition: box-shadow var(--dur), border-color var(--dur);
+}
+#search:focus-within {
+  border-color: rgba(var(--accent-rgb), 0.6);
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.16), 0 10px 40px var(--shadow-color);
+}
+#search .s-ico {
+  color: var(--text-3);
+}
+#q {
+  flex: 1;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 16px;
+  user-select: text;
+}
+#q:focus {
+  box-shadow: none;
+  background: transparent;
+}
+#engine {
+  font-size: 11px;
+}
+
+#dial {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 6), 96px);
+  justify-content: center;
+  gap: 14px;
+  margin-top: 18px;
+}
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 96px;
+  height: 96px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--glass);
+  color: var(--text);
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 160ms var(--ease), background 160ms, box-shadow 160ms;
+}
+.tile:hover {
+  transform: translateY(-3px);
+  background: var(--glass-strong);
+  box-shadow: 0 12px 30px var(--shadow-color);
+}
+.tile-ico {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+.tile-ico .favicon {
+  width: 24px;
+  height: 24px;
+}
+.tile-ico .letter-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 18px;
+}
+.tile-name {
+  max-width: 84px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+}
+.tile.add {
+  border-style: dashed;
+  background: rgba(var(--surface-rgb), 0.35);
+  color: var(--text-2);
+}
+.tile.add .tile-ico {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  box-shadow: none;
+}
+.tile.dragging {
+  opacity: 0.35;
+}
+.tile.drop {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+/* anime of the day */
+/* compact card in the corner; expands on hover */
+#anime {
+  position: fixed;
+  right: 22px;
+  bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 300px;
+  padding: 8px 12px 8px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--glass-strong);
+  box-shadow: 0 10px 30px var(--shadow-color);
+  animation: rise 600ms var(--ease);
+  transition: width 220ms var(--ease), box-shadow 220ms;
+}
+#anime:hover {
+  align-items: flex-start;
+  width: 380px;
+  box-shadow: 0 18px 50px var(--shadow-color);
+}
+#anime[hidden] {
+  display: none;
+}
+#anime:not(:hover) .an-genres,
+#anime:not(:hover) .an-desc,
+#anime:not(:hover) .an-close {
+  display: none;
+}
+#anime:not(:hover) .an-title {
+  -webkit-line-clamp: 1;
+  font-size: 13.5px;
+}
+.an-cover {
+  flex: none;
+  width: 42px;
+  height: 58px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--hover);
+  cursor: pointer;
+  transition: width 220ms var(--ease), height 220ms var(--ease);
+}
+#anime:hover .an-cover {
+  width: 96px;
+  height: 136px;
+}
+.an-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.an-label {
+  color: var(--accent-strong);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.an-title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+  cursor: pointer;
+}
+.an-title:hover {
+  color: var(--accent-strong);
+}
+.an-meta {
+  color: var(--text-2);
+  font-size: 12px;
+}
+.an-genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.an-genres span {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.an-desc {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.an-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px !important;
+  height: 24px !important;
+}
+
+/* footer */
+#foot {
+  position: fixed;
+  left: 22px;
+  bottom: 18px;
+}
+#credit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 46vw;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--glass);
+  color: var(--text-2);
+  font-size: 12px;
+}
+#credit:empty {
+  display: none;
+}
+#credit a {
+  color: inherit;
+}
+.foot-actions {
+  position: fixed;
+  top: 16px;
+  right: 18px;
+  display: flex;
+  gap: 6px;
+}
+.glass-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 34px;
+  min-width: 34px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--glass);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background var(--dur), color var(--dur);
+}
+.glass-btn.wide {
+  padding: 0 14px 0 12px;
+  font-weight: 600;
+}
+.glass-btn:hover {
+  background: var(--glass-strong);
+  color: var(--text);
+}
+
+/* small popup used to add / edit tiles */
+.dlg-scrim {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.18);
+  animation: fade-in 120ms;
+}
+.dlg {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 340px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-3);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+  animation: pop-in 140ms var(--ease);
+}
+.dlg b {
+  font-size: 15px;
+}
+.dlg-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.ctx {
+  position: fixed;
+  z-index: 10;
+}
+
+@media (max-width: 1180px) {
+  #anime {
+    width: 240px;
+  }
+  #credit {
+    max-width: 30vw;
+  }
+}
+@media (max-width: 920px), (max-height: 470px) {
+  #anime {
+    display: none !important;
+  }
+}
+
+/* ------------------------------------------------------------ liquid glass (clear chrome)
+   The search box and buttons stay see-through until used: buttons fill in on hover, the search
+   box when you click into it to type. */
+html[data-chrome='clear'] #search,
+html[data-chrome='clear'] .glass-btn,
+html[data-chrome='clear'] .tile {
+  border-color: transparent;
+  background: linear-gradient(180deg, var(--liquid-hi), transparent 62%), var(--liquid-fill);
+  backdrop-filter: blur(var(--island-blur)) saturate(1.2) brightness(1.03);
+  box-shadow: inset 0 1px 0 var(--liquid-rim), inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 4px 16px rgba(0, 0, 0, 0.06);
+  color: var(--text);
+  text-shadow: 0 1px 2px var(--liquid-shade), 0 0 10px var(--liquid-shade);
+  transition: background 240ms var(--ease), box-shadow 240ms var(--ease), text-shadow 240ms var(--ease), transform 180ms var(--ease);
+}
+html[data-chrome='clear'] #search .s-ico,
+html[data-chrome='clear'] .glass-btn .ico {
+  color: var(--text);
+  filter: drop-shadow(0 1px 1.5px var(--liquid-shade));
+}
+html[data-chrome='clear'] #q::placeholder {
+  color: var(--text);
+  opacity: 0.85;
+}
+html[data-chrome='clear'] #search:hover:not(:focus-within) {
+  box-shadow: inset 0 1px 0 var(--liquid-rim), inset 0 0 0 1px rgba(255, 255, 255, 0.24), 0 10px 32px rgba(0, 0, 0, 0.16);
+}
+html[data-chrome='clear'] #search:focus-within {
+  background: var(--glass-strong);
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.18), 0 10px 40px var(--shadow-color);
+  text-shadow: none;
+}
+html[data-chrome='clear'] #search:focus-within .s-ico {
+  color: var(--text-3);
+  filter: none;
+}
+html[data-chrome='clear'] #search:focus-within #q::placeholder {
+  color: var(--text-3);
+  opacity: 1;
+}
+html[data-chrome='clear'] .glass-btn:hover,
+html[data-chrome='clear'] .tile:hover {
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.1), rgba(var(--accent-rgb), 0.04)), var(--glass-strong);
+  text-shadow: none;
+  transform: translateY(-2px);
+}
+html[data-chrome='clear'] .glass-btn:hover .ico {
+  filter: none;
+}
+
+/* the eye button fades the search bar and shortcuts away but keeps their space, so the clock stays put */
+#search,
+#dial {
+  transition: opacity 260ms var(--ease), visibility 0s;
+}
+html.tools-hidden #search,
+html.tools-hidden #dial {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 260ms var(--ease), visibility 0s 260ms;
+}
+/* ...and then the background is the Blue Archive lobby's to touch */
+html.lobby-touch body {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* "Sắp xếp": blocks dragged to a place of their own (left / top set by newtab.js) */
+#hero.placed,
+#search.placed,
+#dial.placed {
+  position: fixed !important;
+  margin: 0 !important;
+  z-index: 3;
+}
+#search.placed {
+  width: min(620px, 92vw);
+}
+#dial.placed {
+  width: min(760px, 92vw);
+}
+html.arranging #hero,
+html.arranging #search,
+html.arranging #dial {
+  outline: 2px dashed rgba(var(--accent-rgb), 0.85);
+  outline-offset: 6px;
+  border-radius: 18px;
+  cursor: grab;
+  user-select: none;
+}
+html.arranging .dragging {
+  cursor: grabbing !important;
+  opacity: 0.9;
+}
+#arrange-bar {
+  position: fixed;
+  z-index: 20;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 8px 16px;
+  border-radius: 999px;
+  background: var(--glass-strong);
+  box-shadow: 0 10px 32px var(--shadow-color);
+  font-size: 13px;
+}
+#arrange-bar[hidden] {
+  display: none;
+}
+#arrange-bar .primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+html.arranging #arrange {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* a switched-on button (Vùng chạm) */
+.glass-btn[hidden] {
+  display: none;
+}
+.glass-btn.on {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--on-accent, #fff);
+}

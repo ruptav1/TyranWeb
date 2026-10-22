@@ -1,0 +1,154 @@
+'use strict';
+// Browser windows: frameless shell with native Windows caption buttons (Snap Layouts work).
+const path = require('path');
+const { BrowserWindow, screen } = require('electron');
+const data = require('./data');
+const sessions = require('./sessions');
+const { t } = require('./i18n');
+
+const ICON = path.join(__dirname, '..', '..', 'assets', 'icon', 'icon.png');
+const windows = new Map(); // id -> { win, private, tabs, active }
+
+function backgroundFor(settings) {
+  const type = settings.wallpaper.type;
+  return type === 'mica' || type === 'acrylic' ? '#00000000' : settings.appearance.bg;
+}
+
+function materialFor(settings) {
+  const type = settings.wallpaper.type;
+  return type === 'mica' ? 'mica' : type === 'acrylic' ? 'acrylic' : 'none';
+}
+
+function validBounds(b) {
+  if (!b) return null;
+  const area = screen.getDisplayMatching(b).workArea;
+  const visible = b.x < area.x + area.width - 80 && b.y < area.y + area.height - 40 && b.x + b.width > area.x + 80 && b.y >= area.y - 10;
+  return visible ? b : null;
+}
+
+function createWindow({ isPrivate = false, restore = null, url = null } = {}) {
+  require('./timing')('createWindow' + (isPrivate ? ' (private)' : ''));
+  const s = data.settings.data;
+  const saved = isPrivate ? null : validBounds(data.windowStore.data.bounds);
+  const area = screen.getPrimaryDisplay().workAreaSize;
+  const win = new BrowserWindow({
+    width: saved?.width || Math.min(1360, Math.round(area.width * 0.88)),
+    height: saved?.height || Math.min(880, Math.round(area.height * 0.9)),
+    x: saved?.x,
+    y: saved?.y,
+    minWidth: 520,
+    minHeight: 380,
+    show: false, // (shown at once below, in its background colour, while the interface loads)
+    title: isPrivate ? t('TyranWeb — Ẩn danh') : 'TyranWeb',
+    icon: ICON,
+    backgroundColor: backgroundFor(s),
+    backgroundMaterial: materialFor(s),
+    titleBarStyle: 'hidden',
+    titleBarOverlay: { color: '#00000000', symbolColor: s.appearance.text, height: 40 },
+    webPreferences: {
+      preload: path.join(__dirname, '..', 'preload', 'ui.js'),
+      contextIsolation: true,
+      sandbox: true,
+      nodeIntegration: false,
+      webviewTag: true,
+      spellcheck: false,
+    },
+  });
+  windows.set(win.id, { win, private: isPrivate, tabs: [], active: 0, initial: { restore, url } });
+  if (!isPrivate && data.windowStore.data.maximized) win.maximize();
+
+  const query = new URLSearchParams({ wid: String(win.id) });
+  if (isPrivate) query.set('private', '1');
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  win.loadURL(`tyran://app/index.html?${query}`);
+  // the window comes up at once (its colour, then the interface as it loads), not half a second later
+  win.show();
+  win.once('ready-to-show', () => require('./timing')('window painted ' + win.id));
+
+  const remember = () => {
+    if (isPrivate || win.isDestroyed()) return;
+    data.windowStore.data.maximized = win.isMaximized();
+    if (!win.isMaximized() && !win.isMinimized() && !win.isFullScreen()) data.windowStore.data.bounds = win.getBounds();
+    data.windowStore.save();
+  };
+  win.on('resize', remember);
+  win.on('move', remember);
+  win.on('maximize', () => { remember(); win.webContents.send('win:state', state(win)); });
+  win.on('unmaximize', () => { remember(); win.webContents.send('win:state', state(win)); });
+  win.on('enter-full-screen', () => win.webContents.send('win:state', state(win)));
+  win.on('leave-full-screen', () => win.webContents.send('win:state', state(win)));
+  win.on('app-command', (e, cmd) => {
+    if (cmd === 'browser-backward') win.webContents.send('command', { id: 'nav.back' });
+    if (cmd === 'browser-forward') win.webContents.send('command', { id: 'nav.forward' });
+  });
+  win.on('focus', () => win.webContents.send('win:state', state(win)));
+  win.on('blur', () => win.webContents.send('win:state', state(win)));
+
+  win.on('closed', () => {
+    const entry = windows.get(win.id);
+    windows.delete(win.id);
+    if (entry && !entry.private) saveSession();
+    if (isPrivate && ![...windows.values()].some((w) => w.private)) sessions.clearPrivate();
+  });
+  return win;
+}
+
+function state(win) {
+  return { maximized: win.isMaximized(), fullscreen: win.isFullScreen(), focused: win.isFocused() };
+}
+
+// Remember open tabs for "restore last session" (private windows are never saved).
+let quitting = false;
+function updateSession(winId, tabs, active) {
+  const entry = windows.get(winId);
+  if (!entry || entry.private) return;
+  entry.tabs = tabs;
+  entry.active = active;
+  saveSession();
+}
+
+function saveSession() {
+  if (quitting) return;
+  const list = [...windows.values()].filter((w) => !w.private && w.tabs.length).map((w) => ({ tabs: w.tabs, active: w.active }));
+  // Closing the last window keeps its tabs so the next launch can restore them.
+  if (!list.length && windows.size) return;
+  if (list.length) {
+    data.sessionStore.data.windows = list;
+    data.sessionStore.save();
+  }
+}
+
+function setQuitting() {
+  quitting = true;
+}
+
+function applyChrome(win, { symbolColor, height }) {
+  try {
+    win.setTitleBarOverlay({ color: '#00000000', symbolColor, height: Math.round(height) });
+  } catch {
+    /* not supported */
+  }
+}
+
+function applyBackground(settings) {
+  for (const { win } of windows.values()) {
+    if (win.isDestroyed()) continue;
+    win.setBackgroundColor(backgroundFor(settings));
+    try {
+      win.setBackgroundMaterial(materialFor(settings));
+    } catch {
+      /* Windows 11 only */
+    }
+  }
+}
+
+module.exports = {
+  windows,
+  createWindow,
+  updateSession,
+  saveSession,
+  setQuitting,
+  applyChrome,
+  applyBackground,
+  state,
+};

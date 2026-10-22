@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>Blue Archive</title>
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; user-select: none; background: #d9e8f5 center / cover no-repeat; }
+      * { -webkit-user-drag: none; }
+      canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; touch-action: none; }
+      #zones { pointer-events: none; }
+      /* the lobby's speech bubble, as the game draws it: white, rounded, a soft shadow, its tail on the
+         left towards her. It fades in where it stands and out again; between two lines its words fade
+         out, the box keeps to its place (going to the new words' size), and the new words fade in. */
+      #bubble {
+        position: fixed; left: 0; top: 0; box-sizing: border-box; min-width: 4em; overflow: visible;
+        border-radius: 0.6em; background: rgba(255, 255, 255, 0.96); color: #3a3d44;
+        font: 500 clamp(12px, 3.1vh, 40px) / 1.38 "Segoe UI", "Noto Sans JP", "Yu Gothic UI", "Malgun Gothic", "Microsoft YaHei UI", sans-serif;
+        letter-spacing: 0.01em;
+        box-shadow: 0 0.1em 0.45em rgba(18, 38, 66, 0.22), 0 0 0 1px rgba(18, 38, 66, 0.08);
+        opacity: 0; transform: translateY(-50%); pointer-events: none;
+        transition: opacity 0.25s ease-out, width 0.2s ease-out, height 0.2s ease-out;
+      }
+      #bubble.on { opacity: 1; }
+      #bubble .words, #measure {
+        box-sizing: border-box; max-width: min(50vh, 46vw); padding: 0.62em 1.05em 0.66em;
+        white-space: pre-line; word-break: normal; overflow-wrap: anywhere;
+      }
+      #bubble .words { transition: opacity 0.25s ease-out; }
+      #bubble .words.out { opacity: 0; }
+      #measure { position: fixed; left: -9999px; top: 0; visibility: hidden; font: 500 clamp(12px, 3.1vh, 40px) / 1.38 "Segoe UI", "Noto Sans JP", "Yu Gothic UI", "Malgun Gothic", "Microsoft YaHei UI", sans-serif; letter-spacing: 0.01em; }
+      #bubble::before {
+        content: ''; position: absolute; left: -0.62em; top: 50%; margin-top: -0.42em;
+        border-style: solid; border-width: 0.42em 0.7em 0.42em 0; border-color: transparent rgba(255, 255, 255, 0.96) transparent transparent;
+        filter: drop-shadow(-1px 1px 0.6px rgba(18, 38, 66, 0.12));
+      }
+      /* a thought: the tail as two small rounds */
+      #bubble.think::before { left: -0.55em; margin-top: -0.18em; border: 0; width: 0.36em; height: 0.36em; border-radius: 50%; background: #fff; box-shadow: -0.42em 0.26em 0 -0.08em #fff; }
+    </style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <canvas id="zones"></canvas>
+    <div id="bubble"><div class="words"></div></div>
+    <div id="measure"></div>
+    <script src="gsap.min.js"></script>
+    <script src="ba-effects.js"></script>
+    <script src="player.js"></script>
+  </body>
+</html>

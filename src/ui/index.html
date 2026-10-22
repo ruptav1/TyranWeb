@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self' tyran:; script-src 'self' tyran:; style-src 'self' tyran: 'unsafe-inline'; img-src * data: blob: tyran:; font-src 'self' tyran: data:; connect-src 'self' tyran:; frame-src 'none'"
+    />
+    <title>TyranWeb</title>
+    <link rel="stylesheet" href="tyran://shared/base.css" />
+    <link rel="stylesheet" href="css/app.css" />
+    <style id="user-css"></style>
+    <script type="module" src="js/app.js"></script>
+  </head>
+  <body>
+    <div id="wallpaper"><div id="wallpaper-dim"></div></div>
+
+    <div id="app">
+      <div id="zen-hot"></div>
+      <div id="chrome-top" class="chrome">
+        <header id="topbar">
+          <div id="brand"></div>
+          <div id="slot-topbar"></div>
+          <div id="window-title" hidden></div>
+          <div id="caption-space"></div>
+        </header>
+        <div id="slot-toolbar-top"></div>
+        <nav id="bookmarks-bar" aria-label="Thanh dấu trang"></nav>
+      </div>
+
+      <div id="main">
+        <aside id="vtabs" class="chrome">
+          <div class="vtabs-head">
+            <button id="vtabs-collapse" class="icon-btn" title="Thu gọn / mở rộng" data-icon="sidebar" data-size="17"></button>
+            <span class="vtabs-label">Tab</span>
+            <button id="vtabs-new" class="icon-btn" title="Tab mới (Ctrl+T)" data-icon="plus" data-size="17"></button>
+          </div>
+          <div id="vtabs-list"></div>
+        </aside>
+
+        <aside id="sidebar" class="chrome">
+          <div id="sidebar-rail"></div>
+          <div id="sidebar-panel"></div>
+          <div class="resizer"></div>
+        </aside>
+
+        <section id="content">
+          <div id="views"></div>
+          <div id="status"></div>
+        </section>
+      </div>
+
+      <div id="chrome-bottom" class="chrome"><div id="slot-toolbar-bottom"></div></div>
+    </div>
+
+    <div id="layer"></div>
+  </body>
+</html>

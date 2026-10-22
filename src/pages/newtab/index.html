@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' tyran:; script-src 'self' tyran:; style-src 'self' tyran: 'unsafe-inline'; img-src * data: blob: tyran:; connect-src 'self' tyran:" />
+    <title>Tab mới</title>
+    <link rel="icon" href="tyran://shared/logo.svg" />
+    <link rel="stylesheet" href="tyran://shared/base.css" />
+    <link rel="stylesheet" href="newtab.css" />
+    <script type="module" src="newtab.js"></script>
+  </head>
+  <body>
+    <main id="center">
+      <div id="hero">
+        <div id="clock-wrap">
+          <div id="clock"></div>
+          <div id="date"></div>
+        </div>
+        <div id="greeting"></div>
+      </div>
+      <form id="search">
+        <span class="s-ico" data-icon="search" data-size="18"></span>
+        <input id="q" type="text" autocomplete="off" spellcheck="false" />
+        <kbd id="engine"></kbd>
+      </form>
+      <section id="dial"></section>
+    </main>
+
+    <aside id="anime" hidden></aside>
+
+    <footer id="foot">
+      <div id="credit"></div>
+      <div class="foot-actions">
+        <button class="glass-btn" id="toggle-dial"></button>
+        <button class="glass-btn" id="zones" data-icon="target" data-size="16" hidden></button>
+        <button class="glass-btn" id="stance" data-icon="shield" data-size="16" hidden></button>
+        <button class="glass-btn wide" id="ba-mode" hidden></button>
+        <button class="glass-btn" id="outfit" data-icon="layers" data-size="16" title="Đổi trang phục" hidden></button>
+        <button class="glass-btn" id="face" data-icon="heart" data-size="16" title="Đổi biểu cảm" hidden></button>
+        <button class="glass-btn" id="arrange" title="Sắp xếp: kéo đồng hồ, thanh tìm kiếm, lối tắt tới chỗ bạn muốn" data-icon="layout" data-size="16"></button>
+        <button class="glass-btn" id="lobby" title="Chế độ Lobby — ngắm / tương tác với hình nền (Ctrl+Shift+L)" data-icon="tv" data-size="16"></button>
+        <button class="glass-btn" id="next-wp" title="Hình nền tiếp theo (Ctrl+Shift+W)" data-icon="shuffle" data-size="16"></button>
+        <button class="glass-btn" id="next-theme" title="Theme tiếp theo (Ctrl+Shift+Y)" data-icon="palette" data-size="16"></button>
+        <button class="glass-btn" id="spectrum" data-icon="spectrum" data-size="16"></button>
+        <button class="glass-btn wide" id="customize"><span data-icon="sparkles" data-size="15"></span><span>Tùy biến</span></button>
+      </div>
+    </footer>
+  </body>
+</html>

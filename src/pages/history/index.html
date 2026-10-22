@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' tyran:; script-src 'self' tyran:; style-src 'self' tyran: 'unsafe-inline'; img-src * data: blob: tyran:; connect-src 'self' tyran:" />
+    <title>Lịch sử</title>
+    <link rel="icon" href="tyran://shared/logo.svg" />
+    <link rel="stylesheet" href="tyran://shared/base.css" />
+    <link rel="stylesheet" href="tyran://shared/page.css" />
+    <link rel="stylesheet" href="tyran://shared/listpage.css" />
+    <script type="module" src="history.js"></script>
+  </head>
+  <body>
+    <main class="single">
+      <header class="single-head">
+        <img src="tyran://shared/logo.svg" alt="" />
+        <h1 class="page-title">Lịch sử</h1>
+        <span class="grow"></span>
+        <select id="range">
+          <option value="3600000">1 giờ qua</option>
+          <option value="86400000">24 giờ qua</option>
+          <option value="604800000">7 ngày qua</option>
+          <option value="0">Toàn bộ thời gian</option>
+        </select>
+        <button class="btn" id="clear"><span data-icon="trash" data-size="15"></span><span>Xóa lịch sử</span></button>
+      </header>
+      <input id="q" class="input search-big" type="search" placeholder="Tìm trong lịch sử…" />
+      <div id="list" class="list"></div>
+      <div id="more" class="faint center-note"></div>
+    </main>
+  </body>
+</html>
