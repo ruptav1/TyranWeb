@@ -305,6 +305,8 @@ function appearance() {
     ['"Comic Sans MS", "Segoe UI", sans-serif', 'Comic Sans MS'],
     ['Georgia, serif', t('Georgia (có chân)')],
     ['Consolas, monospace', t('Consolas (đơn cách)')],
+    // (the user's own, added below)
+    ...[...new Set((S.appearance.customFonts || []).map((f) => f.family))].map((f) => [`"${f}", "Segoe UI", system-ui, sans-serif`, f]),
   ];
 
   return [
@@ -331,12 +333,13 @@ function appearance() {
       row(t('Kiểu tab'), '', seg('appearance.tabStyle', [['pill', t('Viên')], ['flat', t('Phẳng')], ['underline', t('Gạch chân')]]))
     ),
     stitle(t('Chữ & chuyển động')),
-    section_(
+    fontDrop(section_(
       row(t('Phông chữ giao diện'), '', select('appearance.font', fonts)),
+      ownFonts(),
       row(t('Cỡ chữ'), '', range('appearance.fontSize', 11, 16, 0.5, fmt.px)),
       row(t('Hiệu ứng chuyển động'), '', sw('appearance.animations')),
       row(t('Trang web hiển thị ở chế độ'), '', select('appearance.pageScheme', [['theme', t('Theo theme')], ['system', t('Theo Windows')], ['light', t('Luôn sáng')], ['dark', t('Luôn tối')]]))
-    ),
+    )),
     ...cursorSection(),
     stitle(t('Sao lưu')),
     section_(
@@ -730,6 +733,40 @@ const CURSOR_SLOTS = [
   ['hand', t('Khi trỏ vào liên kết, nút bấm')],
   ['text', t('Khi trỏ vào ô nhập chữ')],
 ];
+
+// The user's own fonts: listed (each in itself), removed, added from a file dialog...
+function ownFonts() {
+  const families = [...new Set((S.appearance.customFonts || []).map((f) => f.family))];
+  const chips = h(
+    'span',
+    { class: 'font-chips' },
+    ...families.map((f) => h('span', { class: 'font-chip', style: { fontFamily: `"${f}"` } }, h('span', { text: f }), h('button', { type: 'button', class: 'chip-x', title: t('Xóa'), html: icon('x', 12), onclick: () => api.invoke('fonts:remove', f).then(() => render(), (e) => toast(errText(e))) })))
+  );
+  return row(t('Phông chữ của bạn'), '', chips, button(t('Thêm phông chữ…'), () => api.invoke('fonts:pick').then(fontsAdded, (e) => toast(errText(e))), { ic: 'plus', cls: 'small' }));
+}
+function fontsAdded(names) {
+  if (!names?.length) return;
+  toast(t('Đã thêm {0}', names.join(', ')), { icon: 'check' });
+  render();
+}
+// ...or dropped on their section
+function fontDrop(el) {
+  const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
+  el.addEventListener('dragover', (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    el.classList.add('drop-on');
+  });
+  el.addEventListener('dragleave', (e) => !el.contains(e.relatedTarget) && el.classList.remove('drop-on'));
+  el.addEventListener('drop', (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    el.classList.remove('drop-on');
+    const files = [...e.dataTransfer.files].map((f) => window.tyran.pathOf(f)).filter(Boolean);
+    if (files.length) api.invoke('fonts:add', files).then(fontsAdded, (err) => toast(errText(err)));
+  });
+  return el;
+}
 
 function cursorSection() {
   const box = h('div');

@@ -342,6 +342,28 @@ function register({ onSettings } = {}) {
   handle('cursor:import', (e) => services.importCursor(winOf(e)));
   // a wallpaper's own music: key (see musicKey in shared/theme.js) -> entry, or null to remove it
   handle('wallpapers:importMusic', (e) => services.importMusic(winOf(e)));
+
+  // ---- the user's own fonts (main/fonts.js): picked or dropped; the first one added is used ----
+  const addFonts = (files) => {
+    const added = require('./fonts').add(files);
+    if (!added.length) return [];
+    const a = data.settings.data.appearance;
+    changeSettings({ appearance: { customFonts: [...(a.customFonts || []), ...added], font: `"${added[0].family}", "Segoe UI", system-ui, sans-serif` } });
+    return [...new Set(added.map((f) => f.family))];
+  };
+  handle('fonts:pick', async (e) => {
+    const r = await dialog.showOpenDialog(winOf(e), { title: t('Chọn phông chữ'), properties: ['openFile', 'multiSelections'], filters: [{ name: t('Phông chữ'), extensions: ['ttf', 'otf', 'ttc', 'woff', 'woff2'] }] });
+    return r.canceled ? [] : addFonts(r.filePaths);
+  });
+  handle('fonts:add', (e, files) => addFonts(Array.isArray(files) ? files.slice(0, 200) : []));
+  handle('fonts:remove', (e, family) => {
+    const left = require('./fonts').removeFamily(String(family));
+    const a = data.settings.data.appearance;
+    // (the interface back on the first font when it was using this one)
+    const font = a.font.startsWith(`"${family}"`) ? SETTINGS.appearance.font : a.font;
+    changeSettings({ appearance: { customFonts: left, font } });
+    return true;
+  });
   handle('wallpapers:musicLink', (e, url) => services.musicLink(url));
   handle('wallpapers:setMusic', (e, key, entry) => {
     key = String(key || '').slice(0, 2000);
@@ -500,6 +522,7 @@ function register({ onSettings } = {}) {
   }, { uiOnly: true });
 
   handle('perm:respond', (e, id, allow, remember) => sessions.respondPermission(id, allow, remember), { uiOnly: true });
+  handle('share:respond', (e, id, sourceId, audio) => sessions.respondShare(String(id), String(sourceId || ''), !!audio), { uiOnly: true });
   handle('adblock:count', (e, wcId) => adblock.getCount(Number(wcId)), { uiOnly: true });
   // HTTPS-only: a page that could not be reached over https:// (the tab's error page offers http://)
   handle('privacy:httpUrl', (e, url) => require('./privacy').httpUrl(String(url || '')), { uiOnly: true });

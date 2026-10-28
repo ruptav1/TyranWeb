@@ -1193,3 +1193,40 @@ code {
     transform: translateX(4px);
   }
 }
+
+/* the user's own fonts: each shown in itself, removable; their section takes dropped font files */
+.font-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.font-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--hover);
+  font-size: 13px;
+}
+.chip-x {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+}
+.chip-x:hover {
+  background: var(--active);
+  color: var(--text);
+}
+.section.drop-on {
+  outline: 2px dashed var(--accent);
+  outline-offset: 3px;
+}

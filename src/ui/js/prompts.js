@@ -36,6 +36,7 @@ export function initPrompts() {
     queue.push(req);
     if (queue.length === 1) showNext();
   });
+  api.on('share:request', sharePicker);
 }
 
 function showNext() {
@@ -67,6 +68,79 @@ function showNext() {
     h('div', { class: 'perm-actions' }, h('button', { class: 'btn', text: t('Chặn'), onclick: () => answer(false) }), h('button', { class: 'btn primary', text: t('Cho phép'), onclick: () => answer(true) }))
   );
   $('#content').append(card);
+}
+
+// ---------------------------------------------------------------- sharing the screen
+// A page asks to share the screen (getDisplayMedia: a Discord stream, a video call): as Chrome asks,
+// a whole screen or one window (a picture of each), and the computer's sound with it when the page
+// wants sound. A double click shares at once; Esc or a click beside it cancels.
+let sharing = null; // { req, el, close }
+function sharePicker(req) {
+  sharing?.close(''); // (an older ask, given up)
+  const screens = req.sources.filter((x) => x.kind === 'screen');
+  const windows = req.sources.filter((x) => x.kind === 'window');
+  let kind = screens.length ? 'screen' : 'window';
+  let picked = '';
+  const sound = h('input', { type: 'checkbox', checked: true });
+  const soundRow = h('label', { class: 'share-sound', hidden: !req.audio }, sound, h('span', { text: t('Chia sẻ cả âm thanh của máy') }));
+  const tabs = h('div', { class: 'share-tabs' });
+  const grid = h('div', { class: 'share-grid' });
+  const go = h('button', { type: 'button', class: 'btn primary', text: t('Chia sẻ') });
+  const close = (id) => {
+    if (sharing?.req !== req) return;
+    sharing = null;
+    api.invoke('share:respond', req.id, id, !!id && req.audio && sound.checked).catch(() => {});
+    el.remove();
+    removeEventListener('keydown', onKey, true);
+  };
+  const onKey = (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      close('');
+    } else if (e.key === 'Enter' && picked) {
+      e.preventDefault();
+      close(picked);
+    }
+  };
+  const draw = () => {
+    tabs.replaceChildren(
+      ...[['screen', t('Cả màn hình'), screens], ['window', t('Cửa sổ'), windows]]
+        .filter(([, , list]) => list.length)
+        .map(([k, label]) => h('button', { type: 'button', class: 'share-tab' + (k === kind ? ' on' : ''), text: label, onclick: () => ((kind = k), (picked = ''), draw()) }))
+    );
+    grid.replaceChildren(
+      ...(kind === 'screen' ? screens : windows).map((x) =>
+        h(
+          'button',
+          { type: 'button', class: 'share-item' + (x.id === picked ? ' on' : ''), title: x.name, onclick: () => ((picked = x.id), draw()), ondblclick: () => close(x.id) },
+          h('span', { class: 'share-thumb', style: x.thumb ? { backgroundImage: `url("${x.thumb}")` } : {} }),
+          h('span', { class: 'share-name', html: `${x.icon ? `<img src="${x.icon}" alt="">` : ''}<span>${esc(x.name)}</span>` })
+        )
+      )
+    );
+    go.disabled = !picked;
+  };
+  go.addEventListener('click', () => picked && close(picked));
+  const el = h(
+    'div',
+    { class: 'share-scrim' },
+    h(
+      'div',
+      { class: 'share-card', role: 'dialog' },
+      h('div', { class: 'share-head' }, h('b', { text: t('Chia sẻ màn hình') }), h('span', { text: hostOf(req.origin) || req.origin })),
+      tabs,
+      grid,
+      h('div', { class: 'share-foot' }, soundRow, h('span', { class: 'share-gap' }), h('button', { type: 'button', class: 'btn', text: t('Huỷ'), onclick: () => close('') }), go)
+    )
+  );
+  el.addEventListener('mousedown', (e) => e.target === el && close(''));
+  addEventListener('keydown', onKey, true);
+  document.body.append(el);
+  sharing = { req, el, close };
+  draw();
+  // (the tab that asked, shown)
+  const tab = byWc(req.wcId);
+  if (tab && tab.id !== active()?.id) activate(tab.id);
 }
 
 // ---------------------------------------------------------------- site info

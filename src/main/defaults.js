@@ -36,6 +36,8 @@ const SETTINGS = {
     clearScrim: 0.3, // "clear" chrome: strength of the soft shade behind the bars
     blur: 22,
     font: '"Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif',
+    // the user's own fonts, { family, file, weight, italic } each (main/fonts.js)
+    customFonts: [],
     fontSize: 13,
     radius: 12,
     density: 'comfortable', // compact | comfortable | spacious

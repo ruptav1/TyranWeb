@@ -2,7 +2,7 @@
 // Browsing sessions (normal + private): user agent, permissions, downloads, privacy headers.
 const fs = require('fs');
 const path = require('path');
-const { app, session, BrowserWindow, webContents, shell, dialog } = require('electron');
+const { app, session, BrowserWindow, webContents, shell, dialog, desktopCapturer } = require('electron');
 const data = require('./data');
 const protocol = require('./protocol');
 const adblock = require('./adblock');
@@ -16,7 +16,8 @@ const WALLPAPER_PARTITION = 'persist:tyran-wallpaper';
 
 // Everything else (incl. third-party cookie access requested by embedded iframes) is denied.
 const ASK = new Set(['media', 'geolocation', 'notifications', 'midi', 'midiSysex', 'clipboard-read', 'idle-detection', 'openExternal', 'speaker-selection', 'window-management']);
-const ALWAYS = new Set(['fullscreen', 'clipboard-sanitized-write', 'pointerLock', 'keyboardLock']);
+// (sharing the screen asks in its own picker: see setupScreenShare)
+const ALWAYS = new Set(['fullscreen', 'clipboard-sanitized-write', 'pointerLock', 'keyboardLock', 'display-capture']);
 
 let broadcast = () => {};
 const pendingPermissions = new Map();
@@ -49,6 +50,8 @@ function hostWindowOf(wc) {
 function setupPermissions(ses, isPrivate) {
   ses.setPermissionRequestHandler((wc, permission, callback, details) => {
     if (ALWAYS.has(permission)) return callback(true);
+    // (sharing the screen asks for 'media' with no device in it: the picker is where it is asked)
+    if (permission === 'media' && !details.mediaTypes?.length) return callback(true);
     if (!ASK.has(permission)) return callback(false);
     const origin = originOf(details.requestingUrl || wc.getURL());
     if (permission === 'openExternal') {
@@ -94,6 +97,52 @@ function respondPermission(id, allow, remember) {
     broadcast('settings:changed', data.settings.data);
   }
   p.callback(!!allow);
+}
+
+// ---------- sharing the screen ----------
+// A page that asks to share the screen (getDisplayMedia: a Discord stream, a video call) gets a
+// screen or a window the user picks in TyranWeb's picker (as Chrome asks; ui/js/prompts.js), with
+// the computer's sound when the page asked for sound and the user leaves it on (Windows: all that
+// plays, 'loopback'). Electron refuses every such request without this.
+const pendingShares = new Map();
+function setupScreenShare(ses, isPrivate) {
+  ses.setDisplayMediaRequestHandler(async (request, callback) => {
+    const wc = request.frame ? webContents.fromFrame(request.frame) : null;
+    const win = wc && hostWindowOf(wc);
+    if (!win) return callback({});
+    let sources;
+    try {
+      sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 320, height: 180 }, fetchWindowIcons: true });
+    } catch {
+      return callback({});
+    }
+    if (!sources.length) return callback({});
+    const id = data.uid('s');
+    pendingShares.set(id, { callback, sources });
+    win.webContents.send('share:request', {
+      id,
+      wcId: wc.id,
+      origin: originOf(request.securityOrigin || wc.getURL()),
+      audio: !!request.audioRequested,
+      private: !!isPrivate,
+      sources: sources.map((x) => ({
+        id: x.id,
+        name: x.name,
+        kind: x.id.startsWith('screen:') ? 'screen' : 'window',
+        thumb: x.thumbnail && !x.thumbnail.isEmpty() ? x.thumbnail.toDataURL() : '',
+        icon: x.appIcon && !x.appIcon.isEmpty() ? x.appIcon.toDataURL() : '',
+      })),
+    });
+  });
+}
+// the user's pick ('' when they cancelled)
+function respondShare(id, sourceId, audio) {
+  const p = pendingShares.get(id);
+  if (!p) return false;
+  pendingShares.delete(id);
+  const source = p.sources.find((x) => x.id === sourceId);
+  p.callback(source ? { video: source, ...(audio ? { audio: 'loopback' } : {}) } : {});
+  return true;
 }
 
 // ---------- downloads ----------
@@ -194,6 +243,7 @@ function setupSession(ses, isPrivate) {
   protocol.install(ses);
   ses.setUserAgent(cleanUserAgent(ses.getUserAgent()));
   setupPermissions(ses, isPrivate);
+  setupScreenShare(ses, isPrivate);
   setupDownloads(ses, isPrivate);
   step(ses, 'onBeforeSendHeaders', 'dnt', (details, cb) => {
     if (!data.settings.data.privacy.doNotTrack) return cb({});
@@ -280,6 +330,7 @@ module.exports = {
   WALLPAPER_PARTITION,
   init,
   respondPermission,
+  respondShare,
   downloadsList,
   downloadAction,
   clearDownloads,

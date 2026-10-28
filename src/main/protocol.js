@@ -31,6 +31,7 @@ const HOSTS = {
   shared: path.join(ROOT, 'src', 'shared'),
   assets: path.join(ROOT, 'assets'),
   userdata: USER_WALLPAPERS,
+  fonts: path.join(userDir, 'fonts'), // (the user's own fonts: main/fonts.js)
 };
 for (const p of PAGES) HOSTS[p] = path.join(ROOT, 'src', 'pages', p);
 

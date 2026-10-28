@@ -136,9 +136,26 @@ export function themeVars(s) {
   };
 }
 
+// The user's own fonts (main/fonts.js), as @font-face rules (each file its weight and style)
+function customFonts(s, doc) {
+  const css = (s.appearance.customFonts || [])
+    .filter((f) => f?.family && /^[\w.-]+$/.test(f.file || ''))
+    .map((f) => `@font-face { font-family: "${String(f.family).replace(/["\\]/g, '')}"; src: url("tyran://fonts/${f.file}"); font-weight: ${Number(f.weight) || 400}; font-style: ${f.italic ? 'italic' : 'normal'}; font-display: swap; }`)
+    .join('\n');
+  let style = doc.getElementById('tyran-fonts');
+  if (!css) return style?.remove();
+  if (!style) {
+    style = doc.createElement('style');
+    style.id = 'tyran-fonts';
+    doc.head.append(style);
+  }
+  if (style.textContent !== css) style.textContent = css;
+}
+
 export function applyTheme(s, root = document.documentElement) {
   const vars = themeVars(s);
   for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
+  customFonts(s, root.ownerDocument);
   root.dataset.scheme = s.appearance.dark ? 'dark' : 'light';
   root.dataset.chrome = s.appearance.chromeStyle;
   root.classList.toggle('no-anim', !s.appearance.animations);

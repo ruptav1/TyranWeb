@@ -2503,3 +2503,119 @@ body.welcoming #app {
 #app[data-chrome='clear'] #sidebar-rail {
   gap: 5px;
 }
+
+/* ------------------------------------------------------------ sharing the screen (prompts.js) */
+.share-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.32);
+}
+.share-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(760px, 92vw);
+  max-height: 84vh;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-solid);
+  color: var(--text);
+  box-shadow: 0 24px 64px var(--shadow-color);
+}
+.share-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.share-head b {
+  font-size: 15px;
+}
+.share-head span {
+  color: var(--text-3);
+}
+.share-tabs {
+  display: flex;
+  gap: 6px;
+}
+.share-tab {
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.share-tab.on {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.14);
+  color: var(--text);
+}
+.share-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+  overflow-y: auto;
+  min-height: 140px;
+  padding: 2px;
+}
+.share-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  background: var(--hover);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.share-item:hover {
+  background: var(--active);
+}
+.share-item.on {
+  border-color: var(--accent);
+}
+.share-thumb {
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-sm);
+  background: #000 center / contain no-repeat;
+}
+.share-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+}
+.share-name img {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.share-name span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.share-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.share-gap {
+  flex: 1;
+}
+.share-sound {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+}
+.share-sound[hidden] {
+  display: none;
+}

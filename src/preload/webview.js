@@ -2,7 +2,7 @@
 // Preload for every tab (<webview>). Runs in an isolated world; web pages never see it.
 //  * all pages: browser shortcuts the page did not handle (mouse back/forward is app-command)
 //  * tyran:// pages only: the `window.tyran` bridge used by internal pages
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 const CODE_KEYS = {
   Equal: '=', Minus: '-', Comma: ',', Period: '.', Slash: '/', Backslash: '\\', Semicolon: ';', Quote: "'",
@@ -61,6 +61,8 @@ if (location.protocol === 'tyran:') {
     },
     // Ask the browser shell to do something (open a tab, run a command...).
     host: (type, payload) => ipcRenderer.sendToHost('tyran:host', { type, payload }),
+    // where a file dropped on the page is on the disk (fonts dropped in Settings)
+    pathOf: (file) => webUtils.getPathForFile(file),
   });
 }
 
