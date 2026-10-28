@@ -1032,6 +1032,13 @@ body.lobby #app {
   visibility: visible;
   z-index: 1;
 }
+/* a tab being shared from the background: drawn (a hidden page draws nothing), not seen */
+.pane.shared:not(.visible) {
+  visibility: visible;
+  opacity: 0;
+  z-index: 0;
+  pointer-events: none;
+}
 .pane webview {
   display: flex;
   width: 100%;
@@ -2584,6 +2591,10 @@ body.welcoming #app {
   aspect-ratio: 16 / 9;
   border-radius: var(--radius-sm);
   background: #000 center / contain no-repeat;
+}
+.share-thumb.icon-only {
+  background-color: var(--hover);
+  background-size: 40px;
 }
 .share-name {
   display: flex;

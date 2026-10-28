@@ -116,30 +116,63 @@ function setupScreenShare(ses, isPrivate) {
     } catch {
       return callback({});
     }
-    if (!sources.length) return callback({});
+    // ...and the window's tabs, each a picture of it as it is now (the UI keeps the tabs among them)
+    const tabs = webContents.getAllWebContents().filter((t) => !t.isDestroyed() && t.getType() === 'webview' && t.session === ses && t.hostWebContents === win.webContents && !/^(chrome-extension|devtools):/.test(t.getURL()));
+    const shots = await Promise.all(
+      tabs.slice(0, 60).map((t) => Promise.race([t.capturePage().then((img) => (img.isEmpty() ? '' : img.resize({ width: 320 }).toDataURL()), () => ''), new Promise((r) => setTimeout(() => r(''), 800))]))
+    );
+    if (!sources.length && !tabs.length) return callback({});
     const id = data.uid('s');
-    pendingShares.set(id, { callback, sources });
+    pendingShares.set(id, { callback, sources, win });
     win.webContents.send('share:request', {
       id,
       wcId: wc.id,
       origin: originOf(request.securityOrigin || wc.getURL()),
       audio: !!request.audioRequested,
       private: !!isPrivate,
-      sources: sources.map((x) => ({
-        id: x.id,
-        name: x.name,
-        kind: x.id.startsWith('screen:') ? 'screen' : 'window',
-        thumb: x.thumbnail && !x.thumbnail.isEmpty() ? x.thumbnail.toDataURL() : '',
-        icon: x.appIcon && !x.appIcon.isEmpty() ? x.appIcon.toDataURL() : '',
-      })),
+      sources: [
+        ...tabs.slice(0, 60).map((t, i) => ({ id: 'tab:' + t.id, wcId: t.id, name: t.getTitle() || t.getURL(), kind: 'tab', thumb: shots[i], icon: '' })),
+        ...sources.map((x) => ({
+          id: x.id,
+          name: x.name,
+          kind: x.id.startsWith('screen:') ? 'screen' : 'window',
+          thumb: x.thumbnail && !x.thumbnail.isEmpty() ? x.thumbnail.toDataURL() : '',
+          icon: x.appIcon && !x.appIcon.isEmpty() ? x.appIcon.toDataURL() : '',
+        })),
+      ],
     });
   });
 }
-// the user's pick ('' when they cancelled)
+// A tab shared while another one is shown still has to draw (a hidden page draws nothing): the
+// window keeps it drawn, out of sight, for as long as it is captured (ui/js/prompts.js 'share:tab').
+function keepDrawn(tab, win) {
+  const send = (on) => win && !win.isDestroyed() && win.webContents.send('share:tab', tab.id, on);
+  send(true);
+  let seen = false;
+  let waited = 0;
+  const timer = setInterval(() => {
+    if (tab.isDestroyed()) return clearInterval(timer);
+    if (tab.isBeingCaptured()) seen = true;
+    else if (seen || ++waited > 15) {
+      clearInterval(timer);
+      send(false);
+    }
+  }, 1000);
+}
+
+// The user's pick ('' when they cancelled): a screen or a window (with the computer's sound), or a
+// tab (with its own sound, still heard here while it is shared)
 function respondShare(id, sourceId, audio) {
   const p = pendingShares.get(id);
   if (!p) return false;
   pendingShares.delete(id);
+  if (sourceId.startsWith('tab:')) {
+    const tab = webContents.fromId(Number(sourceId.slice(4)));
+    if (!tab || tab.isDestroyed()) return p.callback({}), true;
+    keepDrawn(tab, p.win);
+    setTimeout(() => p.callback({ video: tab.mainFrame, ...(audio ? { audio: tab.mainFrame, enableLocalEcho: true } : {}) }), 150);
+    return true;
+  }
   const source = p.sources.find((x) => x.id === sourceId);
   p.callback(source ? { video: source, ...(audio ? { audio: 'loopback' } : {}) } : {});
   return true;

@@ -1,5 +1,5 @@
 // Permission prompts and the site-info popover.
-import { api, h, $, esc, originOf, hostOf } from './util.js';
+import { api, h, $, esc, originOf, hostOf, isNewTab } from './util.js';
 import { S } from './state.js';
 import { active, byWc, activate, zoom } from './tabs.js';
 import { openPopover, closePopover, toast } from './menus.js';
@@ -37,6 +37,8 @@ export function initPrompts() {
     if (queue.length === 1) showNext();
   });
   api.on('share:request', sharePicker);
+  // (a tab shared from the background keeps drawing, out of sight: see sessions.keepDrawn)
+  api.on('share:tab', (wcId, on) => byWc(wcId)?.pane?.classList.toggle('shared', !!on));
 }
 
 function showNext() {
@@ -77,12 +79,22 @@ function showNext() {
 let sharing = null; // { req, el, close }
 function sharePicker(req) {
   sharing?.close(''); // (an older ask, given up)
+  // (the window's tabs as the tab strip names them, with their icons; other pages it holds, and new
+  // tab pages — see-through, the wallpaper is behind them — left out)
+  const pages = req.sources
+    .filter((x) => x.kind === 'tab' && byWc(x.wcId) && !isNewTab(byWc(x.wcId).url))
+    .map((x) => {
+      const tab = byWc(x.wcId);
+      return { ...x, name: tab.title || x.name, icon: tab.favicon || '' };
+    });
   const screens = req.sources.filter((x) => x.kind === 'screen');
   const windows = req.sources.filter((x) => x.kind === 'window');
-  let kind = screens.length ? 'screen' : 'window';
+  const lists = { tab: pages, window: windows, screen: screens };
+  let kind = pages.length ? 'tab' : windows.length ? 'window' : 'screen';
   let picked = '';
   const sound = h('input', { type: 'checkbox', checked: true });
-  const soundRow = h('label', { class: 'share-sound', hidden: !req.audio }, sound, h('span', { text: t('Chia sẻ cả âm thanh của máy') }));
+  const soundText = h('span');
+  const soundRow = h('label', { class: 'share-sound', hidden: !req.audio }, sound, soundText);
   const tabs = h('div', { class: 'share-tabs' });
   const grid = h('div', { class: 'share-grid' });
   const go = h('button', { type: 'button', class: 'btn primary', text: t('Chia sẻ') });
@@ -104,17 +116,19 @@ function sharePicker(req) {
   };
   const draw = () => {
     tabs.replaceChildren(
-      ...[['screen', t('Cả màn hình'), screens], ['window', t('Cửa sổ'), windows]]
-        .filter(([, , list]) => list.length)
+      ...[['tab', t('Tab trình duyệt')], ['window', t('Cửa sổ')], ['screen', t('Cả màn hình')]]
+        .filter(([k]) => lists[k].length)
         .map(([k, label]) => h('button', { type: 'button', class: 'share-tab' + (k === kind ? ' on' : ''), text: label, onclick: () => ((kind = k), (picked = ''), draw()) }))
     );
+    soundText.textContent = kind === 'tab' ? t('Chia sẻ cả âm thanh của tab') : t('Chia sẻ cả âm thanh của máy');
     grid.replaceChildren(
-      ...(kind === 'screen' ? screens : windows).map((x) =>
+      ...lists[kind].map((x) =>
         h(
           'button',
           { type: 'button', class: 'share-item' + (x.id === picked ? ' on' : ''), title: x.name, onclick: () => ((picked = x.id), draw()), ondblclick: () => close(x.id) },
-          h('span', { class: 'share-thumb', style: x.thumb ? { backgroundImage: `url("${x.thumb}")` } : {} }),
-          h('span', { class: 'share-name', html: `${x.icon ? `<img src="${x.icon}" alt="">` : ''}<span>${esc(x.name)}</span>` })
+          // (a tab with no picture of it, one in the background: its icon)
+          h('span', { class: 'share-thumb' + (!x.thumb && x.icon ? ' icon-only' : ''), style: x.thumb || x.icon ? { backgroundImage: `url("${encodeURI(x.thumb || x.icon)}")` } : {} }),
+          h('span', { class: 'share-name', html: `${x.icon ? `<img src="${esc(x.icon)}" alt="">` : ''}<span>${esc(x.name)}</span>` })
         )
       )
     );
