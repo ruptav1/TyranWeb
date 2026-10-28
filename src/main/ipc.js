@@ -8,6 +8,7 @@ const sessions = require('./sessions');
 const services = require('./services');
 const windows = require('./windows');
 const adblock = require('./adblock');
+const tabHistory = require('./tabhistory');
 const { getShortcuts } = require('./shortcuts');
 const { SEARCH_ENGINES, SETTINGS } = require('./defaults');
 const { t } = require('./i18n');
@@ -444,6 +445,7 @@ function register({ onSettings } = {}) {
   handle('data:clear', async (e, opts) => {
     await sessions.clearBrowsingData(opts);
     broadcast('history:changed');
+    if (opts?.history) broadcast('closed:cleared');
     return true;
   });
   handle('perm:reset', (e, origin) => {
@@ -485,6 +487,7 @@ function register({ onSettings } = {}) {
       private: !!entry?.private,
       restore: initial.restore || null,
       url: initial.url || null,
+      closed: initial.closed ? data.sessionStore.data.closed || [] : [],
       settings: data.settings.data,
       shortcuts: getShortcuts(data.settings.data.shortcuts),
       engines: enginesNamed(),
@@ -512,14 +515,35 @@ function register({ onSettings } = {}) {
 
   handle('win:chrome', (e, opts) => windows.applyChrome(BrowserWindow.fromWebContents(e.sender), opts), { uiOnly: true });
 
+  // (an open tab's history is read from its page; a sleeping one sends the one it keeps)
+  const liveTab = (e, wcId) => {
+    try {
+      return wcId ? guestOf(e, wcId) : null;
+    } catch {
+      return null;
+    }
+  };
   handle('session:update', (e, tabs, active) => {
     const win = BrowserWindow.fromWebContents(e.sender);
     const clean = (Array.isArray(tabs) ? tabs : [])
       .filter((t) => t && typeof t.url === 'string')
       .slice(0, 300)
-      .map((t) => ({ url: t.url, title: String(t.title || ''), favicon: String(t.favicon || ''), pinned: !!t.pinned }));
+      .map((t) => {
+        const wc = liveTab(e, t.wcId);
+        const history = wc ? tabHistory.read(wc) : tabHistory.clean(t.history);
+        return { url: t.url, title: String(t.title || ''), favicon: String(t.favicon || ''), pinned: !!t.pinned, ...(wc ? { wcId: wc.id } : {}), ...(history ? { history } : {}) };
+      });
     windows.updateSession(win.id, clean, active | 0);
   }, { uiOnly: true });
+  handle('tabs:history', (e, wcId) => tabHistory.read(liveTab(e, wcId)), { uiOnly: true });
+  handle('tabs:stash', (e, token, history) => tabHistory.stash(String(token), history), { uiOnly: true });
+  handle('closed:add', (e, tab) => {
+    if (!tab || typeof tab.url !== 'string' || !/^[\w-]{1,80}$/.test(String(tab.id))) return;
+    const history = tabHistory.clean(tab.history);
+    const keep = { id: String(tab.id), url: tab.url.slice(0, 8192), title: String(tab.title || '').slice(0, 500), favicon: String(tab.favicon || '').slice(0, 100000), index: Math.max(0, tab.index | 0), pinned: !!tab.pinned, ...(history ? { history } : {}) };
+    windows.addClosed(BrowserWindow.fromWebContents(e.sender).id, keep);
+  }, { uiOnly: true });
+  handle('closed:remove', (e, id) => windows.removeClosed(String(id)), { uiOnly: true });
 
   handle('perm:respond', (e, id, allow, remember) => sessions.respondPermission(id, allow, remember), { uiOnly: true });
   handle('share:respond', (e, id, sourceId, audio) => sessions.respondShare(String(id), String(sourceId || ''), !!audio), { uiOnly: true });

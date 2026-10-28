@@ -343,7 +343,11 @@ async function setAdblock(enabled) {
 }
 
 async function clearBrowsingData({ history, cookies, cache, downloads } = {}) {
-  if (history) data.history.clear();
+  if (history) {
+    data.history.clear();
+    data.sessionStore.data.closed = []; // (and the tabs closed, which Ctrl+Shift+T reopens)
+    data.sessionStore.save();
+  }
   if (cookies) await browsing.clearStorageData();
   if (cache) {
     await browsing.clearCache();

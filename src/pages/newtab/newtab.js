@@ -27,7 +27,8 @@ function tick() {
     h24 >= 13 && h24 < 18 ? [t('Chào buổi chiều'), 'こんにちは'] :
     h24 >= 18 && h24 < 23 ? [t('Chào buổi tối'), 'こんばんは'] : [t('Khuya rồi, nghỉ sớm nhé'), 'おやすみ'];
   const name = S.general.userName?.trim();
-  $('#greeting').innerHTML = `${esc(vi)}${name ? `, ${esc(name)}` : ''} ✿${LANG === 'ja' ? '' : `<span class="jp">${jp}</span>`}`; // (the Japanese echo, unless it is the language)
+  const own = n.greetingText?.trim(); // (Settings → Trang tab mới → Nội dung lời chào: the line as written)
+  $('#greeting').innerHTML = own ? esc(own) : `${esc(vi)}${name ? `, ${esc(name)}` : ''} ✿${LANG === 'ja' ? '' : `<span class="jp">${jp}</span>`}`; // (the Japanese echo, unless it is the language)
   clearTimeout(clockTimer);
   clockTimer = setTimeout(tick, n.showSeconds ? 1000 - d.getMilliseconds() : (60 - d.getSeconds()) * 1000);
 }

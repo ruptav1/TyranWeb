@@ -1,9 +1,10 @@
 'use strict';
 // Browser windows: frameless shell with native Windows caption buttons (Snap Layouts work).
 const path = require('path');
-const { BrowserWindow, screen } = require('electron');
+const { BrowserWindow, screen, webContents } = require('electron');
 const data = require('./data');
 const sessions = require('./sessions');
+const tabHistory = require('./tabhistory');
 const { t } = require('./i18n');
 
 const ICON = path.join(__dirname, '..', '..', 'assets', 'icon', 'icon.png');
@@ -27,7 +28,7 @@ function validBounds(b) {
   return visible ? b : null;
 }
 
-function createWindow({ isPrivate = false, restore = null, url = null } = {}) {
+function createWindow({ isPrivate = false, restore = null, url = null, closed = false } = {}) {
   require('./timing')('createWindow' + (isPrivate ? ' (private)' : ''));
   const s = data.settings.data;
   const saved = isPrivate ? null : validBounds(data.windowStore.data.bounds);
@@ -57,7 +58,7 @@ function createWindow({ isPrivate = false, restore = null, url = null } = {}) {
       spellcheck: false,
     },
   });
-  windows.set(win.id, { win, private: isPrivate, tabs: [], active: 0, initial: { restore, url } });
+  windows.set(win.id, { win, private: isPrivate, tabs: [], active: 0, initial: { restore, url, closed } });
   if (!isPrivate && data.windowStore.data.maximized) win.maximize();
 
   const query = new URLSearchParams({ wid: String(win.id) });
@@ -90,6 +91,8 @@ function createWindow({ isPrivate = false, restore = null, url = null } = {}) {
   win.on('focus', () => win.webContents.send('win:state', state(win)));
   win.on('blur', () => win.webContents.send('win:state', state(win)));
 
+  // (the last window closing: its tabs are kept with their histories as they are now)
+  win.on('close', () => !isPrivate && saveSession({ fresh: true }));
   win.on('closed', () => {
     const entry = windows.get(win.id);
     windows.delete(win.id);
@@ -120,15 +123,36 @@ function updateSession(winId, tabs, active) {
   saveSession();
 }
 
-function saveSession() {
+// (fresh: each open tab's history read again, with the page states Chromium has kept since)
+function saveSession({ fresh = false } = {}) {
   if (quitting) return;
-  const list = [...windows.values()].filter((w) => !w.private && w.tabs.length).map((w) => ({ tabs: w.tabs, active: w.active }));
+  const onDisk = ({ wcId, ...tab }) => {
+    const h = fresh && wcId ? tabHistory.read(webContents.fromId(wcId)) : null;
+    return h ? { ...tab, history: h } : tab;
+  };
+  const list = [...windows.values()].filter((w) => !w.private && w.tabs.length).map((w) => ({ tabs: w.tabs.map(onDisk), active: w.active }));
   // Closing the last window keeps its tabs so the next launch can restore them.
   if (!list.length && windows.size) return;
   if (list.length) {
     data.sessionStore.data.windows = list;
     data.sessionStore.save();
   }
+}
+
+// Tabs closed (Ctrl+Shift+T reopens them, after a restart too); never those of an incognito window
+function addClosed(winId, tab) {
+  if (windows.get(winId)?.private) return;
+  const list = (data.sessionStore.data.closed || []).filter((c) => c.id !== tab.id);
+  list.push(tab);
+  data.sessionStore.data.closed = list.slice(-25);
+  data.sessionStore.save();
+}
+
+function removeClosed(id) {
+  const list = data.sessionStore.data.closed || [];
+  if (!list.some((c) => c.id === id)) return;
+  data.sessionStore.data.closed = list.filter((c) => c.id !== id);
+  data.sessionStore.save();
 }
 
 function setQuitting() {
@@ -160,6 +184,8 @@ module.exports = {
   createWindow,
   updateSession,
   saveSession,
+  addClosed,
+  removeClosed,
   setQuitting,
   applyChrome,
   applyBackground,

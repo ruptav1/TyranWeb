@@ -93,7 +93,8 @@ export const COMMANDS = {
     if (r === 'none') toast(t('Không có video nào trên trang'), { icon: 'pip' });
   } },
   'bookmark.toggle': { icon: 'star', run: () => bookmarkPopover(document.querySelector('.omni-star:not([hidden])')) },
-  'bookmark.bar': { icon: 'bookmark', run: () => api.invoke('settings:set', { layout: { showBookmarksBar: !S.settings.layout.showBookmarksBar } }) },
+  // (as in Chrome: shown on every page, or on the new tab page only)
+  'bookmark.bar': { icon: 'bookmark', run: () => api.invoke('settings:set', { layout: { bookmarksBar: S.settings.layout.bookmarksBar === 'always' ? 'newtab' : 'always' } }) },
   'open.history': { icon: 'history', run: () => openInternal('history/') },
   'open.downloads': { icon: 'download', run: () => openInternal('downloads/') },
   'open.bookmarks': { icon: 'bookmark', run: () => openInternal('bookmarks/') },

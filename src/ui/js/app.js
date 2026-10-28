@@ -61,11 +61,12 @@ async function boot() {
   const restore = init.restore;
   if (restore?.tabs?.length) {
     restore.tabs.forEach((t, i) =>
-      createTab({ url: t.url, title: t.title, favicon: t.favicon, pinned: t.pinned, background: true, sleeping: i !== restore.active, index: i })
+      createTab({ url: t.url, title: t.title, favicon: t.favicon, pinned: t.pinned, background: true, sleeping: i !== restore.active, index: i, history: t.history })
     );
     const target = T.list[Math.min(restore.active, T.list.length - 1)];
     if (target) tabs.activate(target.id);
   }
+  T.closed.push(...(init.closed || [])); // (closed before TyranWeb last quit)
   if (init.url) createTab({ url: init.url });
   if (!T.list.length) {
     const g = S.settings.general;
@@ -110,6 +111,7 @@ function wireEvents() {
     renderToolbar(true);
   });
   api.on('bookmarks:changed', (d) => emit('bookmarks:changed', d));
+  api.on('closed:cleared', () => (T.closed.length = 0)); // (with the history)
   api.on('tab:open', ({ url, background, openerWcId }) => {
     if (!url) return createTab();
     createTab({ url, background, openerId: byWc(openerWcId)?.id });

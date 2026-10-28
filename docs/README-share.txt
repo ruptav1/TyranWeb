@@ -1,4 +1,4 @@
-TyranWeb 1.1.5 — trình duyệt anime (Windows 10/11, 64-bit)
+TyranWeb 1.1.6 — trình duyệt anime (Windows 10/11, 64-bit)
 ==========================================================
 
 CÁCH CHẠY
@@ -56,6 +56,8 @@ GHI CHÚ
 - Sao lưu / khôi phục: Cài đặt → Giới thiệu → Sao lưu, ra một file .zip (cài đặt, dấu trang,
   lịch sử, ghi chú, các tab đang mở; tùy chọn kèm ảnh, video, nhạc đã thêm). Không gồm đăng
   nhập các trang web và nhân vật game đã tải.
+- Tab vừa đóng: Ctrl+Shift+T mở lại cùng các trang trước / sau và chỗ đang cuộn tới, cả sau khi
+  tắt app. Tab mở lại khi khởi động và tab ngủ cũng giữ các trang đó.
 - Mẹo: Ctrl+Shift+L để vào chế độ Lobby; ở trang tab mới, bấm nút con mắt để ẩn thanh tìm
   kiếm rồi bấm vào nền để trò chuyện với học sinh. Ctrl+Alt+N mở tab ẩn danh.
 

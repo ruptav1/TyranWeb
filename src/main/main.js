@@ -21,6 +21,7 @@ const sessions = require('./sessions');
 const windows = require('./windows');
 const ipc = require('./ipc');
 const adblock = require('./adblock');
+const tabHistory = require('./tabhistory');
 const { getShortcuts, toAccelerator } = require('./shortcuts');
 mark('modules');
 
@@ -143,6 +144,7 @@ app.on('web-contents-created', (event, contents) => {
       if (!contents.getURL().startsWith('tyran://app/') || !/^(https|livewp):/i.test(params.src || '')) e.preventDefault();
       return;
     }
+    tabHistory.claim(params); // (a tab given back its back/forward list)
     delete prefs.preloadURL;
     prefs.preload = WEBVIEW_PRELOAD;
     prefs.nodeIntegration = false;
@@ -161,10 +163,12 @@ app.on('web-contents-created', (event, contents) => {
     const extOk = extPage && contents.getURL().startsWith('tyran://app/') && sessions.browsing().extensions.getExtension(extPage[1]);
     if (!/^(https?|tyran|about|data|view-source):/i.test(params.src || 'about:blank') && !extOk) e.preventDefault();
   });
+  contents.on('did-attach-webview', (e, guest) => tabHistory.attached(guest));
   // tabs, and popup windows opened by web pages (they share the browsing session)
   const type = contents.getType();
   if (type === 'webview' && contents.session === sessions.wallpaper()) setupWallpaperGuest(contents);
   else if (type === 'webview' || (type === 'window' && contents.session !== session.defaultSession)) {
+    if (type === 'webview') tabHistory.adopt(contents);
     setupGuest(contents);
   }
   if (type === 'window') {
@@ -198,10 +202,11 @@ function startup() {
   const s = data.settings.data;
   const url = openUrlFromArgs(process.argv);
   const saved = data.sessionStore.data.windows || [];
+  // (the tabs closed before quitting go to the first window: Ctrl+Shift+T reopens them there)
   if (s.general.startup === 'restore' && saved.length) {
-    saved.forEach((w, i) => windows.createWindow({ restore: w, url: i === 0 ? url : null }));
+    saved.forEach((w, i) => windows.createWindow({ restore: w, url: i === 0 ? url : null, closed: i === 0 }));
   } else {
-    windows.createWindow({ url });
+    windows.createWindow({ url, closed: true });
   }
 }
 
@@ -241,6 +246,7 @@ app.whenReady().then(async () => {
 
 let cleaned = false;
 app.on('before-quit', async (e) => {
+  windows.saveSession({ fresh: true }); // (each open tab's history as it is now: where its pages are scrolled to)
   windows.setQuitting();
   data.flushAll();
   if (data.settings.data.privacy.clearOnExit && !cleaned) {

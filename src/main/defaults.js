@@ -86,7 +86,7 @@ const SETTINGS = {
     toolbarPosition: 'top', // top | bottom
     verticalTabsWidth: 248,
     verticalTabsCollapsed: false,
-    showBookmarksBar: true,
+    bookmarksBar: 'newtab', // always | newtab (on the new tab page only) | off
     contentInset: 8,
     contentRadius: 12,
     contentShadow: true,
@@ -104,6 +104,7 @@ const SETTINGS = {
     clock24h: true,
     showSeconds: false,
     showGreeting: true,
+    greetingText: '', // (the line under the clock; empty: by the time of day)
     showSearch: true,
     showSpeedDial: true,
     showAnime: false,

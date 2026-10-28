@@ -29,7 +29,7 @@ function partition(tab) {
 export const hasIncognito = () => S.private || T.list.some((t) => t.incognito);
 
 // ---------------------------------------------------------------- creation
-export function createTab({ url = NEWTAB, background = false, index, pinned = false, title, favicon, sleeping = false, openerId, incognito = false } = {}) {
+export function createTab({ url = NEWTAB, background = false, index, pinned = false, title, favicon, sleeping = false, openerId, incognito = false, history = null } = {}) {
   const tab = {
     // (a page opened from an incognito tab is incognito too)
     incognito: !!(S.private || incognito || (openerId && byId(openerId)?.incognito)),
@@ -51,7 +51,10 @@ export function createTab({ url = NEWTAB, background = false, index, pinned = fa
     error: null,
     lastActive: Date.now(),
     openerId,
+    history: null, // (its back/forward list while it has no page: asleep, or not yet woken)
+    historyToken: null,
   };
+  if (history) keepHistory(tab, history);
   if (index === undefined) {
     const cur = indexOf(T.activeId);
     if (S.settings.general.newTabPosition === 'afterActive' && cur >= 0 && !pinned) {
@@ -79,7 +82,10 @@ function mount(tab) {
   wv.setAttribute('partition', partition(tab));
   wv.setAttribute('allowpopups', '');
   wv.setAttribute('webpreferences', 'contextIsolation=yes, sandbox=yes');
-  wv.setAttribute('src', tab.url || NEWTAB);
+  // (a tab with a history kept opens on it, back and forward included: main/tabhistory.js)
+  const url = tab.url || NEWTAB;
+  wv.setAttribute('src', tab.historyToken ? `about:blank#tyran-history=${tab.historyToken}|${encodeURIComponent(url)}` : url);
+  tab.historyToken = null;
   const pane = h('div', { class: 'pane', dataset: { id: tab.id } }, wv);
   pane.classList.toggle('internal', isInternal(tab.url));
   tab.pane = pane;
@@ -88,8 +94,12 @@ function mount(tab) {
   $('#views').append(pane);
 }
 
-function unmount(tab) {
+async function unmount(tab) {
   if (!tab.pane) return;
+  const history = await snapshot(tab);
+  // (shown, closed or already asleep meanwhile)
+  if (!tab.pane || !byId(tab.id) || tab.id === T.activeId || inVisibleSplit(tab)) return;
+  if (history) keepHistory(tab, history);
   tab.pane.remove();
   tab.pane = null;
   tab.webview = null;
@@ -99,6 +109,24 @@ function unmount(tab) {
   tab.loading = false;
   tab.audible = false;
   renderTab(tab);
+}
+
+// ---------------------------------------------------------------- back/forward lists
+let stashSeq = 0;
+const stashBase = Math.random().toString(36).slice(2, 10);
+
+// the tab keeps `history` until it has a page again, which is then opened on it
+function keepHistory(tab, history) {
+  tab.history = history;
+  tab.historyToken = `${stashBase}-${++stashSeq}`;
+  api.invoke('tabs:stash', tab.historyToken, history).catch(() => {});
+}
+
+// its back/forward list as the page has it now (or the one it keeps while it has none)
+function snapshot(tab) {
+  if (!tab.ready || !tab.wcId) return Promise.resolve(tab.history);
+  const late = new Promise((ok) => setTimeout(() => ok(null), 1500));
+  return Promise.race([api.invoke('tabs:history', tab.wcId).catch(() => null), late]);
 }
 
 // ---------------------------------------------------------------- webview events
@@ -112,6 +140,7 @@ function wire(tab, wv) {
   wv.addEventListener('dom-ready', () => {
     if (!tab.ready) {
       tab.ready = true;
+      tab.history = null; // (its page has it now)
       tab.wcId = wv.getWebContentsId();
       if (tab.muted) wv.setAudioMuted(true);
     }
@@ -385,12 +414,29 @@ export function closeTab(id, { force = false } = {}) {
   if (i < 0) return;
   const tab = T.list[i];
   if (tab.pinned && !force && T.list.length > 1 && id !== T.activeId) return;
-  if (!isNewTab(tab.url)) {
-    T.closed.push({ url: tab.url, title: tab.title, favicon: tab.favicon, index: i, pinned: tab.pinned, incognito: tab.incognito });
+  const kept = !isNewTab(tab.url) && { id: `c${Date.now().toString(36)}${stashBase}${++seq}`, url: tab.url, title: tab.title, favicon: tab.favicon, index: i, pinned: tab.pinned, incognito: tab.incognito, history: null };
+  if (kept) {
+    T.closed.push(kept);
     T.closed.splice(0, Math.max(0, T.closed.length - 25));
   }
   if (T.split && (T.split.a === id || T.split.b === id)) T.split = null;
-  tab.pane?.remove();
+  // its page goes out of sight and quiet at once, and away once its back/forward list is read
+  const pane = tab.pane;
+  if (pane) {
+    pane.classList.remove('visible', 'focused');
+    try {
+      if (tab.ready) tab.webview.setAudioMuted(true);
+    } catch {
+      /* not attached */
+    }
+  }
+  snapshot(tab).then((history) => {
+    pane?.remove();
+    if (!kept) return;
+    kept.history = history;
+    // (kept after a restart too; an incognito tab never)
+    if (!kept.incognito) api.invoke('closed:add', kept).catch(() => {});
+  });
   T.list.splice(i, 1);
   emit('tab:closed', tab);
   emit('tabs:changed');
@@ -422,7 +468,8 @@ export function closeRight(id) {
 export function reopenClosed() {
   const c = T.closed.pop();
   if (!c) return null;
-  return createTab({ url: c.url, title: c.title, favicon: c.favicon, index: Math.min(c.index, T.list.length), pinned: c.pinned, incognito: c.incognito });
+  if (!c.incognito) api.invoke('closed:remove', c.id).catch(() => {});
+  return createTab({ url: c.url, title: c.title, favicon: c.favicon, index: Math.min(c.index, T.list.length), pinned: c.pinned, incognito: c.incognito, history: c.history });
 }
 
 // ---------------------------------------------------------------- tab ops
@@ -467,9 +514,12 @@ export function stop(id = T.activeId) {
   ready(id)?.webview.stop();
 }
 
-export function duplicate(id = T.activeId) {
+// (with its back/forward list, as in Chrome)
+export async function duplicate(id = T.activeId) {
   const t = byId(id);
-  if (t) createTab({ url: t.url, title: t.title, favicon: t.favicon, index: indexOf(id) + 1, incognito: t.incognito });
+  if (!t) return;
+  const history = await snapshot(t);
+  createTab({ url: t.url, title: t.title, favicon: t.favicon, index: indexOf(id) + 1, incognito: t.incognito, history });
 }
 
 export function togglePin(id = T.activeId) {
@@ -567,7 +617,8 @@ setInterval(() => {
 export const saveSession = debounce(() => {
   if (S.private) return;
   const kept = T.list.filter((t) => !t.incognito); // (incognito tabs are never restored)
-  const tabs = kept.map((t) => ({ url: t.url, title: t.title, favicon: t.favicon, pinned: t.pinned }));
+  // (an open tab's back/forward list is read from its page, a sleeping one sends the one it keeps)
+  const tabs = kept.map((t) => ({ url: t.url, title: t.title, favicon: t.favicon, pinned: t.pinned, wcId: t.ready ? t.wcId : null, history: t.ready ? null : t.history }));
   if (tabs.length) api.invoke('session:update', tabs, Math.max(0, kept.indexOf(active())));
 }, 600);
 

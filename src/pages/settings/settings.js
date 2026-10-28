@@ -1693,7 +1693,7 @@ function layout() {
       row(t('Thanh công cụ'), '', seg('layout.toolbarPosition', [['top', t('Trên')], ['bottom', t('Dưới')]])),
       vertical ? row(t('Độ rộng cột tab'), '', range('layout.verticalTabsWidth', 180, 400, 4, fmt.px)) : null,
       vertical ? row(t('Thu gọn cột tab'), '', sw('layout.verticalTabsCollapsed')) : null,
-      row(t('Thanh dấu trang'), '', sw('layout.showBookmarksBar')),
+      row(t('Thanh dấu trang'), '', seg('layout.bookmarksBar', [['always', t('Luôn hiện')], ['newtab', t('Chỉ ở trang Tab mới')], ['off', t('Tắt')]])),
       row(t('Nút đóng tab'), '', seg('layout.tabCloseButton', [['hover', t('Khi rê chuột')], ['always', t('Luôn hiện')]])),
       row(t('Bong bóng địa chỉ liên kết'), '', sw('layout.showStatusBubble'))
     ),
@@ -1723,6 +1723,7 @@ function newtab() {
       row(t('Định dạng 24 giờ'), '', sw('newtab.clock24h')),
       row(t('Hiện giây'), '', sw('newtab.showSeconds')),
       row(t('Lời chào'), '', sw('newtab.showGreeting')),
+      row(t('Nội dung lời chào'), '', text('newtab.greetingText', t('Theo giờ trong ngày'), { width: 300 })),
       row(t('Nền kính sau đồng hồ'), '', sw('newtab.heroGlass')),
       row(t('Cả khi không ẩn thanh tìm kiếm'), '', sw('newtab.heroGlassMid')),
       row(t('Ô tìm kiếm'), '', sw('newtab.showSearch')),

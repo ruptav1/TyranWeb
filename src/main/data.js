@@ -47,6 +47,12 @@ const uid = (p = '') => p + crypto.randomBytes(6).toString('hex');
 const existing = fs.existsSync(path.join(dir, 'settings.json'));
 const settings = new JsonStore(path.join(dir, 'settings.json'), SETTINGS, { delay: 250 });
 if (existing && !settings.data.general.language) settings.data.general.language = 'vi';
+// (the bookmarks bar was a switch: on is now "on the new tab page", off stays off)
+if ('showBookmarksBar' in settings.data.layout) {
+  if (settings.data.layout.showBookmarksBar === false) settings.data.layout.bookmarksBar = 'off';
+  delete settings.data.layout.showBookmarksBar;
+  settings.save();
+}
 const historyStore = new JsonStore(path.join(dir, 'history.json'), { visits: [] }, { delay: 1500 });
 const bookmarkStore = new JsonStore(path.join(dir, 'bookmarks.json'), BOOKMARKS);
 const downloadStore = new JsonStore(path.join(dir, 'downloads.json'), { items: [] });

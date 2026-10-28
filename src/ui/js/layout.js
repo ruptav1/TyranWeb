@@ -1,5 +1,5 @@
 // Applies theme, wallpaper and layout settings to the shell.
-import { api, $, on, emit, NEWTAB } from './util.js';
+import { api, $, on, emit, NEWTAB, isNewTab } from './util.js';
 import { S } from './state.js';
 import { T, active } from './tabs.js';
 import { applyTheme, densityOf, colorsOf } from 'tyran://shared/theme.js';
@@ -56,7 +56,7 @@ export function applyLayout() {
   app.dataset.close = L.tabCloseButton;
   app.classList.toggle('sidebar-open', !!L.sidebarOpen);
   app.classList.toggle('vtabs-collapsed', vertical && !!L.verticalTabsCollapsed);
-  app.classList.toggle('has-bookmarks-bar', !!L.showBookmarksBar);
+  showBookmarksBar();
   app.dataset.bm = A.clearBookmarks === false ? 'frosted' : 'clear'; // (the bookmarks bar out of liquid glass)
   app.classList.toggle('content-shadow', !!L.contentShadow);
   app.classList.toggle('private', S.private);
@@ -108,4 +108,12 @@ export function brandHtml() {
 }
 
 on('active', updateWindowTitle);
+
+// (Thanh dấu trang: on every page, on the new tab page only, or never)
+function showBookmarksBar() {
+  const mode = S.settings.layout.bookmarksBar;
+  $('#app').classList.toggle('has-bookmarks-bar', mode === 'always' || (mode === 'newtab' && isNewTab(active()?.url)));
+}
+on('active', showBookmarksBar);
+on('tab:update', (tab) => tab.id === T.activeId && showBookmarksBar());
 on('tab:update', (t) => t.id === T.activeId && updateWindowTitle());
