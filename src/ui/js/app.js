@@ -27,6 +27,7 @@ async function boot() {
   performance.mark('tyran:init');
   S.winId = init.winId;
   S.private = init.private;
+  S.otherAudio = !!init.otherAudio;
   S.settings = init.settings;
   S.shortcuts = init.shortcuts;
   S.engines = init.engines;
@@ -112,6 +113,10 @@ function wireEvents() {
   });
   api.on('bookmarks:changed', (d) => emit('bookmarks:changed', d));
   api.on('closed:cleared', () => (T.closed.length = 0)); // (with the history)
+  api.on('audio:other', (v) => {
+    S.otherAudio = v; // (something else makes sound: the new tab page's music rests)
+    emit('other-audio', v);
+  });
   api.on('tab:open', ({ url, background, openerWcId }) => {
     if (!url) return createTab();
     createTab({ url, background, openerId: byWc(openerWcId)?.id });

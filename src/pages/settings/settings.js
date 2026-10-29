@@ -594,6 +594,8 @@ function musicSection() {
         row(t('Âm lượng nhạc nền'), '', range('wallpaper.musicVolume', 0, 1, 0.05, fmt.pct))
       );
     }
+    // (main/othersound.js: a tab or another program making sound pauses it until it has been quiet a moment)
+    rows.push(row(t('Khi có âm thanh khác'), '', select('wallpaper.pauseForSound', [['apps', t('Tạm dừng (cả ứng dụng khác)')], ['tabs', t('Tạm dừng (chỉ tab khác)')], ['off', t('Vẫn phát')]])));
     box.append(stitle(t('Nhạc nền')), section_(...rows));
   });
 }

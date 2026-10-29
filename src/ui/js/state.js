@@ -9,4 +9,5 @@ export const S = {
   downloads: new Map(),
   window: { maximized: false, fullscreen: false, focused: true },
   zen: false,
+  otherAudio: false, // something else makes sound (main/othersound.js)
 };

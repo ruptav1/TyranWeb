@@ -22,6 +22,7 @@ const windows = require('./windows');
 const ipc = require('./ipc');
 const adblock = require('./adblock');
 const tabHistory = require('./tabhistory');
+const otherSound = require('./othersound');
 const { getShortcuts, toAccelerator } = require('./shortcuts');
 mark('modules');
 
@@ -169,6 +170,7 @@ app.on('web-contents-created', (event, contents) => {
   if (type === 'webview' && contents.session === sessions.wallpaper()) setupWallpaperGuest(contents);
   else if (type === 'webview' || (type === 'window' && contents.session !== session.defaultSession)) {
     if (type === 'webview') tabHistory.adopt(contents);
+    otherSound.watch(contents); // (its sound pauses the new tab page's music)
     setupGuest(contents);
   }
   if (type === 'window') {
@@ -236,8 +238,10 @@ app.whenReady().then(async () => {
         ipc.broadcast('shortcuts:changed', getShortcuts(s.shortcuts));
       }
       applyPageScheme(s);
+      otherSound.settingsChanged();
     },
   });
+  otherSound.init(ipc.broadcast);
   mark('sessions+extensions');
   await randomLobby();
   mark('randomLobby');

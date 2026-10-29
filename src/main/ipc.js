@@ -9,6 +9,7 @@ const services = require('./services');
 const windows = require('./windows');
 const adblock = require('./adblock');
 const tabHistory = require('./tabhistory');
+const otherSound = require('./othersound');
 const { getShortcuts } = require('./shortcuts');
 const { SEARCH_ENGINES, SETTINGS } = require('./defaults');
 const { t } = require('./i18n');
@@ -488,6 +489,7 @@ function register({ onSettings } = {}) {
       restore: initial.restore || null,
       url: initial.url || null,
       closed: initial.closed ? data.sessionStore.data.closed || [] : [],
+      otherAudio: otherSound.isOther(),
       settings: data.settings.data,
       shortcuts: getShortcuts(data.settings.data.shortcuts),
       engines: enginesNamed(),
@@ -544,6 +546,9 @@ function register({ onSettings } = {}) {
     windows.addClosed(BrowserWindow.fromWebContents(e.sender).id, keep);
   }, { uiOnly: true });
   handle('closed:remove', (e, id) => windows.removeClosed(String(id)), { uiOnly: true });
+  // the new tab page's music: its own players' pages, and whether it is meant to play (othersound.js)
+  handle('audio:mine', (e, wcId) => otherSound.markMine(guestOf(e, wcId)), { uiOnly: true });
+  handle('audio:listen', (e, on) => otherSound.listen(e.sender, !!on), { uiOnly: true });
 
   handle('perm:respond', (e, id, allow, remember) => sessions.respondPermission(id, allow, remember), { uiOnly: true });
   handle('share:respond', (e, id, sourceId, audio) => sessions.respondShare(String(id), String(sourceId || ''), !!audio), { uiOnly: true });

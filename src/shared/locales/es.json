@@ -1006,5 +1006,9 @@
  "Tab trình duyệt": "Pestaña del navegador",
  "Chia sẻ cả âm thanh của tab": "Compartir también el audio de la pestaña",
  "Nội dung lời chào": "Texto del saludo",
- "Theo giờ trong ngày": "Según la hora del día"
+ "Theo giờ trong ngày": "Según la hora del día",
+ "Khi có âm thanh khác": "Cuando suena otra cosa",
+ "Tạm dừng (cả ứng dụng khác)": "Pausar (también otras apps)",
+ "Tạm dừng (chỉ tab khác)": "Pausar (solo otras pestañas)",
+ "Vẫn phát": "Seguir sonando"
 }

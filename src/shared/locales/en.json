@@ -1006,5 +1006,9 @@
  "Tab trình duyệt": "Browser tab",
  "Chia sẻ cả âm thanh của tab": "Also share tab audio",
  "Nội dung lời chào": "Greeting text",
- "Theo giờ trong ngày": "By the time of day"
+ "Theo giờ trong ngày": "By the time of day",
+ "Khi có âm thanh khác": "When something else plays sound",
+ "Tạm dừng (cả ứng dụng khác)": "Pause (other apps too)",
+ "Tạm dừng (chỉ tab khác)": "Pause (other tabs only)",
+ "Vẫn phát": "Keep playing"
 }

@@ -435,6 +435,9 @@ const soundOn = () => {
   return isLobby() ? !!w.web?.audio : !!own() && w.musicOn !== false;
 };
 const ostShown = () => L().sidebarOpen && panelId === 'ost';
+// it is heard while a tab shows the lobby (layout.js), and nothing else makes sound meanwhile (a tab,
+// another program: main/othersound.js, Settings → Hình nền → Nhạc nền → Khi có âm thanh khác)
+const heard = () => S.lobbyOpen !== false && !S.otherAudio;
 
 async function lobbySong() {
   const w = S.settings.wallpaper;
@@ -660,6 +663,7 @@ function ensureOst() {
     wv.addEventListener('dom-ready', () => {
       const first = !ost.ready;
       ost.ready = true;
+      api.invoke('audio:mine', wv.getWebContentsId()).catch(() => {});
       // the lobby changed while the first page was loading: go to its song now (later pages are
       // wherever the user went)
       if (first && ost.video && !wv.getURL().includes('v=' + ost.video)) return void wv.loadURL(ostUrl(ost.video, ost.list)).catch(() => {});
@@ -811,7 +815,7 @@ async function syncOst({ force = false, resume = false, lobbyChanged = false } =
   ost.ytView.hidden = !!mine && !yt;
   ost.ownView.hidden = !mine || !!yt || mine.kind === 'files';
   ost.files.hidden = mine?.kind !== 'files';
-  syncOwn(mine && !yt ? mine : null, soundOn() && S.lobbyOpen !== false);
+  syncOwn(mine && !yt ? mine : null, soundOn() && heard());
   const video = yt ? yt.video : mine ? '' : m?.ost?.video || '';
   const pauseLobbySong = () => lobbyChanged && onLobbySong("document.querySelector('video')?.pause()");
   if (!video) {
@@ -827,7 +831,7 @@ async function syncOst({ force = false, resume = false, lobbyChanged = false } =
   if (video !== ost.video) ost.list = yt?.list || '';
   // the lobby's sound is off: no song unless it is asked for in the panel
   // ...and while no tab shows the lobby (the new tab page), its song rests too
-  if (!force && (S.lobbyOpen === false || (!soundOn() && !ostShown()))) return void pauseLobbySong();
+  if (!force && (!heard() || (!soundOn() && !ostShown()))) return void pauseLobbySong();
   if (!force && video === ost.video) return void (resume && onLobbySong("document.querySelector('video')?.play()"));
   ost.video = video;
   ost.list = yt?.list || '';
@@ -1017,6 +1021,7 @@ function startOwn() {
     if (e.channel === 'tyran:shortcut') emit('command', { id: e.args[0] });
   });
   wv.addEventListener('dom-ready', () => {
+    api.invoke('audio:mine', wv.getWebContentsId()).catch(() => {});
     if (!player.wvSig || !/^https:/.test(wv.getURL())) return; // (about:blank, between songs)
     player.started = true;
     wv.executeJavaScript(VOLUME_HOOK).then(setOwnLevel, () => {});
@@ -1042,7 +1047,7 @@ function restartOwn() {
 
 // played to the end (a single SoundCloud song, the end of a set or a Spotify list): again from the top
 setInterval(async () => {
-  if (!player.wvSig || !player.started || !soundOn() || S.lobbyOpen === false) return (player.ended = 0);
+  if (!player.wvSig || !player.started || !soundOn() || !heard()) return (player.ended = 0);
   const ended = await player.wv.executeJavaScript('window.__tyranEnded === true && !window.__tyranPlaying()').catch(() => false);
   player.ended = ended ? player.ended + 1 : 0;
   if (player.ended >= 2) {
@@ -1057,7 +1062,7 @@ let readFiles = null;
 addSpectrumSource((n) => {
   const mine = own();
   if (!mine && !(ost?.ready && ost.video)) return undefined;
-  if (!soundOn() || S.lobbyOpen === false) return null;
+  if (!soundOn() || !heard()) return null;
   if (mine?.kind === 'files') return player.audio && !player.audio.paused ? (readFiles ||= spectrumHook(() => player.audio))(n) : null;
   const wv = mine && mine.kind !== 'youtube' ? (player.wvSig && player.started ? player.wv : null) : ost?.ready ? ost.wv : null;
   return wv ? wv.executeJavaScript(`window.__tyranSpectrum ? window.__tyranSpectrum(${Number(n) || 48}) : null`) : null;
@@ -1104,8 +1109,13 @@ function syncSliders() {
 // the song follows the lobby on the wallpaper and its sound switch, the volume follows the lobby volume
 let ostKey = '';
 let ostSound = false;
+let listening = null;
 function lobbyMusic() {
-  const wanted = soundOn() && S.lobbyOpen !== false; // (a lobby tab is open: see layout.js)
+  // (while it is meant to play, main listens for other programs' sound too)
+  const w0 = S.settings.wallpaper;
+  const meant = (soundOn() || (w0.type === 'web' && !!w0.web?.audio)) && S.lobbyOpen !== false;
+  if (meant !== listening) api.invoke('audio:listen', (listening = meant)).catch(() => {});
+  const wanted = soundOn() && heard();
   if (wanted) ensureOst();
   if (!ost) return;
   const w = S.settings.wallpaper;
@@ -1125,6 +1135,7 @@ function lobbyMusic() {
 }
 on('settings', lobbyMusic);
 on('lobby-open', lobbyMusic);
+on('other-audio', lobbyMusic);
 
 let railKey = '';
 on('settings', () => {

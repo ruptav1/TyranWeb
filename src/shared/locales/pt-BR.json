@@ -1006,5 +1006,9 @@
  "Tab trình duyệt": "Aba do navegador",
  "Chia sẻ cả âm thanh của tab": "Compartilhar também o áudio da aba",
  "Nội dung lời chào": "Texto da saudação",
- "Theo giờ trong ngày": "Conforme a hora do dia"
+ "Theo giờ trong ngày": "Conforme a hora do dia",
+ "Khi có âm thanh khác": "Quando outra coisa toca som",
+ "Tạm dừng (cả ứng dụng khác)": "Pausar (outros apps também)",
+ "Tạm dừng (chỉ tab khác)": "Pausar (só outras guias)",
+ "Vẫn phát": "Continuar tocando"
 }

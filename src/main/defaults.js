@@ -78,6 +78,7 @@ const SETTINGS = {
     music: {},
     musicOn: true,
     musicVolume: 0.6,
+    pauseForSound: 'apps', // the music rests while something else makes sound: 'apps' (a tab or another program) | 'tabs' | 'off'
     slideshowMinutes: 0,
     slideshow: [],
   },

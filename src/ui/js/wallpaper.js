@@ -317,6 +317,18 @@ on('lobby-mode', () => {
 });
 
 const liveKey = (w, web = w.web || {}) => JSON.stringify([web.audio, web.model, web.preset, voiceVolume(web), !!web.touchZones, web.nikkeStance, web.nikkeTint, web.nikkeColor, web.nikkeImage, songVolume(web), web.azurMusic, !!web.azurChatter, !!ownMusic(w), web.baMode, web.senseiBirthday]);
+// a live wallpaper's own sound (its song, its voices): off with its switch, and while something else
+// makes sound (a tab, another program: main/othersound.js)
+const pageQuiet = (web) => !web?.audio || S.otherAudio;
+on('other-audio', () => {
+  if (current.kind !== 'web' || !current.wcId) return;
+  try {
+    current.el.setAudioMuted(!!current.frozen || pageQuiet(S.settings.wallpaper.web));
+  } catch {
+    /* detached */
+  }
+});
+
 function syncLive(w, force = false) {
   if (current.kind !== 'web' || !current.wcId) return;
   const web = w.web || {};
@@ -326,7 +338,7 @@ function syncLive(w, force = false) {
   liveState = state;
   const wv = current.el;
   try {
-    wv.setAudioMuted(!web.audio);
+    wv.setAudioMuted(pageQuiet(web));
   } catch {
     /* not attached yet */
   }
@@ -596,7 +608,7 @@ async function useSpare(w, st) {
   const web = w.web;
   liveState = liveKey(w);
   try {
-    wv.setAudioMuted(!web.audio);
+    wv.setAudioMuted(pageQuiet(web));
   } catch {
     /* detached */
   }
@@ -2341,7 +2353,7 @@ let pauseSeq = 0;
 async function pauseLive(wv, paused) {
   const seq = ++pauseSeq;
   try {
-    wv.setAudioMuted(paused || !S.settings.wallpaper.web?.audio);
+    wv.setAudioMuted(paused || pageQuiet(S.settings.wallpaper.web));
   } catch {
     /* detached */
   }

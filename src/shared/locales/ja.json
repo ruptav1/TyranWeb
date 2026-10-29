@@ -1006,5 +1006,9 @@
  "Tab trình duyệt": "ブラウザのタブ",
  "Chia sẻ cả âm thanh của tab": "タブの音声も共有",
  "Nội dung lời chào": "あいさつの文",
- "Theo giờ trong ngày": "時間帯に合わせる"
+ "Theo giờ trong ngày": "時間帯に合わせる",
+ "Khi có âm thanh khác": "ほかの音が鳴っているとき",
+ "Tạm dừng (cả ứng dụng khác)": "一時停止（ほかのアプリも）",
+ "Tạm dừng (chỉ tab khác)": "一時停止（ほかのタブのみ）",
+ "Vẫn phát": "再生を続ける"
 }

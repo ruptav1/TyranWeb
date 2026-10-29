@@ -1006,5 +1006,9 @@
  "Tab trình duyệt": "브라우저 탭",
  "Chia sẻ cả âm thanh của tab": "탭 오디오도 공유",
  "Nội dung lời chào": "인사말 내용",
- "Theo giờ trong ngày": "시간대에 따라"
+ "Theo giờ trong ngày": "시간대에 따라",
+ "Khi có âm thanh khác": "다른 소리가 날 때",
+ "Tạm dừng (cả ứng dụng khác)": "일시 정지 (다른 앱 포함)",
+ "Tạm dừng (chỉ tab khác)": "일시 정지 (다른 탭만)",
+ "Vẫn phát": "계속 재생"
 }
