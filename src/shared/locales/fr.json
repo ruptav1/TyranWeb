@@ -1010,5 +1010,8 @@
  "Khi có âm thanh khác": "Quand autre chose fait du son",
  "Tạm dừng (cả ứng dụng khác)": "Mettre en pause (autres applis aussi)",
  "Tạm dừng (chỉ tab khác)": "Mettre en pause (autres onglets seulement)",
- "Vẫn phát": "Continuer la lecture"
+ "Vẫn phát": "Continuer la lecture",
+ "Thanh nhạc": "Barre de musique",
+ "Tự ẩn khi không có tiếng": "Masquer quand rien ne joue",
+ "Nhận cả âm thanh từ tab khác": "Afficher aussi le son des autres onglets"
 }

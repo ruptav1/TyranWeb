@@ -1010,5 +1010,8 @@
  "Khi có âm thanh khác": "有其他声音时",
  "Tạm dừng (cả ứng dụng khác)": "暂停（包括其他应用）",
  "Tạm dừng (chỉ tab khác)": "暂停（仅其他标签页）",
- "Vẫn phát": "继续播放"
+ "Vẫn phát": "继续播放",
+ "Thanh nhạc": "音乐条",
+ "Tự ẩn khi không có tiếng": "没有声音时隐藏",
+ "Nhận cả âm thanh từ tab khác": "也显示其他标签页的声音"
 }

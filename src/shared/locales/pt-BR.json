@@ -1010,5 +1010,8 @@
  "Khi có âm thanh khác": "Quando outra coisa toca som",
  "Tạm dừng (cả ứng dụng khác)": "Pausar (outros apps também)",
  "Tạm dừng (chỉ tab khác)": "Pausar (só outras guias)",
- "Vẫn phát": "Continuar tocando"
+ "Vẫn phát": "Continuar tocando",
+ "Thanh nhạc": "Barra de música",
+ "Tự ẩn khi không có tiếng": "Ocultar quando nada toca",
+ "Nhận cả âm thanh từ tab khác": "Mostrar também o som de outras guias"
 }

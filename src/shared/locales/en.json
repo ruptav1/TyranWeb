@@ -1010,5 +1010,8 @@
  "Khi có âm thanh khác": "When something else plays sound",
  "Tạm dừng (cả ứng dụng khác)": "Pause (other apps too)",
  "Tạm dừng (chỉ tab khác)": "Pause (other tabs only)",
- "Vẫn phát": "Keep playing"
+ "Vẫn phát": "Keep playing",
+ "Thanh nhạc": "Music bar",
+ "Tự ẩn khi không có tiếng": "Hide when nothing is playing",
+ "Nhận cả âm thanh từ tab khác": "Also show sound from other tabs"
 }

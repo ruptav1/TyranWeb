@@ -1010,5 +1010,8 @@
  "Khi có âm thanh khác": "ほかの音が鳴っているとき",
  "Tạm dừng (cả ứng dụng khác)": "一時停止（ほかのアプリも）",
  "Tạm dừng (chỉ tab khác)": "一時停止（ほかのタブのみ）",
- "Vẫn phát": "再生を続ける"
+ "Vẫn phát": "再生を続ける",
+ "Thanh nhạc": "ミュージックバー",
+ "Tự ẩn khi không có tiếng": "音がないときは隠す",
+ "Nhận cả âm thanh từ tab khác": "ほかのタブの音も表示"
 }

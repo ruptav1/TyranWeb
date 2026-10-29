@@ -7,8 +7,10 @@
 // Azur Lane lobby page), never the characters' voices. Each place gives its levels through a source
 // added here (addSpectrumSource); a page measures its own media with spectrumHook.
 // Turned on, the bar still keeps out of sight: it listens, comes out (its start) once the music is
-// heard, and goes away (its end) a little after the music stops or the wallpaper has none.
-import { on } from './util.js';
+// heard, and goes away (its end) a little after the music stops or the wallpaper has none (Tự ẩn
+// khi không có tiếng; turned off, it stays). With Nhận cả âm thanh từ tab khác, while the wallpaper's
+// music is not heard it shows the sound of a tab that makes some (measured in that page: ipc.js).
+import { api, on } from './util.js';
 import { S } from './state.js';
 import { active } from './tabs.js';
 
@@ -76,17 +78,26 @@ export function addSpectrumSource(fn, rank = 5) {
   sources.push({ fn, rank });
   sources.sort((a, b) => a.rank - b.rank);
 }
-async function levelsNow(n) {
-  for (const s of sources) {
-    let v = null;
-    try {
-      v = await s.fn(n);
-    } catch {
-      v = null; // (a page not ready to be asked)
-    }
-    if (v !== undefined) return Array.isArray(v) ? v : null;
+const ask = async (s, n) => {
+  try {
+    return await s.fn(n);
+  } catch {
+    return null; // (a page not ready to be asked)
   }
-  return null;
+};
+const heardIn = (v) => Array.isArray(v) && v.some((x) => x > 30);
+async function levelsNow(n) {
+  let v;
+  for (const s of sources) {
+    v = await ask(s, n);
+    if (v !== undefined) break;
+  }
+  // (the wallpaper's music first; while it is not heard, a tab's sound)
+  if (!heardIn(v) && S.settings?.newtab?.visualizerTabs) {
+    const tab = await api.invoke('spectrum:tab', n).catch(() => undefined);
+    if (heardIn(tab)) return tab;
+  }
+  return Array.isArray(v) ? v : null;
 }
 
 // ---------------------------------------------------------------- the bar
@@ -114,6 +125,7 @@ let lastFrame = 0;
 
 const visible = () => !!S.lobby || /^tyran:\/\/newtab\/?$/i.test(active()?.url || '');
 const shown = () => !!S.settings?.newtab?.visualizer;
+const autoHide = () => S.settings?.newtab?.visualizerAutoHide !== false;
 const animated = () => S.settings?.appearance?.animations !== false;
 const INTRO = 1.3; // seconds: the lines (0-0.5), the line fading (0.5-1.0), the bars coming out (1.0-1.3)
 const OUTRO = 1.0;
@@ -138,6 +150,7 @@ function come(on) {
 
 function apply() {
   if (!shown()) come(false);
+  else if (!autoHide()) come(true); // (it stays out, flat while nothing is heard)
   run();
 }
 
@@ -172,7 +185,7 @@ async function listenNow() {
     const t = performance.now() / 1000;
     if (v && v.some((x) => x > 30)) lastHeard = t;
     if (!shown()) return;
-    if (t - lastHeard < 0.2) come(true);
+    if (!autoHide() || t - lastHeard < 0.2) come(true);
     else if (t - lastHeard > QUIET) come(false);
     // (the louder parts stand out: a curve on the levels, the highs lifted a little as they are quieter)
     const raw = Float32Array.from({ length: BARS }, (_, i) => (v ? Math.min(1, (Math.max(0, (v[i] || 0) - 28) / 227) ** 1.35 * (0.9 + (0.4 * i) / BARS)) : 0));
@@ -272,6 +285,7 @@ function frame(nowMs) {
 }
 
 export function initVisualizer() {
+  api.invoke('spectrum:code', String(spectrumHook)).catch(() => {}); // (for measuring in tabs)
   on('settings', apply);
   for (const ev of ['active', 'tabs:changed', 'lobby-mode']) on(ev, run);
   apply();

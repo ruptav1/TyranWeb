@@ -1010,5 +1010,8 @@
  "Khi có âm thanh khác": "다른 소리가 날 때",
  "Tạm dừng (cả ứng dụng khác)": "일시 정지 (다른 앱 포함)",
  "Tạm dừng (chỉ tab khác)": "일시 정지 (다른 탭만)",
- "Vẫn phát": "계속 재생"
+ "Vẫn phát": "계속 재생",
+ "Thanh nhạc": "음악 바",
+ "Tự ẩn khi không có tiếng": "소리가 없으면 숨기기",
+ "Nhận cả âm thanh từ tab khác": "다른 탭의 소리도 표시"
 }

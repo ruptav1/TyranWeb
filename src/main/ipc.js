@@ -14,6 +14,8 @@ const { getShortcuts } = require('./shortcuts');
 const { SEARCH_ENGINES, SETTINGS } = require('./defaults');
 const { t } = require('./i18n');
 
+const SPECTRUM_WORLD = 1077; // (the bar's measuring in tabs: a script world of its own)
+
 const isInternal = (e) => (e.senderFrame?.url || '').startsWith('tyran://');
 const isUI = (e) => (e.senderFrame?.url || '').startsWith('tyran://app/');
 
@@ -549,6 +551,20 @@ function register({ onSettings } = {}) {
   // the new tab page's music: its own players' pages, and whether it is meant to play (othersound.js)
   handle('audio:mine', (e, wcId) => otherSound.markMine(guestOf(e, wcId)), { uiOnly: true });
   handle('audio:listen', (e, on) => otherSound.listen(e.sender, !!on), { uiOnly: true });
+  // Thanh nhạc → Nhận cả âm thanh từ tab khác: the levels of this window's tab that makes sound,
+  // measured in a world of its own in the page (the page cannot see or change it); undefined: no tab
+  // makes sound. The measuring code is the bar's own (visualizer.js spectrumHook), given once.
+  let spectrumCode = '';
+  handle('spectrum:code', (e, code) => (spectrumCode = String(code || '')), { uiOnly: true });
+  handle('spectrum:tab', async (e, n) => {
+    const wc = otherSound.audibleGuest(e.sender);
+    if (!wc) return undefined;
+    n = Math.max(1, Math.min(128, n | 0));
+    const run = (code) => wc.executeJavaScriptInIsolatedWorld(SPECTRUM_WORLD, [{ code }]).catch(() => null);
+    let v = await run(`typeof window.__tyranSpectrum === 'function' ? window.__tyranSpectrum(${n}) : 'install'`);
+    if (v === 'install' && spectrumCode) v = await run(`(${spectrumCode})()(${n})`);
+    return Array.isArray(v) ? v.slice(0, n).map((x) => Math.max(0, Math.min(255, Number(x) | 0))) : null;
+  }, { uiOnly: true });
 
   handle('perm:respond', (e, id, allow, remember) => sessions.respondPermission(id, allow, remember), { uiOnly: true });
   handle('share:respond', (e, id, sourceId, audio) => sessions.respondShare(String(id), String(sourceId || ''), !!audio), { uiOnly: true });

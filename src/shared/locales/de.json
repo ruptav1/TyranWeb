@@ -1010,5 +1010,8 @@
  "Khi có âm thanh khác": "Wenn etwas anderes Ton abspielt",
  "Tạm dừng (cả ứng dụng khác)": "Pausieren (auch andere Apps)",
  "Tạm dừng (chỉ tab khác)": "Pausieren (nur andere Tabs)",
- "Vẫn phát": "Weiter abspielen"
+ "Vẫn phát": "Weiter abspielen",
+ "Thanh nhạc": "Musikleiste",
+ "Tự ẩn khi không có tiếng": "Ausblenden, wenn nichts spielt",
+ "Nhận cả âm thanh từ tab khác": "Auch Ton aus anderen Tabs zeigen"
 }

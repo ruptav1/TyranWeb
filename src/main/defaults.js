@@ -111,7 +111,9 @@ const SETTINGS = {
     showAnime: false,
     showCredit: false, // wallpaper name in the corner
     hideTools: false, // search bar + shortcuts faded out; the clock moves to the top-left corner
-    visualizer: false, // the music's spectrum along the foot of the wallpaper (its own music only)
+    visualizer: false, // the music's spectrum along the foot of the wallpaper (Thanh nhạc)
+    visualizerAutoHide: true, // ...out of sight while nothing is heard
+    visualizerTabs: false, // ...the sound of a tab too, when the wallpaper's music is not playing
     heroGlass: true, // the glass pane behind the clock in that corner (clicking the clock toggles it)
     heroGlassMid: false, // ...and behind it in the middle too, with the search bar and shortcuts shown
     positions: { shown: null, hidden: null }, // dragged places ("Sắp xếp"): { hero|search|dial: { x, y } } as fractions

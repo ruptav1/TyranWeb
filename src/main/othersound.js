@@ -152,4 +152,13 @@ function settingsChanged() {
 
 const isOther = () => other;
 
-module.exports = { init, watch, markMine, listen, settingsChanged, isOther };
+// a page of this window (a tab, a web panel) making sound now, not one of the music's own players
+function audibleGuest(host) {
+  for (const id of pages) {
+    const wc = webContents.fromId(id);
+    if (wc && !wc.isDestroyed() && !mine.has(id) && wc.hostWebContents === host && wc.isCurrentlyAudible()) return wc;
+  }
+  return null;
+}
+
+module.exports = { init, watch, markMine, listen, settingsChanged, isOther, audibleGuest };

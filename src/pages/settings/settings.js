@@ -1732,6 +1732,13 @@ function newtab() {
       row(t('Tên hình nền'), '', sw('newtab.showCredit')),
       row(t('Ẩn thanh tìm kiếm và lối tắt'), '', sw('newtab.hideTools'))
     ),
+    // (the music's spectrum along the foot of the wallpaper: ui/js/visualizer.js)
+    stitle(t('Thanh nhạc')),
+    section_(
+      row(t('Hiện thanh nhạc'), '', sw('newtab.visualizer')),
+      row(t('Tự ẩn khi không có tiếng'), '', sw('newtab.visualizerAutoHide')),
+      row(t('Nhận cả âm thanh từ tab khác'), '', sw('newtab.visualizerTabs'))
+    ),
     stitle(t('Lối tắt')),
     section_(
       row(t('Hiện lối tắt (speed dial)'), '', sw('newtab.showSpeedDial')),
