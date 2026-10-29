@@ -113,11 +113,20 @@ function writeUserIndex(list) {
 }
 
 // Videos get a poster frame from the Windows shell thumbnailer (none when no codec is installed).
+// (a video's size on disk, for its tile: Settings → Hình nền → Video, the store's Đã tải)
 function userEntry(w) {
   const url = `tyran://userdata/${w.file}`;
   if (w.type !== 'video') return { ...w, type: 'image', kind: 'user', url, thumb: url };
   const poster = w.file + '.thumb.jpg';
-  return { ...w, kind: 'user', url, thumb: fs.existsSync(path.join(USER_WALLPAPERS, poster)) ? `tyran://userdata/${poster}` : '' };
+  let bytes = w.bytes || 0;
+  if (!bytes) {
+    try {
+      bytes = fs.statSync(path.join(USER_WALLPAPERS, w.file)).size;
+    } catch {
+      /* gone */
+    }
+  }
+  return { ...w, bytes, kind: 'user', url, thumb: fs.existsSync(path.join(USER_WALLPAPERS, poster)) ? `tyran://userdata/${poster}` : '' };
 }
 
 function userWallpapers() {
@@ -137,6 +146,17 @@ function listWallpapers() {
     folder: USER_WALLPAPERS,
     live: liveWallpapers(),
   };
+}
+
+// what was measured of a video when it was shown (its resolution, its length), kept with it
+function updateUserWallpaper(file, patch) {
+  const list = readUserIndex();
+  const w = list.find((x) => x.file === file);
+  if (!w) return null;
+  const num = (v) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Math.round(Number(v) * 10) / 10 : undefined);
+  for (const k of ['width', 'height', 'duration']) if (num(patch?.[k]) !== undefined) w[k] = num(patch[k]);
+  writeUserIndex(list);
+  return userEntry(w);
 }
 
 function addUserWallpaper(file, meta) {
@@ -267,8 +287,16 @@ function checkFolderSize(dir, max) {
 async function importLiveWallpaper(win) {
   const r = await dialog.showOpenDialog(win, { title: t('Chọn thư mục hình nền web (có file index.html)'), properties: ['openDirectory'] });
   if (r.canceled || !r.filePaths[0]) return null;
-  const src = path.resolve(r.filePaths[0]);
+  return installLiveFolder(r.filePaths[0]);
+}
+
+// A web wallpaper's folder copied in as a package (livewp://<id>/): a Wallpaper Engine web project, a
+// Lively web wallpaper or a bare index.html. extra: where it came from (Web động → Special:
+// main/specials.js) — its page, repository, licence.
+async function installLiveFolder(folder, extra = {}) {
+  const src = path.resolve(folder);
   let entry = 'index.html';
+  let kind = 'web';
   let title = path.basename(src);
   let preview = '';
   const we = readJson(path.join(src, 'project.json'));
@@ -277,6 +305,7 @@ async function importLiveWallpaper(win) {
     entry = we.file || entry;
     title = we.title || title;
     preview = we.preview || '';
+    kind = 'we';
   }
   const lively = readJson(path.join(src, 'LivelyInfo.json'));
   if (lively) {
@@ -284,7 +313,9 @@ async function importLiveWallpaper(win) {
     entry = lively.FileName || entry;
     title = lively.Title || title;
     preview = lively.Thumbnail || lively.Preview || '';
+    kind = 'lively';
   }
+  if (kind === 'web' && extra.title) title = extra.title; // (a bare page: its repository's name, not the zip's folder)
   entry = String(entry).replace(/\\/g, '/').replace(/^\/+/, '');
   const inside = (p) => p.startsWith(src + path.sep);
   const entryPath = path.normalize(path.join(src, entry));
@@ -299,7 +330,8 @@ async function importLiveWallpaper(win) {
     previewFile = `live-${id}${path.extname(previewPath).toLowerCase()}`;
     fs.copyFileSync(previewPath, path.join(USER_WALLPAPERS, previewFile));
   }
-  const item = { id, title: String(title).slice(0, 120), entry, preview: previewFile, added: Date.now() };
+  const from = { page: String(extra.page || '').slice(0, 300), repo: String(extra.repo || '').slice(0, 200), license: String(extra.license || '').slice(0, 40), source: String(extra.source || '').slice(0, 40) };
+  const item = { id, title: String(title).slice(0, 120), entry, preview: previewFile, kind, ...Object.fromEntries(Object.entries(from).filter(([, v]) => v)), added: Date.now() };
   writeLiveIndex([item, ...readLiveIndex()]);
   return { ...item, thumb: previewFile ? `tyran://userdata/${previewFile}` : '' };
 }
@@ -325,7 +357,8 @@ function liveUrl(web = {}) {
   if (web.preset === 'azurlane') return require('./azurlane').pageUrl(String(web.azur || ''), String(web.azurSkin || ''));
   if (web.preset === 'sekai') return require('./sekai').pageUrl(String(web.sekai || ''), String(web.sekaiOutfit || ''));
   if (web.preset === 'url') return /^https:\/\/\S+$/i.test(web.url || '') ? web.url : null;
-  if (web.preset === 'package') {
+  // (Special: a package installed from GitHub, Settings → Web động → Special)
+  if (web.preset === 'package' || web.preset === 'special') {
     const item = readLiveIndex().find((w) => w.id === web.package);
     if (!item || !fs.existsSync(path.join(LIVE_WALLPAPERS, item.id))) return null;
     return `livewp://${item.id}/${item.entry.split('/').map(encodeURIComponent).join('/')}`;
@@ -1251,8 +1284,12 @@ module.exports = {
   listWallpapers,
   importLocalWallpaper,
   importLocalVideo,
+  addUserWallpaper,
+  updateUserWallpaper,
+  makePoster,
   downloadVideo,
   importLiveWallpaper,
+  installLiveFolder,
   removeLiveWallpaper,
   liveUrl,
   blueArchiveModels,

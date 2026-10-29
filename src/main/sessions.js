@@ -362,6 +362,7 @@ async function clearPrivate() {
 }
 
 module.exports = {
+  cleanUserAgent,
   PARTITION,
   PRIVATE_PARTITION,
   WALLPAPER_PARTITION,

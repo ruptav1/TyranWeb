@@ -141,7 +141,7 @@ function select(path, options, after) {
 // The wallpaper's source. NIKKE and Azur Lane, still being tried out, sit under a frosted pane with a
 // lock until the password is given (once: it is remembered); a press on the pane asks for it.
 function sourceSeg() {
-  const el = seg('wallpaper.web.preset', [['bluearchive', 'Blue Archive'], ['nikke', 'NIKKE'], ['azurlane', 'Azur Lane'], ['sekai', 'Project SEKAI'], ['url', t('Trang web')], ['package', t('Gói nền web')]], () => render());
+  const el = seg('wallpaper.web.preset', [['bluearchive', 'Blue Archive'], ['nikke', 'NIKKE'], ['azurlane', 'Azur Lane'], ['sekai', 'Project SEKAI'], ['special', 'Special'], ['url', t('Trang web')], ['package', t('Gói nền web')]], () => render());
   if (get('general.labsUnlocked')) return el;
   const locked = [...el.querySelectorAll('button')].filter((b) => b._value === 'nikke' || b._value === 'azurlane');
   const wrap = h('span', { class: 'seg-locked' });
@@ -502,6 +502,7 @@ function wallpaperSection() {
       extra.push(...nextLobbySection(), stitle(t('Học sinh')), baPicker());
     }
     if (preset === 'package') extra.push(...liveLibrary());
+    if (preset === 'special') extra.push(...specialPicker());
     if (preset === 'nikke') extra.push(stitle(t('Nhân vật')), charPicker(GAMES.nikke));
     if (preset === 'azurlane') extra.push(stitle(t('Tàu')), charPicker(GAMES.azurlane));
     if (preset === 'sekai') extra.push(stitle(t('Nhân vật')), charPicker(GAMES.sekai));
@@ -1028,12 +1029,35 @@ function useVideo(url) {
   set('wallpaper.video', url);
 }
 
+// a video's resolution, size and length under its name (read from the file once when not known: kept)
+const fmtSize = (n) => (n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(1)} GB` : n >= 1024 ** 2 ? `${(n / 1024 ** 2).toFixed(1)} MB` : n ? `${Math.round(n / 1024)} KB` : '');
+function videoInfo(tile, v) {
+  const show = () => {
+    const parts = [v.width && v.height ? `${v.width}×${v.height}` : '', fmtSize(v.bytes), v.duration ? `${Math.floor(v.duration / 60)}:${String(Math.round(v.duration % 60)).padStart(2, '0')}` : ''].filter(Boolean);
+    tile.querySelector('.wp-info').textContent = parts.join(' · ');
+  };
+  show();
+  if (v.kind !== 'user' || (v.width && v.duration)) return;
+  const p = document.createElement('video');
+  p.preload = 'metadata';
+  p.muted = true;
+  p.addEventListener('loadedmetadata', async () => {
+    const patch = { width: p.videoWidth, height: p.videoHeight, duration: p.duration };
+    p.removeAttribute('src');
+    p.load();
+    Object.assign(v, (await api.invoke('wallpapers:meta', v.file, patch).catch(() => null)) || patch);
+    show();
+  });
+  p.src = v.url;
+}
+
 function videoTile(v) {
   const tile = h('div', { class: 'wp-item', title: v.title || '' });
   tile.innerHTML = `${v.thumb ? `<img src="${esc(v.thumb)}" loading="lazy" alt="">` : `<video src="${esc(v.url)}#t=1" muted preload="metadata"></video>`}
-    <span class="wp-cap">${esc(v.title || t('Video'))}</span>
+    <span class="wp-cap">${esc(v.title || t('Video'))}<span class="wp-info"></span></span>
     <span class="wp-check">${icon('check', 14)}</span>${v.kind === 'linked' ? `<span class="wp-linked" title="${t('Từ thư mục liên kết')}">${icon('link', 12)}</span>` : ''}
     ${v.kind === 'user' ? `<button class="wp-del solo" title="${t('Xóa video')}">${icon('trash', 14)}</button>` : ''}`;
+  videoInfo(tile, v);
   // short muted preview on hover
   let hover = null;
   tile.addEventListener('mouseenter', () => {
@@ -1505,6 +1529,197 @@ function liveTile(p) {
     refresh();
   });
   return bind(tile, () => tile.classList.toggle('on', S.wallpaper.type === 'web' && S.wallpaper.web.preset === 'package' && S.wallpaper.web.package === p.id));
+}
+
+// ---------------------------------------------------------------- Web động → Special
+// Interactive web wallpapers from GitHub (main/specials.js): repositories tagged for Wallpaper Engine
+// or Lively that hold a web wallpaper. The ones installed first, then a search; a tile not installed
+// is installed (its progress on it) and used, an installed one used. They run as imported packages
+// do, with Wallpaper Engine's / Lively's API (protocol.js liveApi).
+const SPECIAL_KIND = { we: 'Wallpaper Engine', lively: 'Lively', web: 'Web' };
+const special = { q: '', page: 0, items: [], seen: new Set(), hidden: 0, busy: false, ended: false, error: '', jobs: new Map() };
+const fmtStars = (n) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+
+function useSpecial(id) {
+  set('wallpaper.type', 'web');
+  set('wallpaper.web.preset', 'special');
+  set('wallpaper.web.package', id);
+  refresh();
+}
+const specialOn = (id) => S.wallpaper.type === 'web' && S.wallpaper.web.preset === 'special' && S.wallpaper.web.package === id;
+
+function specialPicker() {
+  const installed = () => wallpapers.live.filter((p) => p.repo);
+  const mine = h('div', { class: 'wp-grid' });
+  const mineTitle = stitle(t('Đã cài'));
+  const drawMine = () => {
+    mine.replaceChildren(...installed().map((p) => {
+      const tile = h('div', { class: 'wp-item', title: `${p.title}\n${p.repo}` });
+      tile.innerHTML = `${p.thumb ? `<img src="${esc(p.thumb)}" loading="lazy" alt="">` : `<span class="wp-ph">${icon('globe', 28)}</span>`}
+        <span class="wp-cap">${esc(p.title)}<span class="wp-info">${esc([SPECIAL_KIND[p.kind] || '', p.license || ''].filter(Boolean).join(' · '))}</span></span>
+        <span class="wp-check">${icon('check', 14)}</span>
+        <button class="wp-del solo" title="${t('Xóa')}">${icon('trash', 14)}</button>`;
+      tile.addEventListener('click', async (e) => {
+        if (e.target.closest('.wp-del')) {
+          await api.invoke('wallpapers:removeWeb', p.id);
+          if (S.wallpaper.web.package === p.id) set('wallpaper.web.package', '');
+          await loadWallpapers();
+          return render();
+        }
+        useSpecial(p.id);
+      });
+      return bind(tile, () => tile.classList.toggle('on', specialOn(p.id)));
+    }));
+    mine.hidden = mineTitle.hidden = !mine.children.length;
+  };
+  drawMine();
+
+  const input = h('input', { type: 'search', class: 'input', placeholder: t('Tìm hình nền tương tác…'), style: { flex: '1' }, value: special.q });
+  const go = h('button', { type: 'button', class: 'btn primary small', text: t('Tìm') });
+  const count = h('span', { class: 'muted small' });
+  const results = h('div', { class: 'wp-grid' });
+  const more = h('button', { type: 'button', class: 'btn', text: t('Xem thêm'), hidden: true });
+  const status = () => {
+    const parts = [];
+    if (special.busy) parts.push(t('Đang tìm…'));
+    else if (special.page) parts.push(t('{0} hình nền', special.items.length));
+    if (special.hidden) parts.push(t('đã ẩn {0} kho không có hình nền', special.hidden));
+    if (special.error) parts.push(special.error);
+    count.textContent = parts.join(' · ');
+    more.hidden = special.busy || !special.page || special.ended;
+  };
+  const pkgOf = (it) => installed().find((p) => p.repo === it.id);
+  const thumbOf = (it) => it.preview || `https://opengraph.githubassets.com/1/${it.id}`;
+  const fill = (tile, it) => {
+    const img = tile.querySelector('img');
+    if (img.getAttribute('src') !== thumbOf(it)) img.src = thumbOf(it);
+    tile.title = `${it.title || it.name}\n${it.id}${it.desc ? '\n\n' + it.desc : ''}`;
+    tile.querySelector('.wp-cap').firstChild.textContent = it.title || it.name;
+    tile.querySelector('.wp-info').textContent = [SPECIAL_KIND[it.kind] || '', `★ ${fmtStars(it.stars)}`, it.license, fmtSize(it.size)].filter(Boolean).join(' · ');
+    const job = special.jobs.get(it.id);
+    tile.querySelector('.wp-bar')?.remove();
+    if (job) tile.append(h('span', { class: 'wp-bar', html: `<i style="width:${job.total ? Math.round((job.got / job.total) * 100) : 4}%"></i>` }));
+    tile.classList.toggle('have', !!pkgOf(it));
+  };
+  const tileOf = (it) => results.querySelector(`.wp-item[data-id="${CSS.escape(it.id)}"]`);
+  // a repository is looked into once its tile comes into sight: does it hold a wallpaper?
+  const looking = [];
+  let lookers = 0;
+  const pump = () => {
+    while (lookers < 4 && looking.length) {
+      const it = looking.shift();
+      lookers++;
+      api.invoke('specials:inspect', it.id, it.branch).then(
+        (r) => Object.assign(it, { looked: true, kind: r.kind, title: r.title || '', preview: r.preview || '' }),
+        () => Object.assign(it, { looked: true, kind: '' })
+      ).then(() => {
+        lookers--;
+        if (!it.kind) {
+          special.items = special.items.filter((x) => x !== it);
+          special.hidden++;
+          tileOf(it)?.remove();
+          status();
+        } else if (tileOf(it)) fill(tileOf(it), it);
+        pump();
+      });
+    }
+  };
+  const sight = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      sight.unobserve(e.target);
+      const it = special.items.find((x) => x.id === e.target.dataset.id);
+      if (it && !it.looked) looking.push(it);
+    }
+    pump();
+  }, { rootMargin: '300px' });
+  const install = async (it) => {
+    special.jobs.set(it.id, { got: 0, total: it.size || 0 });
+    if (tileOf(it)) fill(tileOf(it), it);
+    try {
+      const p = await api.invoke('specials:install', { id: 'gh:' + it.id, full: it.id, branch: it.branch, license: it.license, size: it.size });
+      special.jobs.delete(it.id);
+      await loadWallpapers();
+      drawMine();
+      useSpecial(p.id);
+      toast(t('Đã thêm “{0}” ✿', p.title));
+    } catch (e) {
+      special.jobs.delete(it.id);
+      if (!/abort/i.test(errText(e))) toast(t('Không cài được: {0}', it.title || it.name));
+    }
+    if (tileOf(it)) fill(tileOf(it), it);
+  };
+  const tileFor = (it) => {
+    const tile = h('div', { class: 'wp-item', dataset: { id: it.id } });
+    tile.innerHTML = `<img loading="lazy" alt=""><span class="wp-cap"><span></span><span class="wp-info"></span></span>
+      <span class="wp-check">${icon('check', 14)}</span>
+      <button class="wp-del solo" title="${t('Mở trên GitHub')}">${icon('external', 14)}</button>`;
+    tile.querySelector('img').addEventListener('error', (e) => e.target.src !== `https://opengraph.githubassets.com/1/${it.id}` && (e.target.src = `https://opengraph.githubassets.com/1/${it.id}`));
+    fill(tile, it);
+    tile.addEventListener('click', (e) => {
+      if (e.target.closest('.wp-del')) return openUrl(it.url, true);
+      if (special.jobs.has(it.id)) return;
+      const p = pkgOf(it);
+      if (p) useSpecial(p.id);
+      else install(it);
+    });
+    return bind(tile, () => tile.classList.toggle('on', !!pkgOf(it) && specialOn(pkgOf(it).id)));
+  };
+  const load = async () => {
+    if (special.busy || special.ended) return;
+    special.busy = true;
+    special.error = '';
+    status();
+    const q = special.q;
+    const p = special.page + 1;
+    try {
+      const r = await api.invoke('specials:search', q, p);
+      if (q !== special.q) return;
+      special.page = p;
+      const fresh = r.items.filter((it) => !special.seen.has(it.id));
+      if (!fresh.length) special.ended = true;
+      for (const it of fresh) {
+        special.seen.add(it.id);
+        special.items.push(it);
+      }
+      for (const it of fresh) {
+        const tile = tileFor(it);
+        results.append(tile);
+        sight.observe(tile);
+      }
+    } catch (e) {
+      special.error = /rate/.test(errText(e)) ? t('GitHub đang giới hạn lượt tìm, thử lại sau ít phút') : t('Không kết nối được GitHub');
+    } finally {
+      special.busy = false;
+      status();
+    }
+  };
+  const search = () => {
+    Object.assign(special, { q: input.value.trim(), page: 0, items: [], hidden: 0, ended: false, error: '' });
+    special.seen.clear();
+    looking.length = 0;
+    results.replaceChildren();
+    load();
+  };
+  go.addEventListener('click', search);
+  input.addEventListener('keydown', (e) => e.key === 'Enter' && search());
+  more.addEventListener('click', load);
+  const off = api.on('livewalls:progress', ({ id, got, total }) => {
+    const it = special.items.find((x) => 'gh:' + x.id === id);
+    if (!it || !special.jobs.has(it.id)) return;
+    special.jobs.set(it.id, { got, total });
+    if (tileOf(it)) fill(tileOf(it), it);
+    if (!results.isConnected) off();
+  });
+  // (what was found stays when the section is drawn again)
+  for (const it of special.items) {
+    const tile = tileFor(it);
+    results.append(tile);
+    if (!it.looked) sight.observe(tile);
+  }
+  status();
+  if (!special.page && !special.busy) load();
+  return [mineTitle, mine, stitle('Special'), h('div', { class: 'row-line', style: { display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' } }, input, go), h('div', { style: { marginBottom: '8px' } }, count), results, h('div', { style: { display: 'flex', justifyContent: 'center', margin: '10px 0' } }, more)];
 }
 
 function liveLibrary() {

@@ -100,6 +100,9 @@ async function levelsNow(n) {
   return Array.isArray(v) ? v : null;
 }
 
+// (a web wallpaper that listens for the music, as Wallpaper Engine's and Lively's do: wallpaper.js)
+export const musicLevels = (n) => levelsNow(n);
+
 // ---------------------------------------------------------------- the bar
 // As in Blue Archive's OST videos (MO2's): 63 plain white bars with square corners and a soft
 // shadow to the lower right, across the middle 82% of the width, a bar 2/3 of its step, the lowest

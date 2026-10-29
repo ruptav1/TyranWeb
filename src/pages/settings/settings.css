@@ -228,6 +228,32 @@ code {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* (a Special wallpaper being installed: Web động → Special) */
+.wp-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.3);
+}
+.wp-bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s linear;
+}
+.wp-info {
+  display: block;
+  overflow: hidden;
+  font-size: 10.5px;
+  font-weight: 500;
+  opacity: 0.85;
+  text-overflow: ellipsis;
+}
+.wp-info:empty {
+  display: none;
+}
 .wp-check {
   position: absolute;
   top: 7px;

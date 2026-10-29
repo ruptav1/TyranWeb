@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' tyran:; script-src 'self' tyran:; style-src 'self' tyran: 'unsafe-inline'; img-src * data: blob: tyran:; media-src https: blob: tyran:; connect-src 'self' tyran:" />
+    <title>Kho nền video</title>
+    <link rel="icon" href="tyran://shared/logo.svg" />
+    <link rel="stylesheet" href="tyran://shared/base.css" />
+    <link rel="stylesheet" href="tyran://shared/page.css" />
+    <link rel="stylesheet" href="store.css" />
+    <script type="module" src="store.js"></script>
+  </head>
+  <body>
+    <canvas id="sora" hidden></canvas>
+    <main class="store">
+      <aside class="store-side">
+        <nav class="store-tabs" role="tablist">
+          <button class="tab on" data-tab="find" role="tab"><span data-icon="search" data-size="15"></span><span>Tìm kiếm</span></button>
+          <button class="tab" data-tab="mine" role="tab"><span data-icon="download" data-size="15"></span><span>Đã tải</span><b id="mine-count"></b></button>
+        </nav>
+        <div class="store-find" data-for="find">
+          <form id="search" class="store-search">
+            <span data-icon="search" data-size="18"></span>
+            <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="Tìm nền video…" />
+            <button class="btn primary" type="submit">Tìm</button>
+          </form>
+          <div class="store-filters">
+            <div id="sites" class="chips"></div>
+            <span class="grow"></span>
+            <select id="res" class="input">
+              <option value="0">Mọi độ phân giải</option>
+              <option value="1080">Từ 1080p</option>
+              <option value="1440">Từ 1440p</option>
+              <option value="2160">4K</option>
+            </select>
+          </div>
+          <div id="status" class="store-status"></div>
+        </div>
+      </aside>
+      <section class="store-results">
+        <div data-for="find">
+          <div id="grid" class="store-grid"></div>
+          <div class="store-more"><button id="more" class="btn" hidden>Xem thêm</button></div>
+        </div>
+        <div data-for="mine" hidden>
+          <div id="mine-grid" class="store-grid"></div>
+        </div>
+      </section>
+    </main>
+    <dialog id="detail" class="store-detail"></dialog>
+  </body>
+</html>

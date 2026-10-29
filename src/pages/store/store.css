@@ -1,0 +1,418 @@
+/* Kho nền video: the store's own page, in the app's own look. With Blue Archive's lobby as the
+   wallpaper (html.shop, at the end) Sora's shop is drawn behind it: the store's two parts move to
+   the sides, as glass panels (liquid glass or frosted, as the app's bars), and Sora stands between. */
+.store {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 22px 28px 60px;
+}
+.store-tabs {
+  display: inline-flex;
+  gap: 4px;
+  margin-bottom: 14px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+.store-tabs .tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  cursor: pointer;
+}
+.store-tabs .tab.on {
+  background: var(--surface-solid);
+  color: var(--text);
+  box-shadow: 0 1px 4px var(--shadow-color);
+}
+.store-tabs .tab b {
+  font-weight: 600;
+  color: var(--text-3);
+}
+.store-tabs .tab b:empty {
+  display: none;
+}
+
+.store-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 50px;
+  padding: 0 6px 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--field);
+  color: var(--text-3);
+}
+.store-search:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.18);
+}
+.store-search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 1.08em;
+}
+.store-search .btn {
+  border-radius: 999px;
+  height: 38px;
+  padding: 0 20px;
+}
+.store-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 6px;
+}
+.store-filters .grow {
+  flex: 1;
+}
+.store-filters select {
+  width: auto;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-3);
+  font: inherit;
+  font-size: 0.92em;
+  cursor: pointer;
+}
+.chip.on {
+  border-color: rgba(var(--accent-rgb), 0.5);
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--text);
+}
+.chip.bad {
+  text-decoration: line-through;
+}
+.store-status {
+  min-height: 22px;
+  margin: 4px 2px 10px;
+  color: var(--text-3);
+  font-size: 0.9em;
+}
+
+.store-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 16px;
+}
+.card {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line), 0 4px 14px var(--shadow-color);
+  cursor: pointer;
+  transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.45), 0 10px 24px var(--shadow-color);
+}
+.card .thumb {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: var(--surface-3);
+}
+.card .thumb img,
+.card .thumb video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.card .meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 12px 11px;
+}
+.card .title {
+  overflow: hidden;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  color: var(--text-3);
+  font-size: 0.82em;
+}
+.facts span {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  white-space: nowrap;
+}
+.facts .res {
+  color: var(--text);
+  font-weight: 600;
+}
+.facts .site {
+  background: transparent;
+  padding-left: 0;
+}
+.badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 0.8em;
+  backdrop-filter: blur(6px);
+}
+.bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.25);
+}
+.bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s linear;
+}
+.store-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 22px;
+}
+.store-empty {
+  grid-column: 1 / -1;
+  padding: 50px 0;
+  color: var(--text-3);
+  text-align: center;
+}
+
+/* a wallpaper's own view */
+.store-detail {
+  width: min(980px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--surface-solid);
+  color: var(--text);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+  overflow: auto;
+}
+.store-detail::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+}
+.store-detail .view {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  max-height: 56vh;
+  margin: 0 auto;
+  background: #000;
+}
+.store-detail .view video,
+.store-detail .view img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.store-detail .close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+}
+.store-detail .body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px 20px;
+}
+.store-detail h2 {
+  margin: 0;
+  font-size: 1.25em;
+}
+.store-detail .desc {
+  margin: 0;
+  color: var(--text-2);
+}
+.files {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.file {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.file .what {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+}
+.file .what b {
+  min-width: 3em;
+}
+.file .what span {
+  color: var(--text-2);
+}
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.tags span {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-3);
+  font-size: 0.82em;
+}
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ---------------------------------------------------------------- Sora's shop behind (Blue Archive) */
+#sora {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  touch-action: none;
+}
+html.shop,
+html.shop body {
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+}
+/* the two parts at the sides, the middle left to Sora (clicks there reach her) */
+html.shop .store {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(250px, 22vw) 1fr minmax(300px, 30vw);
+  gap: 16px;
+  max-width: none;
+  height: 100%;
+  margin: 0;
+  padding: 16px;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+html.shop .store-side,
+html.shop .store-results {
+  align-self: start;
+  max-height: 100%;
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  box-sizing: border-box;
+  pointer-events: auto;
+}
+html.shop .store-side {
+  grid-column: 1;
+  align-self: stretch; /* (as tall as the window: the shop may end behind it) */
+}
+html.shop .store-results {
+  grid-column: 3;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+html.shop .store-search .btn {
+  padding: 0 14px;
+}
+html.shop .store-filters select {
+  width: 100%;
+}
+html.shop .store-grid {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+html.shop .store-more {
+  margin-top: 14px;
+}
+/* frosted glass (the app's glass and solid bars) */
+html.shop .store-side,
+html.shop .store-results {
+  background: var(--island-strong);
+  backdrop-filter: blur(var(--frost-blur)) saturate(1.5);
+  box-shadow: inset 0 0 0 1px var(--line), 0 8px 26px rgba(0, 0, 0, 0.18);
+}
+/* liquid glass (the app's see-through bars): its bright rim and sheen, but over a panel of text a
+   fill of the theme's surface and a deeper blur, so the words stay readable on any part of the shop */
+html.shop[data-chrome='clear'] .store-side,
+html.shop[data-chrome='clear'] .store-results {
+  background: linear-gradient(180deg, var(--liquid-hi), transparent 50%), var(--island);
+  backdrop-filter: blur(calc(var(--island-blur) + 16px)) saturate(1.3);
+  box-shadow: inset 0 1px 0 var(--liquid-rim), inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 8px 26px rgba(0, 0, 0, 0.18);
+}
+/* what sits on the panels: a fill of its own (the page's are made for its solid background) */
+html.shop .chip {
+  border-color: var(--line);
+  background: var(--field);
+  color: var(--text-2);
+}
+html.shop .chip.on {
+  border-color: rgba(var(--accent-rgb), 0.6);
+  background: rgba(var(--accent-rgb), 0.24);
+  color: var(--text);
+}
+html.shop .store-status {
+  color: var(--text-2);
+}
+html.shop .store-tabs {
+  background: var(--field);
+}
+html.shop .card {
+  background: var(--island-strong);
+}
+html.shop .facts span {
+  background: var(--field);
+}

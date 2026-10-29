@@ -96,6 +96,7 @@ export const COMMANDS = {
   // (as in Chrome: shown on every page, or on the new tab page only)
   'bookmark.bar': { icon: 'bookmark', run: () => api.invoke('settings:set', { layout: { bookmarksBar: S.settings.layout.bookmarksBar === 'always' ? 'newtab' : 'always' } }) },
   'open.history': { icon: 'history', run: () => openInternal('history/') },
+  'open.store': { icon: 'video', run: () => openInternal('store/') },
   'open.downloads': { icon: 'download', run: () => openInternal('downloads/') },
   'open.bookmarks': { icon: 'bookmark', run: () => openInternal('bookmarks/') },
   'open.settings': { icon: 'sliders', run: () => openInternal('settings/') },
@@ -368,6 +369,7 @@ export function openMainMenu(anchor) {
     { sep: true },
     { label: t('Đổi theme tiếp theo'), icon: 'palette', hint: k('theme.next'), run: () => run('theme.next') },
     { label: t('Đổi hình nền'), icon: 'shuffle', hint: k('wallpaper.next'), run: () => run('wallpaper.next') },
+    { label: t('Kho nền video'), icon: 'video', run: () => run('open.store') },
     { label: t('Chế độ Lobby'), icon: 'tv', hint: k('wallpaper.lobby'), run: () => run('wallpaper.lobby') },
     { label: t('Tùy biến giao diện…'), icon: 'sparkles', run: () => openInternal('settings/#appearance') },
     { label: t('Chế độ tập trung'), icon: 'eye', hint: k('window.zen'), run: () => run('window.zen') },

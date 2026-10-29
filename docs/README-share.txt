@@ -1,4 +1,4 @@
-TyranWeb 1.1.72 — trình duyệt anime (Windows 10/11, 64-bit)
+TyranWeb 1.1.73 — trình duyệt anime (Windows 10/11, 64-bit)
 ==========================================================
 
 CÁCH CHẠY
@@ -21,6 +21,16 @@ CẦN INTERNET CHO
 - Nhạc sảnh và nhạc nền: YouTube Music (link YouTube cũng dùng được), SoundCloud, Spotify;
   danh sách học sinh (SchaleDB)
 - Cài tiện ích từ Chrome Web Store
+- Kho nền video (nút máy quay ở trang Tab mới, hoặc menu ⋯ → Kho nền video): tìm nền video động
+  cùng lúc trên MoeWalls, MotionBGs và WallpaperWaifu, tải về vào Hình nền → Video kèm độ phân
+  giải, dung lượng, thời lượng. Nền được các web đó gắn nhãn AI thì bị ẩn. Video thuộc về tác giả
+  của chúng, TyranWeb chỉ tải khi bạn bấm.
+- Shop của Sora (Kho nền video, khi hình nền là sảnh Blue Archive): mô hình và giọng của Sora từ
+  BA-Spine-Viewer-Asset của asdfdsa12, nhạc shop "Irasshaimase" (BGM 17) từ kho tài nguyên của
+  ba-archive; tải về một lần (khoảng 5 MB).
+- Hình nền tương tác Special (Cài đặt → Hình nền → Web động → Special): hình nền web của Wallpaper
+  Engine / Lively đăng trên GitHub (kho gắn thẻ wallpaper-engine, lively-wallpaper,
+  live-wallpaper; danh sách file đọc qua jsDelivr). Mỗi hình nền theo giấy phép riêng của tác giả.
 - Hình nền NIKKE (152 nhân vật, 215 trang phục): mỗi nhân vật (cùng mọi trang phục của mình) phải
   tải về một lần trước khi dùng, ở Cài đặt → Hình nền → Web động → NIKKE (5-80 MB, thường khoảng
   27 MB mỗi nhân vật; mô hình từ Nikke-db, giọng

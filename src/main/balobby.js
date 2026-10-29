@@ -288,4 +288,7 @@ function song() {
   return { key: 'normal', name: 'Lobby', ost: track ? { n: LOBBY_BGM, video: track.id, title: track.title || `OST ${LOBBY_BGM}` } : { n: LOBBY_BGM, video: '', title: '' } };
 }
 
-module.exports = { withSprites, pageUrl, song, linesOf, HOME };
+// (the store page's Sora shop draws with the same runtime: main/sorashop.js)
+const runtimeFile = () => path.join(HOME, RUNTIME.file);
+
+module.exports = { withSprites, pageUrl, song, linesOf, HOME, runtime, runtimeFile };

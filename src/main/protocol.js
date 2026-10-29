@@ -24,7 +24,7 @@ const LIVE_WALLPAPERS = path.join(userDir, 'live');
 // Folders linked as wallpapers (used in place, not copied): id -> folder, served as tyran://linked/<id>/...
 const LINKED_FILE = path.join(userDir, 'linked-folders.json');
 const linkedRoot = (id) => (readJson(LINKED_FILE) || []).find((f) => f.id === id)?.path || '';
-const PAGES = ['newtab', 'settings', 'history', 'bookmarks', 'downloads'];
+const PAGES = ['newtab', 'settings', 'history', 'bookmarks', 'downloads', 'store'];
 
 const HOSTS = {
   app: path.join(ROOT, 'src', 'ui'),
@@ -32,6 +32,7 @@ const HOSTS = {
   assets: path.join(ROOT, 'assets'),
   userdata: USER_WALLPAPERS,
   fonts: path.join(userDir, 'fonts'), // (the user's own fonts: main/fonts.js)
+  sorashop: path.join(LIVE_WALLPAPERS, 'sora-shop'), // (Sora's shop for the store page: main/sorashop.js)
 };
 for (const p of PAGES) HOSTS[p] = path.join(ROOT, 'src', 'pages', p);
 
@@ -91,11 +92,52 @@ async function handle(request) {
   return serveFile(request, root, p.rel, longCache ? 'max-age=31536000' : 'no-cache');
 }
 
+// ---- Wallpaper Engine's and Lively's web API, for an imported web wallpaper package: the page
+// gets it before its own scripts (a script put first in its <head>). Its user properties at their
+// defaults (project.json, LivelyProperties.json), the music's levels pushed in by TyranWeb
+// (wallpaper.js: __tyranAudio, 64 left + 64 right, 0..1), the media listeners present but quiet.
+const PACKAGE = /^w[0-9a-f]{12}$/;
+function liveApi(dir) {
+  const we = readJson(path.join(dir, 'project.json'))?.general?.properties || null;
+  const lively = readJson(path.join(dir, 'LivelyProperties.json'));
+  const props = lively ? Object.fromEntries(Object.entries(lively).filter(([, v]) => v && 'value' in v && v.type !== 'button').map(([k, v]) => [k, v.value])) : null;
+  return `(() => {
+  const P = ${JSON.stringify({ we, lively: props }).replace(/</g, '\\u003c')};
+  const audio = [];
+  window.wallpaperRegisterAudioListener = (fn) => { if (typeof fn === 'function') audio.push(fn); console.debug('tyran:audio'); };
+  for (const n of ['wallpaperRegisterMediaStatusListener', 'wallpaperRegisterMediaPropertiesListener', 'wallpaperRegisterMediaThumbnailListener', 'wallpaperRegisterMediaPlaybackListener', 'wallpaperRegisterMediaTimelineListener', 'wallpaperRequestRandomFileForProperty']) window[n] = () => {};
+  window.__tyranAudio = (a) => {
+    for (const fn of audio) try { fn(a); } catch {}
+    if (typeof window.livelyAudioListener === 'function') try { window.livelyAudioListener(a); } catch {}
+  };
+  addEventListener('load', () => {
+    const l = window.wallpaperPropertyListener;
+    try { l && l.applyGeneralProperties && l.applyGeneralProperties({ fps: 60 }); } catch {}
+    try { P.we && l && l.applyUserProperties && l.applyUserProperties(P.we); } catch {}
+    if (P.lively && typeof window.livelyPropertyListener === 'function') for (const k in P.lively) try { window.livelyPropertyListener(k, P.lively[k]); } catch {}
+    if (typeof window.livelyAudioListener === 'function') console.debug('tyran:audio');
+  });
+})();`;
+}
+
 // livewp://<package-id>/index.html
 async function handleLive(request) {
   const p = parse(request);
   if (!p || !/^[a-z0-9-]+$/.test(p.url.hostname)) return new Response('Bad request', { status: 400 });
-  const res = await serveFile(request, path.join(LIVE_WALLPAPERS, p.url.hostname), p.rel, 'no-cache');
+  const dir = path.join(LIVE_WALLPAPERS, p.url.hostname);
+  if (PACKAGE.test(p.url.hostname)) {
+    if (p.rel === '/__tyran/api.js') return new Response(liveApi(dir), { headers: { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-cache' } });
+    if (/\.html?$/i.test(p.rel)) {
+      const res = await serveFile(request, dir, p.rel, 'no-cache');
+      if (res.status !== 200) return res;
+      const html = await res.text();
+      const tag = '<script src="/__tyran/api.js"></script>';
+      const at = /<head(\s[^>]*)?>/i.exec(html); // (not <header>)
+      const out = at ? html.slice(0, at.index + at[0].length) + tag + html.slice(at.index + at[0].length) : tag + html;
+      return new Response(out, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' } });
+    }
+  }
+  const res = await serveFile(request, dir, p.rel, 'no-cache');
   // (the Azur Lane lobby songs, shared by its pages, may be measured by them for the spectrum bar)
   if (p.url.hostname === 'azur-music') res.headers.set('Access-Control-Allow-Origin', '*');
   return res;

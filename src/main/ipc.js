@@ -213,6 +213,25 @@ function register({ onSettings } = {}) {
   handle('wallpapers:list', () => services.listWallpapers());
   handle('wallpapers:import', (e) => services.importLocalWallpaper(BrowserWindow.fromWebContents(e.sender.hostWebContents || e.sender)));
   handle('wallpapers:remove', (e, file) => services.removeUserWallpaper(file));
+  // ---- Kho nền video (tyran://store: main/livewalls.js), and Sora's shop for it (main/sorashop.js)
+  handle('livewalls:page', (e, url) => require('./livewalls').page(url));
+  handle('livewalls:download', async (e, item) => {
+    const entry = await require('./livewalls').download(e.sender, item);
+    broadcast('wallpapers:changed');
+    return entry;
+  });
+  handle('livewalls:cancel', (e, id) => require('./livewalls').cancel(id));
+  handle('wallpapers:meta', (e, file, patch) => services.updateUserWallpaper(String(file || ''), patch));
+  handle('sorashop:prepare', () => require('./sorashop').prepare());
+  // Web động → Special: interactive web wallpapers on GitHub (main/specials.js)
+  handle('specials:search', (e, q, page) => require('./specials').search(q, page));
+  handle('specials:inspect', (e, full, branch) => require('./specials').inspect(String(full || ''), String(branch || '')));
+  handle('specials:install', async (e, item) => {
+    const entry = await require('./specials').install(e.sender, item);
+    broadcast('wallpapers:changed');
+    return entry;
+  });
+  handle('specials:cancel', (e, id) => require('./specials').cancel(id));
   handle('wallpapers:search', (e, q) => services.searchWallhaven(q));
   handle('wallpapers:wallhaven', (e, item) => services.downloadWallhaven(item));
   handle('wallpapers:fromUrl', (e, url) => services.downloadImage(url, { source: url }));

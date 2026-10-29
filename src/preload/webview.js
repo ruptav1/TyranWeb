@@ -50,7 +50,7 @@ window.addEventListener(
 );
 
 if (location.protocol === 'tyran:') {
-  const EVENTS = new Set(['settings:changed', 'shortcuts:changed', 'bookmarks:changed', 'history:changed', 'downloads:update', 'downloads:done', 'downloads:changed', 'ba:preview', 'wallpapers:changed', 'extensions:changed', 'nikke:progress', 'nikke:changed', 'nikke:cards', 'azur:progress', 'azur:changed', 'azur:cards', 'sekai:progress', 'sekai:changed', 'sekai:cards', 'data:progress', 'adblock:braveProgress', 'update:state']);
+  const EVENTS = new Set(['settings:changed', 'shortcuts:changed', 'bookmarks:changed', 'history:changed', 'downloads:update', 'downloads:done', 'downloads:changed', 'ba:preview', 'wallpapers:changed', 'extensions:changed', 'nikke:progress', 'nikke:changed', 'nikke:cards', 'azur:progress', 'azur:changed', 'azur:cards', 'sekai:progress', 'sekai:changed', 'sekai:cards', 'data:progress', 'adblock:braveProgress', 'update:state', 'livewalls:progress']);
   contextBridge.exposeInMainWorld('tyran', {
     invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
     on(channel, cb) {

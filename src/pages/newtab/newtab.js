@@ -258,6 +258,7 @@ $('#stance').onclick = () => api.invoke('settings:set', { wallpaper: { web: { ni
 let baLobbies = null; // (the lobbies, once: which have a normal lobby)
 $('#ba-mode').onclick = () => api.invoke('settings:set', { wallpaper: { web: { baMode: S.wallpaper.web?.baMode === 'normal' ? 'memorial' : 'normal' } } });
 $('#customize').onclick = () => openUrl('tyran://settings/#appearance');
+$('#store').onclick = () => openUrl('tyran://store/');
 // hide / show the search bar and the shortcuts from the page itself (remembered like a setting)
 $('#toggle-dial').addEventListener('click', () => api.invoke('settings:set', { newtab: { hideTools: !S.newtab.hideTools } }));
 

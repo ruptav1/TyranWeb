@@ -174,7 +174,7 @@ export function musicKey(w) {
   if (w.type === 'video') return w.video ? 'video:' + w.video : '';
   if (w.type !== 'web') return '';
   if (web.preset === 'bluearchive') return web.model ? 'ba:' + web.model : '';
-  if (web.preset === 'package') return web.package ? 'package:' + web.package : '';
+  if (web.preset === 'package' || web.preset === 'special') return web.package ? 'package:' + web.package : '';
   if (web.preset === 'nikke') return 'nikke:' + (web.nikke || 'c010');
   if (web.preset === 'azurlane') return web.azur ? 'azur:' + web.azur : '';
   if (web.preset === 'sekai') return web.sekai ? 'sekai:' + web.sekai : '';

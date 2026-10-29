@@ -7,7 +7,7 @@ import { active } from './tabs.js';
 import { toast } from './menus.js';
 import { wallpaperStyle, frameCss, colorsOf, rgbToHsl, ownMusic } from 'tyran://shared/theme.js';
 import { icon } from 'tyran://shared/icons.js';
-import { addSpectrumSource } from './visualizer.js';
+import { addSpectrumSource, musicLevels } from './visualizer.js';
 import { t } from 'tyran://shared/i18n.js';
 
 const WALLPAPER_PARTITION = 'persist:tyran-wallpaper';
@@ -262,11 +262,35 @@ async function buildWeb(w) {
   return [wv, ready];
 }
 
+// An imported web wallpaper that listens for the music (Wallpaper Engine's / Lively's audio listener,
+// given by protocol.js liveApi) gets TyranWeb's: the spectrum bar's levels (the wallpaper's music, or
+// a tab's), as 64 left + 64 right from 0 to 1, about 30 times a second while it is shown.
+let audioPump = 0;
+function pumpAudio(wv) {
+  clearInterval(audioPump);
+  let busy = false;
+  audioPump = setInterval(async () => {
+    if (!wv.isConnected) return clearInterval(audioPump);
+    if (busy || current.el !== wv || current.frozen) return;
+    busy = true;
+    try {
+      const v = await musicLevels(64);
+      const l = Array.from({ length: 64 }, (_, i) => (v ? Math.round(((v[i] || 0) / 255) * 1000) / 1000 : 0));
+      await wv.executeJavaScript(`window.__tyranAudio && __tyranAudio(${JSON.stringify([...l, ...l])})`);
+    } catch {
+      /* (between pages) */
+    } finally {
+      busy = false;
+    }
+  }, 33);
+}
+
 // What a live page says and does while it is the one shown
 function watchLive(wv) {
   // the Blue Archive page says when a student starts and stops talking (the lobby music dips meanwhile)
   wv.addEventListener('console-message', (e) => {
     const msg = String(e.message ?? '');
+    if (msg === 'tyran:audio') return pumpAudio(wv); // (an imported wallpaper listening for the music)
     if (current.el !== wv) return;
     const m = /^tyran:talk:([01])$/.exec(msg);
     if (m) emit('lobby-talk', m[1] === '1');
@@ -2304,11 +2328,12 @@ async function afterIntro(wv, js, key, run) {
 
 // Presses on the new tab's empty background (once its search bar and shortcuts are hidden) reach
 // the Blue Archive lobby as real mouse input: tap to talk, drag on the head to pat, drag
-// elsewhere and she follows with her eyes.
+// elsewhere and she follows with her eyes. The same for the other games' characters and for an
+// imported web wallpaper (a click, a drag on it).
 export function lobbyTouch(tab, { type, x, y } = {}) {
   const ev = { down: 'mouseDown', move: 'mouseMove', up: 'mouseUp' }[type];
   const w = S.settings.wallpaper;
-  if (!ev || current.kind !== 'web' || !current.wcId || current.frozen || !['bluearchive', 'nikke', 'azurlane', 'sekai'].includes(w.web?.preset)) return;
+  if (!ev || current.kind !== 'web' || !current.wcId || current.frozen || !['bluearchive', 'nikke', 'azurlane', 'sekai', 'package', 'special'].includes(w.web?.preset)) return;
   const page = tab.webview?.getBoundingClientRect();
   const wall = current.el.getBoundingClientRect();
   if (!page || !Number.isFinite(x) || !Number.isFinite(y)) return;
