@@ -223,6 +223,18 @@ function register({ onSettings } = {}) {
   handle('livewalls:cancel', (e, id) => require('./livewalls').cancel(id));
   handle('wallpapers:meta', (e, file, patch) => services.updateUserWallpaper(String(file || ''), patch));
   handle('sorashop:prepare', () => require('./sorashop').prepare());
+  // Dọn rác (main/cleaner.js)
+  // Truy tìm video (main/sniffer.js): what a tab plays, and downloading one of them
+  handle('media:list', (e, wcId) => require('./sniffer').list(guestOf(e, wcId).id), { uiOnly: true });
+  handle('media:download', (e, wcId, id, variant) => require('./sniffer').download(guestOf(e, wcId), String(id || ''), Number.isInteger(variant) ? variant : undefined), { uiOnly: true });
+  handle('cleaner:measure', () => require('./cleaner').measure());
+  handle('cleaner:clean', (e, what) => require('./cleaner').clean({ app: !!what?.app, temp: !!what?.temp }));
+  // Cloudflare WARP (main/warp.js): its state, where the pages come from, and the user's presses
+  handle('warp:state', async () => {
+    const warp = require('./warp');
+    return { ...(await warp.state()), where: await warp.where() };
+  });
+  handle('warp:action', (e, what) => require('./warp').action(String(what || '')));
   // Web động → Special: interactive web wallpapers on GitHub (main/specials.js)
   handle('specials:search', (e, q, page) => require('./specials').search(q, page));
   handle('specials:inspect', (e, full, branch) => require('./specials').inspect(String(full || ''), String(branch || '')));

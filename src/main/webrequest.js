@@ -5,8 +5,8 @@
 // to the next step.
 //  - onBeforeRequest: 'https' (HTTPS-only, privacy.js), 'adblock'
 //  - onBeforeSendHeaders: 'cookies' (third-party cookies, privacy.js), 'dnt' (sessions.js)
-//  - onHeadersReceived: 'adblock' (its CSP rules), 'cookies'
-const ORDER = ['https', 'adblock', 'cookies', 'dnt'];
+//  - onHeadersReceived: 'adblock' (its CSP rules), 'cookies', 'media' (Truy tìm video: sniffer.js, looks only)
+const ORDER = ['https', 'adblock', 'cookies', 'dnt', 'media'];
 const hubs = new WeakMap(); // session -> { event: Map(name -> step) }
 
 function stepsOf(ses, event) {

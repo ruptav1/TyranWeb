@@ -2109,6 +2109,10 @@ function privacy() {
         toast(t('Đã xóa dữ liệu ✿'));
       }, { ic: 'trash', cls: 'primary' }))
     ),
+    stitle('Cloudflare WARP'),
+    warpSection(),
+    stitle(t('Dọn rác')),
+    cleanerSection(),
     stitle(t('Quyền đã cấp cho trang web')),
     perms.length
       ? h('div', { class: 'section' }, ...perms.map(([origin, p]) => row(hostOf(origin) || origin, Object.entries(p).map(([k, v]) => `${PERM_NAMES[k] || k}: ${v === 'allow' ? t('cho phép') : t('chặn')}`).join(' · '), button(t('Đặt lại'), async () => {
@@ -2118,6 +2122,81 @@ function privacy() {
         }, { cls: 'small' }))))
       : h('p', { class: 'muted', text: t('Chưa có trang nào được cấp hoặc bị chặn quyền.') }),
   ];
+}
+
+// Cloudflare WARP (main/warp.js): the switch, WARP's state and where the pages come from now, and
+// the one thing to press for: getting WARP (not installed), its proxy mode (in its VPN mode), or a
+// new connection (often another IP)
+function warpSection() {
+  const status = h('span', { class: 'muted', text: '…' });
+  const actions = h('span', { style: { display: 'inline-flex', gap: '6px' } });
+  const press = (what) => async (e) => {
+    const b = e.currentTarget;
+    b.disabled = true;
+    status.textContent = '…';
+    try {
+      await api.invoke('warp:action', what);
+    } catch (err) {
+      toast(errText(err) || t('Không điều khiển được WARP'));
+    }
+    draw();
+  };
+  async function draw() {
+    const s = await api.invoke('warp:state').catch(() => null);
+    actions.replaceChildren();
+    if (!s) return void (status.textContent = '');
+    if (!s.installed) {
+      status.textContent = t('Chưa cài WARP');
+      return void actions.append(button(t('Tải WARP'), () => openUrl('https://one.one.one.one/', true), { ic: 'external', cls: 'small' }));
+    }
+    const w = s.where;
+    status.textContent = [
+      s.proxy ? (s.connected ? t('Đã kết nối') : t('Chưa kết nối')) : t('WARP đang ở chế độ VPN'),
+      w?.ip ? `IP ${w.ip}${w.loc ? ` (${w.loc})` : ''}` : '',
+      w?.warp ? `warp=${w.warp}` : '',
+    ].filter(Boolean).join(' · ');
+    if (!s.proxy) actions.append(button(t('Chuyển WARP sang chế độ proxy'), press('proxy'), { cls: 'small' }));
+    else actions.append(button(t('Đổi IP'), press('renew'), { ic: 'reload', cls: 'small' }));
+  }
+  draw();
+  const toggle = sw('privacy.warp');
+  toggle.addEventListener('change', () => setTimeout(draw, 3000));
+  return section_(row(t('Đi qua Cloudflare WARP'), '', toggle), row(t('Trạng thái'), '', status, actions));
+}
+
+// Dọn rác (main/cleaner.js): how much there is (measured when shown), what to clear, by itself
+// once a week, and now
+function cleanerSection() {
+  const appSize = h('span', { class: 'muted', text: '…' });
+  const tempSize = h('span', { class: 'muted', text: '…' });
+  const last = h('span', { class: 'muted' });
+  const measure = async () => {
+    const m = await api.invoke('cleaner:measure').catch(() => null);
+    appSize.textContent = m ? fmtSize(m.app) || '0 KB' : '';
+    tempSize.textContent = m ? t('{0} · {1} tệp', fmtSize(m.temp) || '0 KB', m.tempFiles.toLocaleString(LOCALE)) : '';
+  };
+  const showLast = () => (last.textContent = S.privacy.cleanedAt ? t('Lần dọn gần nhất: {0}', new Date(S.privacy.cleanedAt).toLocaleDateString(LOCALE)) : '');
+  showLast();
+  measure();
+  const now = button(t('Dọn ngay'), async (e) => {
+    const b = e.currentTarget;
+    b.disabled = true;
+    try {
+      const r = await api.invoke('cleaner:clean', { app: S.privacy.cleanApp !== false, temp: !!S.privacy.cleanTemp });
+      toast(r.left ? t('Đã dọn {0} · {1} tệp đang được dùng nên giữ lại', fmtSize(r.freed) || '0 KB', r.left) : t('Đã dọn {0} ✿', fmtSize(r.freed) || '0 KB'));
+      S.privacy.cleanedAt = Date.now();
+      showLast();
+      measure();
+    } finally {
+      b.disabled = false;
+    }
+  }, { ic: 'trash', cls: 'primary' });
+  return section_(
+    row(t('Rác của TyranWeb'), '', appSize, sw('privacy.cleanApp')),
+    row(t('Tệp tạm của Windows (cũ hơn 7 ngày)'), '', tempSize, sw('privacy.cleanTemp')),
+    row(t('Tự dọn mỗi tuần'), '', last, sw('privacy.autoClean')),
+    row('', '', now)
+  );
 }
 
 // ---------------------------------------------------------------- shortcuts

@@ -170,6 +170,7 @@ app.on('web-contents-created', (event, contents) => {
   if (type === 'webview' && contents.session === sessions.wallpaper()) setupWallpaperGuest(contents);
   else if (type === 'webview' || (type === 'window' && contents.session !== session.defaultSession)) {
     if (type === 'webview') tabHistory.adopt(contents);
+    require('./sniffer').guest(contents); // (Truy tìm video: its list starts again with each page)
     otherSound.watch(contents); // (its sound pauses the new tab page's music)
     setupGuest(contents);
   }
@@ -239,13 +240,17 @@ app.whenReady().then(async () => {
       }
       applyPageScheme(s);
       otherSound.settingsChanged();
+      if (!!s.privacy?.warp !== !!prev.privacy?.warp) require('./warp').sync().catch(() => {});
     },
   });
   otherSound.init(ipc.broadcast);
+  require('./sniffer').init(ipc.broadcast);
   mark('sessions+extensions');
   await randomLobby();
   mark('randomLobby');
   startup();
+  require('./cleaner').auto(); // (Dọn rác, once a week)
+  if (data.settings.data.privacy?.warp) require('./warp').sync().catch(() => {}); // (through Cloudflare WARP)
 });
 
 let cleaned = false;

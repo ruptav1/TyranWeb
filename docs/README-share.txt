@@ -1,4 +1,4 @@
-TyranWeb 1.1.73 — trình duyệt anime (Windows 10/11, 64-bit)
+TyranWeb 1.1.74 — trình duyệt anime (Windows 10/11, 64-bit)
 ==========================================================
 
 CÁCH CHẠY
@@ -70,6 +70,17 @@ GHI CHÚ
   tắt app. Tab mở lại khi khởi động và tab ngủ cũng giữ các trang đó.
 - Nhạc nền của trang Tab mới tự tạm dừng khi một tab hay một ứng dụng khác đang phát tiếng, và
   phát tiếp khi đã im vài giây (Cài đặt → Hình nền → Nhạc nền → Khi có âm thanh khác).
+- Tải video trên mọi trang: khi trang đang phát video, cạnh nút chặn quảng cáo hiện nút máy
+  quay; bấm vào để thấy các video của trang (file mp4/webm/mov... và luồng HLS .m3u8, kèm chất
+  lượng, dung lượng, thời lượng) và tải về mục Tải xuống. Luồng HLS được ghép thành một file
+  .mp4. Không tải được video có DRM (Netflix, Spotify...) và phát trực tiếp; YouTube không hiện ở
+  đây. Chỉ tải video bạn có quyền tải.
+- Dọn rác (Cài đặt → Quyền riêng tư → Dọn rác): bộ nhớ đệm và file tải dở của TyranWeb, file tạm
+  của Windows cũ hơn 7 ngày; dọn ngay hoặc tự dọn mỗi tuần. File đang được dùng thì giữ lại.
+- Đổi IP / VPN (Cài đặt → Quyền riêng tư → Cloudflare WARP): cần cài ứng dụng Cloudflare WARP
+  (miễn phí, 1.1.1.1) và để nó ở chế độ proxy (có nút chuyển). Bật "Đi qua Cloudflare WARP" thì
+  chỉ TyranWeb đi qua WARP; "Đổi IP" kết nối lại để lấy IP khác. IP do Cloudflare cấp, không
+  chọn được quốc gia.
 - Mẹo: Ctrl+Shift+L để vào chế độ Lobby; ở trang tab mới, bấm nút con mắt để ẩn thanh tìm
   kiếm rồi bấm vào nền để trò chuyện với học sinh. Ctrl+Alt+N mở tab ẩn danh.
 
@@ -83,5 +94,5 @@ BẢN QUYỀN
 - Dự án cá nhân, phi thương mại.
 - TyranWeb dùng giấy phép GNU AGPL-3.0 (LICENSE.txt), vì có dùng code của ba-archive
   (github.com/ba-archive/blue-archive, AGPL-3.0). Mã nguồn: https://github.com/ruptav1/TyranWeb Thư viện gsap (GreenSock) theo giấy phép miễn phí
-  của nó; bộ chạy Spine chính thức của Esoteric Software được tải về khi cần, theo giấy phép Spine
+  của nó; mux.js (Brightcove, Apache-2.0) ghép video HLS khi tải; bộ chạy Spine chính thức của Esoteric Software được tải về khi cần, theo giấy phép Spine
   Runtimes.

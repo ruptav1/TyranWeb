@@ -1,7 +1,7 @@
 {
   "name": "tyranweb",
   "productName": "TyranWeb",
-  "version": "1.1.73",
+  "version": "1.1.74",
   "description": "Trình duyệt web chủ đề anime 2000–2010, UI clean và tùy biến tự do.",
   "main": "src/main/main.js",
   "author": "TyranWeb",
@@ -52,7 +52,8 @@
   },
   "dependencies": {
     "@ghostery/adblocker-electron": "2.20.1",
-    "gsap": "3.13.0"
+    "gsap": "3.13.0",
+    "mux.js": "6.3.0"
   },
   "devDependencies": {
     "electron": "44.7.2",

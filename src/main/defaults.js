@@ -137,6 +137,13 @@ const SETTINGS = {
     blockThirdPartyCookies: false, // (main/privacy.js)
     httpsOnly: false,
     clearOnExit: false,
+    // Dọn rác (main/cleaner.js): TyranWeb's caches and leftovers, Windows' temp files older than a week,
+    // by itself once a week at start; when it was last done
+    cleanApp: true,
+    cleanTemp: true,
+    autoClean: true,
+    cleanedAt: 0,
+    warp: false, // the pages through Cloudflare WARP's proxy (main/warp.js)
   },
   shortcuts: {},
   sitePermissions: {},

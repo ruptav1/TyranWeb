@@ -17,6 +17,7 @@ export const TOOLBAR_ITEMS = {
   home: { label: t('Trang chủ'), icon: 'home', cmd: 'nav.home' },
   omnibox: { label: t('Thanh địa chỉ') },
   adblock: { label: t('Chặn quảng cáo'), icon: 'shieldCheck' },
+  media: { label: t('Video trên trang'), icon: 'video' },
   downloads: { label: t('Tải xuống'), icon: 'download' },
   split: { label: t('Chia đôi màn hình'), icon: 'split', cmd: 'split.toggle' },
   screenshot: { label: t('Chụp màn hình'), icon: 'camera', cmd: 'page.screenshot' },
@@ -37,6 +38,7 @@ export const TOOLBAR_ITEMS = {
 
 let bar = null;
 const btns = {};
+const mediaEarly = new Map(); // (Truy tìm video: a page's first videos, from before its tab knew its webContents id)
 
 export function buildToolbar() {
   bar = h('div', { id: 'toolbar' });
@@ -52,6 +54,8 @@ export function renderToolbar(force = false) {
   // (Tiện ích: shown, before the menu, once an extension is installed; unless the user hid it)
   if (!order.includes('extensions')) order.splice(Math.max(0, order.indexOf('menu')), 0, 'extensions');
   if (!EXT.list.length) hidden.add('extensions');
+  // (Truy tìm video: after the adblock button, shown while the tab has videos; unless the user hid it)
+  if (!order.includes('media')) order.splice(order.includes('adblock') ? order.indexOf('adblock') + 1 : Math.max(0, order.indexOf('menu')), 0, 'media');
   for (const id of Object.keys(TOOLBAR_ITEMS)) if (!order.includes(id)) order.push(id), hidden.add(id);
   hidden.delete('omnibox');
   hidden.delete('menu');
@@ -71,6 +75,7 @@ export function renderToolbar(force = false) {
       el = h('button', { class: `icon-btn tb-${id}`, title: keys ? `${def.label} (${keys})` : def.label, html: icon(def.icon, 17) });
       if (id === 'menu') el.addEventListener('click', () => openMainMenu(el));
       else if (id === 'adblock') el.addEventListener('click', () => adblockPopover(el));
+      else if (id === 'media') el.addEventListener('click', () => mediaPopover(el));
       else if (id === 'extensions') el.addEventListener('click', () => extensionsPopover(el));
       else if (id === 'reload') el.addEventListener('click', () => run(active()?.loading ? 'nav.stop' : 'nav.reload'));
       else el.addEventListener('click', () => run(def.cmd));
@@ -99,6 +104,15 @@ export function syncToolbar() {
     btns.adblock.innerHTML = icon(on ? 'shieldCheck' : 'shield', 17) + (on && n ? `<span class="badge">${n > 99 ? '99+' : n}</span>` : '');
     btns.adblock.title = on ? t('Đã chặn {0} quảng cáo / trình theo dõi trên trang này', n) : t('Chặn quảng cáo đang tắt');
   }
+  if (btns.media) {
+    if (tab?.wcId && mediaEarly.has(tab.wcId)) {
+      tab.media = mediaEarly.get(tab.wcId);
+      mediaEarly.delete(tab.wcId);
+    }
+    const n = tab?.media || 0;
+    btns.media.hidden = !n;
+    btns.media.innerHTML = icon('video', 17) + (n > 1 ? `<span class="badge">${n > 99 ? '99+' : n}</span>` : '');
+  }
   if (btns.split) btns.split.classList.toggle('on', !!T.split && (T.split.a === T.activeId || T.split.b === T.activeId));
   if (btns.sidebar) btns.sidebar.classList.toggle('on', !!S.settings.layout.sidebarOpen);
 }
@@ -120,6 +134,56 @@ function adblockPopover(anchor) {
   );
   openPopover(body, anchor, { align: 'end', focus: false });
 }
+
+// ---- Truy tìm video (main/sniffer.js): what the page plays, each with what is known of it (its kind,
+// quality or variants, size, length) and its download (in Tải xuống)
+const fmtSize = (n) => (n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(1)} GB` : n >= 1024 ** 2 ? `${(n / 1024 ** 2).toFixed(1)} MB` : n ? `${Math.round(n / 1024)} KB` : '');
+const fmtTime = (s) => (s ? `${Math.floor(s / 3600) ? Math.floor(s / 3600) + ':' : ''}${String(Math.floor((s % 3600) / 60)).padStart(Math.floor(s / 3600) ? 2 : 1, '0')}:${String(Math.round(s % 60)).padStart(2, '0')}` : '');
+const kindOf = (m) => (m.kind === 'hls' ? 'HLS' : (/\.(\w{2,4})(?:$|[?#])/.exec(new URL(m.url).pathname)?.[1] || 'video').toUpperCase());
+const fileOf = (m) => {
+  try {
+    const u = new URL(m.url);
+    return u.hostname.replace(/^www\./, '') + ' · ' + decodeURIComponent(u.pathname.split('/').pop() || '');
+  } catch {
+    return m.url;
+  }
+};
+
+async function mediaPopover(anchor) {
+  const tab = active();
+  if (!tab?.wcId) return;
+  const list = await api.invoke('media:list', tab.wcId).catch(() => []);
+  const rows = list.map((m) => {
+    const variants = [...(m.variants || [])].map((v, i) => [v, i]).sort(([a], [b]) => b.height - a.height || b.bandwidth - a.bandwidth);
+    const pick = variants.length > 1 ? h('select', { class: 'input small' }, ...variants.map(([v, i]) => h('option', { value: String(i), text: [v.height ? `${v.height}p` : '', v.bandwidth && m.duration ? `~${fmtSize((v.bandwidth / 8) * m.duration)}` : v.bandwidth ? `${(v.bandwidth / 1e6).toFixed(1)} Mb/s` : '', v.audioApart ? t('tiếng riêng') : ''].filter(Boolean).join(' · ') }))) : null;
+    const facts = [kindOf(m), variants.length === 1 && variants[0][0].height ? `${variants[0][0].height}p` : '', m.kind === 'file' ? fmtSize(m.size) : variants.length === 1 && variants[0][0].bandwidth && m.duration ? `~${fmtSize((variants[0][0].bandwidth / 8) * m.duration)}` : '', fmtTime(m.duration)].filter(Boolean).join(' · ');
+    const blocked = m.drm ? 'DRM' : m.live ? t('Trực tiếp') : '';
+    const get = h('button', { class: 'btn small primary', disabled: !!blocked, html: blocked ? `<span>${blocked}</span>` : `${icon('download', 14)}<span>${t('Tải')}</span>` });
+    get.addEventListener('click', async () => {
+      get.disabled = true;
+      try {
+        await api.invoke('media:download', tab.wcId, m.id, pick ? Number(pick.value) : variants[0] ? variants[0][1] : undefined);
+        toast(t('Đang tải: {0}', m.title || fileOf(m)), { icon: 'download' });
+      } catch {
+        toast(t('Không tải được video này'), { icon: 'info' });
+        get.disabled = false;
+      }
+    });
+    return h('div', { class: 'media-row' }, h('span', { class: 'media-ico', html: icon('video', 18) }), h('div', { class: 'media-what' }, h('b', { text: facts }), h('span', { class: 'muted small', text: fileOf(m), title: m.url })), pick, get);
+  });
+  const body = h('div', { class: 'site-pop media-pop' }, h('div', { class: 'pop-head' }, h('span', { class: 'pop-head-ico ok', html: icon('video', 18) }), h('div', {}, h('b', { text: t('Video trên trang') }), h('div', { class: 'muted small', text: tab.title || '' }))), ...(rows.length ? rows : [h('div', { class: 'muted small', text: t('Chưa thấy video nào') })]));
+  openPopover(body, anchor, { align: 'end', focus: false });
+}
+api.on('media:found', ({ wcId, count }) => {
+  const tab = byWc(wcId);
+  if (!tab) {
+    mediaEarly.set(wcId, count);
+    if (mediaEarly.size > 40) mediaEarly.delete(mediaEarly.keys().next().value);
+    return;
+  }
+  tab.media = count;
+  if (tab.id === T.activeId) syncToolbar();
+});
 
 on('active', syncToolbar);
 on('tab:update', (t) => t.id === T.activeId && syncToolbar());
