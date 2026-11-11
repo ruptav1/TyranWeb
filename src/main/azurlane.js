@@ -43,19 +43,19 @@ const manifestOf = (id) => {
 };
 const installed = (id) => known(id) && !!manifestOf(id) && RUNTIME.every((r) => fs.existsSync(path.join(dirOf(id), r.file)));
 const lookInstalled = (id, skin) => installed(id) && !!manifestOf(id)?.looks?.[skin] && fs.existsSync(path.join(dirOf(id), 'look', skin));
-const previewFile = (key) => path.join(USER_WALLPAPERS, 'ba-previews', `azur_${key}.jpg`);
+const previewFile = (key) => path.join(USER_WALLPAPERS, 'previews', 'lobbies', `azur_${key}.jpg`);
 const previewUrl = (key) => {
   const pic = previewFile(key);
-  return fs.existsSync(pic) ? `tyran://userdata/ba-previews/azur_${key}.jpg?${Math.round(fs.statSync(pic).mtimeMs)}` : '';
+  return fs.existsSync(pic) ? `tyran://userdata/previews/lobbies/azur_${key}.jpg?${Math.round(fs.statSync(pic).mtimeMs)}` : '';
 };
 
 // ---------------------------------------------------------------- cards
 // Each skin's card: drawn by TyranWeb from her model once downloaded (azur-cards/<skin>.png), else
 // her painting from Fernando2603's data (loaded by the card as it comes into view).
-const CARDS = path.join(USER_WALLPAPERS, 'azur-cards');
+const CARDS = path.join(USER_WALLPAPERS, 'previews', 'azur');
 const cardUrl = (name) => {
   const file = path.join(CARDS, name);
-  return fs.existsSync(file) ? `tyran://userdata/azur-cards/${name}?${Math.round(fs.statSync(file).mtimeMs)}` : '';
+  return fs.existsSync(file) ? `tyran://userdata/previews/azur/${name}?${Math.round(fs.statSync(file).mtimeMs)}` : '';
 };
 const cardOf = (look) => cardUrl(look.id + '.png') || look.card || '';
 

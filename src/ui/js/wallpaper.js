@@ -341,9 +341,9 @@ on('lobby-mode', () => {
 });
 
 const liveKey = (w, web = w.web || {}) => JSON.stringify([web.audio, web.model, web.preset, voiceVolume(web), !!web.touchZones, web.nikkeStance, web.nikkeTint, web.nikkeColor, web.nikkeImage, songVolume(web), web.azurMusic, !!web.azurChatter, !!ownMusic(w), web.baMode, web.senseiBirthday]);
-// a live wallpaper's own sound (its song, its voices): off with its switch, and while something else
-// makes sound (a tab, another program: main/othersound.js)
-const pageQuiet = (web) => !web?.audio || S.otherAudio;
+// a live wallpaper's own sound (its song, its voices): off with its switch, and once something else
+// made sound (a tab, another program: main/othersound.js), until it is turned on again
+const pageQuiet = (web) => !web?.audio || S.musicStopped;
 on('other-audio', () => {
   if (current.kind !== 'web' || !current.wcId) return;
   try {

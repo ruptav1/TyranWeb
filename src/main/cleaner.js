@@ -60,7 +60,7 @@ async function leftovers() {
   };
   // (unpacked zips and Special's downloads, half-written files)
   out.push(...tops(data.dir, /^(unzip|special)-/));
-  out.push(...tops(USER_WALLPAPERS, /\.(part|unzip)$/));
+  out.push(...tops(USER_WALLPAPERS, /\.(part|unzip)$/), ...tops(path.join(USER_WALLPAPERS, 'videos'), /\.part$/));
   out.push(...tops(path.join(LIVE_WALLPAPERS, 'sora-shop'), /\.part$/));
   // (update and backup folders left in Windows' temp, older than a day: none in use)
   const day = Date.now() - 864e5;

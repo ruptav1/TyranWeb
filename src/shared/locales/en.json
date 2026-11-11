@@ -1089,5 +1089,8 @@
  "Đã tắt chặn quảng cáo trên {0}": "Ad blocking turned off on {0}",
  "Đã bật chặn quảng cáo trên {0}": "Ad blocking turned on on {0}",
  "Đã bật VPN": "VPN turned on",
- "Đã tắt VPN": "VPN turned off"
+ "Đã tắt VPN": "VPN turned off",
+ "Dừng nhạc nền": "Stop the music",
+ "Dừng hẳn (cả ứng dụng khác)": "Stop (other apps too)",
+ "Dừng hẳn (chỉ tab khác)": "Stop (other tabs only)"
 }

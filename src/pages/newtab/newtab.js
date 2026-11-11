@@ -402,6 +402,11 @@ const touchHint = (s, when) => TOUCH_HINT[when][s.wallpaper.web?.preset] || TOUC
 const CHARS = { nikke: { api: 'nikke', who: 'nikke', first: 'c010' }, azurlane: { api: 'azur', who: 'azur', first: '' }, sekai: { api: 'sekai', who: 'sekai', first: '' } };
 let touching = null;
 const touch = (type, e) => host('lobby-touch', { type, x: e.clientX, y: e.clientY });
+// (a press on the empty background: the music's bars along the foot are under it, in the window)
+addEventListener('click', (e) => {
+  if (arranging || e.button !== 0 || e.target.closest(UI)) return;
+  host('wall-click', { x: e.clientX, y: e.clientY });
+});
 addEventListener('pointerdown', (e) => {
   if (arranging || e.button !== 0 || !e.isPrimary || !lobbyTouchable() || e.target.closest(UI)) return;
   e.preventDefault();

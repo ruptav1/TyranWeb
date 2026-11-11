@@ -125,6 +125,7 @@ const QUIET = 3; // seconds without music before the bar goes away (songs have s
 const level = new Float32Array(BARS); // what is drawn, eased
 let want = new Float32Array(BARS);
 let lastFrame = 0;
+let bars = null; // where the bars are in the window while they show: { left, right, top, bottom } (spectrumAt)
 
 const visible = () => !!S.lobby || /^tyran:\/\/newtab\/?$/i.test(active()?.url || '');
 const shown = () => !!S.settings?.newtab?.visualizer;
@@ -170,6 +171,7 @@ function run() {
     cancelAnimationFrame(raf);
     raf = 0;
     if (canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+    bars = null;
   }
   const every = !shown() || !visible() ? 0 : state === 'in' || state === 'live' ? 40 : 150;
   if (every === pollEvery) return;
@@ -229,6 +231,8 @@ function frame(nowMs) {
   g.clearRect(0, 0, W, boxH);
   const x0 = (W - span) / 2;
   const base = boxH - bottom;
+  const box = canvas.getBoundingClientRect();
+  bars = state === 'live' || state === 'in' ? { left: box.left + x0, right: box.left + x0 + span, top: box.top + base - tall - 8, bottom: box.top + base + 10 } : null;
 
   // where its start (or its end, the same backwards) is: the lines, how strong the line is, how
   // far from the middle the bars have come out
@@ -286,6 +290,9 @@ function frame(nowMs) {
     g.globalAlpha = 1;
   }
 }
+
+// whether a point of the window (a press on the new tab page's background, passed on) is on the bars
+export const spectrumAt = (x, y) => !!bars && x >= bars.left && x <= bars.right && y >= bars.top && y <= bars.bottom;
 
 export function initVisualizer() {
   api.invoke('spectrum:code', String(spectrumHook)).catch(() => {}); // (for measuring in tabs)

@@ -10,4 +10,5 @@ export const S = {
   window: { maximized: false, fullscreen: false, focused: true },
   zen: false,
   otherAudio: false, // something else makes sound (main/othersound.js)
+  musicStopped: false, // ...and so the wallpaper's music stopped, until it is turned on again (sidebar.js)
 };

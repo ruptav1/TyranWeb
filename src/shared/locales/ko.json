@@ -1089,5 +1089,8 @@
  "Đã tắt chặn quảng cáo trên {0}": "{0}에서 광고 차단을 껐습니다",
  "Đã bật chặn quảng cáo trên {0}": "{0}에서 광고 차단을 켰습니다",
  "Đã bật VPN": "VPN을 켰습니다",
- "Đã tắt VPN": "VPN을 껐습니다"
+ "Đã tắt VPN": "VPN을 껐습니다",
+ "Dừng nhạc nền": "배경 음악 중지",
+ "Dừng hẳn (cả ứng dụng khác)": "중지(다른 앱 포함)",
+ "Dừng hẳn (chỉ tab khác)": "중지(다른 탭만)"
 }

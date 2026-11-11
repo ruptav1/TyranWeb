@@ -8,7 +8,11 @@ const { pipeline } = require('stream/promises');
 const { net, dialog, nativeImage } = require('electron');
 const data = require('./data');
 const { SEARCH_ENGINES } = require('./defaults');
-const { ROOT, USER_WALLPAPERS, LIVE_WALLPAPERS, WALLPAPER_FOLDER_FILE, LINKED_FILE } = require('./protocol');
+const { ROOT, USER_WALLPAPERS, WALLPAPER_DIRS: WD, LIVE_WALLPAPERS, WALLPAPER_FOLDER_FILE, LINKED_FILE } = require('./protocol');
+// (in the wallpaper folder: a picture in images/, a video in videos/, its poster in thumbnails/: wpfolders.js)
+const kindDir = (type) => (type === 'video' ? 'videos' : 'images');
+const userFile = (w) => path.join(USER_WALLPAPERS, kindDir(w.type), path.basename(w.file));
+const posterFile = (file) => path.join(WD.thumbnails, path.basename(file) + '.thumb.jpg');
 const { execFile } = require('child_process');
 const { t } = require('./i18n');
 
@@ -99,6 +103,16 @@ function bundledWallpapers() {
   }
 }
 
+// the video wallpapers that come with TyranWeb (the first one is the wallpaper of a first start)
+function bundledVideos() {
+  try {
+    const list = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets', 'wallpapers', 'videos', 'videos.json'), 'utf8'));
+    return list.map((w) => ({ ...w, type: 'video', kind: 'bundled', url: `tyran://assets/wallpapers/videos/${w.file}`, thumb: `tyran://assets/wallpapers/videos/${w.file}.thumb.jpg` }));
+  } catch {
+    return [];
+  }
+}
+
 const userIndexFile = path.join(USER_WALLPAPERS, 'index.json');
 function readUserIndex() {
   try {
@@ -115,23 +129,22 @@ function writeUserIndex(list) {
 // Videos get a poster frame from the Windows shell thumbnailer (none when no codec is installed).
 // (a video's size on disk, for its tile: Settings → Hình nền → Video, the store's Đã tải)
 function userEntry(w) {
-  const url = `tyran://userdata/${w.file}`;
+  const url = `tyran://userdata/${kindDir(w.type)}/${w.file}`;
   if (w.type !== 'video') return { ...w, type: 'image', kind: 'user', url, thumb: url };
-  const poster = w.file + '.thumb.jpg';
   let bytes = w.bytes || 0;
   if (!bytes) {
     try {
-      bytes = fs.statSync(path.join(USER_WALLPAPERS, w.file)).size;
+      bytes = fs.statSync(userFile(w)).size;
     } catch {
       /* gone */
     }
   }
-  return { ...w, bytes, kind: 'user', url, thumb: fs.existsSync(path.join(USER_WALLPAPERS, poster)) ? `tyran://userdata/${poster}` : '' };
+  return { ...w, bytes, kind: 'user', url, thumb: fs.existsSync(posterFile(w.file)) ? `tyran://userdata/thumbnails/${w.file}.thumb.jpg` : '' };
 }
 
 function userWallpapers() {
   return readUserIndex()
-    .filter((w) => fs.existsSync(path.join(USER_WALLPAPERS, w.file)))
+    .filter((w) => fs.existsSync(userFile(w)))
     .map(userEntry);
 }
 
@@ -141,7 +154,7 @@ function listWallpapers() {
   return {
     bundled: bundledWallpapers(),
     user: [...user.filter((w) => w.type === 'image'), ...linked.images],
-    videos: [...user.filter((w) => w.type === 'video'), ...linked.videos],
+    videos: [...bundledVideos(), ...user.filter((w) => w.type === 'video'), ...linked.videos],
     folders: linked.folders,
     folder: USER_WALLPAPERS,
     live: liveWallpapers(),
@@ -172,8 +185,9 @@ const VIDEO_MAX = 4 * 1024 ** 3;
 
 async function makePoster(file) {
   try {
-    const img = await nativeImage.createThumbnailFromPath(path.join(USER_WALLPAPERS, file), { width: 480, height: 270 });
-    if (!img.isEmpty()) fs.writeFileSync(path.join(USER_WALLPAPERS, file + '.thumb.jpg'), img.toJPEG(82));
+    const img = await nativeImage.createThumbnailFromPath(path.join(WD.videos, file), { width: 480, height: 270 });
+    fs.mkdirSync(WD.thumbnails, { recursive: true });
+    if (!img.isEmpty()) fs.writeFileSync(posterFile(file), img.toJPEG(82));
   } catch {
     /* no thumbnail handler for this format */
   }
@@ -186,12 +200,12 @@ async function importLocalVideo(win) {
     filters: [{ name: 'Video', extensions: ['mp4', 'webm', 'm4v', 'mov', 'mkv', 'ogv'] }],
   });
   if (r.canceled) return [];
-  fs.mkdirSync(USER_WALLPAPERS, { recursive: true });
+  fs.mkdirSync(WD.videos, { recursive: true });
   const added = [];
   for (const src of r.filePaths) {
     if (!VIDEO_EXT.test(src) || fs.statSync(src).size > VIDEO_MAX) continue;
     const file = `video-${data.uid()}${path.extname(src).toLowerCase()}`;
-    await fs.promises.copyFile(src, path.join(USER_WALLPAPERS, file));
+    await fs.promises.copyFile(src, path.join(WD.videos, file));
     await makePoster(file);
     added.push(addUserWallpaper(file, { type: 'video', title: path.basename(src), source: t('Máy tính') }));
   }
@@ -209,9 +223,9 @@ async function downloadVideo(url) {
   const ext = extOf[type] || (VIDEO_EXT.exec(pathname)?.[0] || '').toLowerCase();
   if (!ext || (type && !type.startsWith('video/') && type !== 'application/octet-stream')) throw new Error(t('Link này không phải file video'));
   if (Number(res.headers.get('content-length') || 0) > VIDEO_MAX) throw new Error(t('Video quá lớn'));
-  fs.mkdirSync(USER_WALLPAPERS, { recursive: true });
+  fs.mkdirSync(WD.videos, { recursive: true });
   const file = `video-${data.uid()}${ext}`;
-  const dest = path.join(USER_WALLPAPERS, file);
+  const dest = path.join(WD.videos, file);
   let bytes = 0;
   const limit = new Transform({
     transform(chunk, enc, cb) {
@@ -326,8 +340,8 @@ async function installLiveFolder(folder, extra = {}) {
   let previewFile = '';
   const previewPath = preview && path.normalize(path.join(src, String(preview)));
   if (previewPath && inside(previewPath) && IMAGE_EXT.test(previewPath) && fs.existsSync(previewPath)) {
-    fs.mkdirSync(USER_WALLPAPERS, { recursive: true });
-    previewFile = `live-${id}${path.extname(previewPath).toLowerCase()}`;
+    fs.mkdirSync(WD.thumbnails, { recursive: true });
+    previewFile = `thumbnails/live-${id}${path.extname(previewPath).toLowerCase()}`;
     fs.copyFileSync(previewPath, path.join(USER_WALLPAPERS, previewFile));
   }
   const from = { page: String(extra.page || '').slice(0, 300), repo: String(extra.repo || '').slice(0, 200), license: String(extra.license || '').slice(0, 40), source: String(extra.source || '').slice(0, 40) };
@@ -340,7 +354,7 @@ function removeLiveWallpaper(id) {
   const item = readLiveIndex().find((w) => w.id === id);
   if (!item) return false;
   fs.rmSync(path.join(LIVE_WALLPAPERS, path.basename(item.id)), { recursive: true, force: true });
-  if (item.preview) fs.rmSync(path.join(USER_WALLPAPERS, path.basename(item.preview)), { force: true });
+  if (item.preview) fs.rmSync(path.join(WD.thumbnails, path.basename(item.preview)), { force: true });
   writeLiveIndex(readLiveIndex().filter((w) => w.id !== id));
   return true;
 }
@@ -371,7 +385,7 @@ function liveUrl(web = {}) {
 // pictures of the lobby TyranWeb takes itself the first time it shows one.
 const baNamesFile = path.join(LIVE_WALLPAPERS, 'blue-archive-names.json');
 const schaleFile = path.join(LIVE_WALLPAPERS, 'schaledb-students.json');
-const BA_PREVIEWS = path.join(USER_WALLPAPERS, 'ba-previews');
+const BA_PREVIEWS = path.join(WD.previews, 'lobbies');
 const SCHALE = 'https://schaledb.com';
 
 async function schaleStudents() {
@@ -412,7 +426,7 @@ function baPreviewUrl(key) {
   const file = path.join(BA_PREVIEWS, key + '.jpg');
   try {
     const t = fs.statSync(file).mtimeMs;
-    return t < BA_FRAMED ? '' : `tyran://userdata/ba-previews/${key}.jpg?v=${Math.round(t)}`;
+    return t < BA_FRAMED ? '' : `tyran://userdata/previews/lobbies/${key}.jpg?v=${Math.round(t)}`;
   } catch {
     return '';
   }
@@ -723,12 +737,12 @@ async function importLocalWallpaper(win) {
     filters: [{ name: t('Ảnh'), extensions: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'bmp'] }],
   });
   if (r.canceled) return [];
-  fs.mkdirSync(USER_WALLPAPERS, { recursive: true });
+  fs.mkdirSync(WD.images, { recursive: true });
   const added = [];
   for (const src of r.filePaths) {
     if (!IMAGE_EXT.test(src)) continue;
     const file = `local-${data.uid()}${path.extname(src).toLowerCase()}`;
-    fs.copyFileSync(src, path.join(USER_WALLPAPERS, file));
+    fs.copyFileSync(src, path.join(WD.images, file));
     added.push(addUserWallpaper(file, { title: path.basename(src), source: t('Máy tính') }));
   }
   return added;
@@ -743,9 +757,9 @@ async function downloadImage(url, meta = {}) {
   const ext = { 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif', 'image/avif': '.avif' }[type.split(';')[0]] || '.jpg';
   const buf = Buffer.from(await res.arrayBuffer());
   if (buf.length > 40 * 1024 * 1024) throw new Error(t('Ảnh quá lớn'));
-  fs.mkdirSync(USER_WALLPAPERS, { recursive: true });
+  fs.mkdirSync(WD.images, { recursive: true });
   const file = `${meta.slug || 'web-' + data.uid()}${ext}`;
-  fs.writeFileSync(path.join(USER_WALLPAPERS, file), buf);
+  fs.writeFileSync(path.join(WD.images, file), buf);
   return addUserWallpaper(file, { title: meta.title || '', source: meta.source || url, page: meta.page || '', anime: meta.anime || '' });
 }
 
@@ -790,7 +804,8 @@ async function importMedia(paths) {
   const known = new Set(readUserIndex().map((w) => String(w.title || '').toLowerCase()));
   const added = [];
   let skipped = 0;
-  fs.mkdirSync(USER_WALLPAPERS, { recursive: true });
+  fs.mkdirSync(WD.images, { recursive: true });
+  fs.mkdirSync(WD.videos, { recursive: true });
   for (const src of paths) {
     const name = path.basename(src);
     const video = VIDEO_EXT.test(name);
@@ -800,7 +815,7 @@ async function importMedia(paths) {
     }
     known.add(name.toLowerCase());
     const file = `${video ? 'video' : 'local'}-${data.uid()}${path.extname(name).toLowerCase()}`;
-    await fs.promises.copyFile(src, path.join(USER_WALLPAPERS, file));
+    await fs.promises.copyFile(src, path.join(video ? WD.videos : WD.images, file));
     if (video) await makePoster(file);
     added.push(addUserWallpaper(file, { type: video ? 'video' : 'image', title: name, source: t('Máy tính') }));
   }
@@ -1120,7 +1135,7 @@ async function importCursor(win) {
 // Either audio files (copied into the wallpaper folder, music/) or one link: a YouTube video or
 // playlist, a SoundCloud track or set, a Spotify track / album / playlist (its embed player).
 const AUDIO_EXT = /\.(mp3|wav|ogg|oga|opus|flac|m4a|aac|weba)$/i;
-const MUSIC_DIR = () => path.join(USER_WALLPAPERS, 'music');
+const MUSIC_DIR = () => WD.music;
 
 async function importMusic(win) {
   const r = await pick(win, {
@@ -1205,7 +1220,7 @@ async function musicLink(raw) {
 
 function removeUserWallpaper(file) {
   const safe = path.basename(file);
-  for (const f of [safe, safe + '.thumb.jpg']) fs.rmSync(path.join(USER_WALLPAPERS, f), { force: true });
+  for (const f of [path.join(WD.images, safe), path.join(WD.videos, safe), posterFile(safe)]) fs.rmSync(f, { force: true });
   writeUserIndex(readUserIndex().filter((w) => w.file !== safe));
   return true;
 }

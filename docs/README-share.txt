@@ -1,4 +1,4 @@
-TyranWeb 1.1.75 — trình duyệt anime (Windows 10/11, 64-bit)
+TyranWeb 1.1.76 — trình duyệt anime (Windows 10/11, 64-bit)
 ==========================================================
 
 CÁCH CHẠY
@@ -21,7 +21,8 @@ CẦN INTERNET CHO
 - Nhạc sảnh và nhạc nền: YouTube Music (link YouTube cũng dùng được), SoundCloud, Spotify;
   danh sách học sinh (SchaleDB)
 - Cài tiện ích từ Chrome Web Store
-- Kho nền video (nút máy quay ở trang Tab mới, hoặc menu ⋯ → Kho nền video): tìm nền video động
+- Kho nền video (nút máy quay ở trang Tab mới, menu ⋯ → Kho nền video, hoặc Cài đặt → Hình nền →
+  Video → Kho nền video): tìm nền video động
   cùng lúc trên MoeWalls, MotionBGs và WallpaperWaifu, tải về vào Hình nền → Video kèm độ phân
   giải, dung lượng, thời lượng. Nền được các web đó gắn nhãn AI thì bị ẩn. Video thuộc về tác giả
   của chúng, TyranWeb chỉ tải khi bạn bấm.
@@ -62,6 +63,11 @@ GHI CHÚ
   dụng Store), ghim cái hay dùng lên thanh bên.
 - Cài đặt, dấu trang, lịch sử, hình nền tự thêm... lưu ở %APPDATA%\TyranWeb (không nằm
   trong thư mục app). Xoá thư mục app không xoá các dữ liệu đó.
+- Thư mục lưu hình nền (Cài đặt → Hình nền → Thư mục lưu hình nền) chia sẵn: images (nền ảnh),
+  videos (nền video), thumbnails (ảnh thu nhỏ của video, ảnh của hình nền động), live (hình nền
+  động: trang web, gói đã nhập, nhân vật game đã tải), music (nhạc riêng của hình nền), previews
+  (ảnh xem trước của sảnh và nhân vật game). Bản cũ được tự sắp xếp lại lần đầu mở bản mới; thư
+  mục live ở thư mục dữ liệu được chuyển sang (khác ổ đĩa thì chép ngầm, dùng từ lần mở sau).
 - Cập nhật: TyranWeb tự kiểm tra bản mới trên GitHub và báo khi có; bấm Cập nhật ở Cài đặt →
   Giới thiệu là app tự tải, tự thay file và mở lại. Dữ liệu của bạn không bị đụng tới.
 - Sao lưu / khôi phục: Cài đặt → Giới thiệu → Sao lưu, ra một file .zip (cài đặt, dấu trang,
@@ -69,9 +75,12 @@ GHI CHÚ
   nhập các trang web và nhân vật game đã tải.
 - Tab vừa đóng: Ctrl+Shift+T mở lại cùng các trang trước / sau và chỗ đang cuộn tới, cả sau khi
   tắt app. Tab mở lại khi khởi động và tab ngủ cũng giữ các trang đó.
-- Nhạc nền của trang Tab mới tự tạm dừng khi một tab hay một ứng dụng khác đang phát tiếng, và
-  phát tiếp khi đã im vài giây (Cài đặt → Hình nền → Nhạc nền → Khi có âm thanh khác).
-- Tải video (nút máy quay cạnh nút chặn quảng cáo; số trên nút là số video trang đang phát):
+- Lần đầu mở, hình nền là video Azusa (Racing) (Blue Archive, đi kèm app) với nhạc nền "Oriental
+  Drop" (phát từ YouTube Music ở bảng Nhạc nền của thanh bên).
+- Nhạc nền dừng hẳn khi một tab hay một ứng dụng khác phát tiếng, và chỉ phát lại khi bạn bật lại
+  (nút phát ở bảng Nhạc nền của thanh bên, hoặc Cài đặt → Hình nền → Nhạc nền). Bấm vào thanh nhạc
+  dưới hình nền để mở bảng Nhạc nền.
+- Tải video (nút máy quay trên thanh công cụ; số trên nút là số video trang đang phát):
   + Dán đường dẫn một bài đăng / video / GIF của YouTube, X, Facebook, Instagram, Reddit, Pixiv,
     TikTok, Bilibili, Niconico... (đang mở bài đó thì đường dẫn tự điền): hiện ảnh, thời lượng và
     các chất lượng (độ phân giải, fps, dung lượng), cả "chỉ âm thanh" và GIF cho video ngắn.
@@ -101,7 +110,8 @@ BẢN QUYỀN
 - Nhân vật và giọng nói GODDESS OF VICTORY: NIKKE © SHIFT UP; Azur Lane © Manjuu / Yongshi /
   Yostar; Project SEKAI COLORFUL STAGE! © SEGA / Colorful Palette / Crypton Future Media.
   TyranWeb không đóng gói chúng; chúng chỉ được tải về máy khi bạn bấm Tải về.
-- Các hình nền anime đi kèm thuộc về tác giả / nhà sản xuất của chúng.
+- Các hình nền anime đi kèm thuộc về tác giả / nhà sản xuất của chúng; video Azusa (Racing) lấy từ
+  MotionBGs (motionbgs.com/azusa-racing).
 - Dự án cá nhân, phi thương mại.
 - TyranWeb dùng giấy phép GNU AGPL-3.0 (LICENSE.txt), vì có dùng code của ba-archive
   (github.com/ba-archive/blue-archive, AGPL-3.0). Mã nguồn: https://github.com/ruptav1/TyranWeb Thư viện gsap (GreenSock) theo giấy phép miễn phí

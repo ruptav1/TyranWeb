@@ -20,7 +20,27 @@ const readJson = (file) => {
 const WALLPAPER_FOLDER_FILE = path.join(userDir, 'wallpaper-folder.json');
 const movedTo = readJson(WALLPAPER_FOLDER_FILE)?.dir;
 const USER_WALLPAPERS = movedTo && fs.existsSync(movedTo) ? movedTo : path.join(userDir, 'wallpapers');
-const LIVE_WALLPAPERS = path.join(userDir, 'live');
+// its own folders, each kind of wallpaper apart (wpfolders.js keeps it so)
+const WALLPAPER_DIRS = {
+  images: path.join(USER_WALLPAPERS, 'images'),
+  videos: path.join(USER_WALLPAPERS, 'videos'),
+  thumbnails: path.join(USER_WALLPAPERS, 'thumbnails'),
+  live: path.join(USER_WALLPAPERS, 'live'),
+  music: path.join(USER_WALLPAPERS, 'music'),
+  previews: path.join(USER_WALLPAPERS, 'previews'),
+};
+// Live (web) wallpapers: its live/ (before 1.1.76 the data folder's live/: moved now when on the
+// same drive; else copied over in the background by wpfolders.js and in use from the next start)
+const OLD_LIVE = path.join(userDir, 'live');
+if (!fs.existsSync(WALLPAPER_DIRS.live) && fs.existsSync(OLD_LIVE) && path.resolve(OLD_LIVE) !== path.resolve(WALLPAPER_DIRS.live)) {
+  try {
+    fs.mkdirSync(USER_WALLPAPERS, { recursive: true });
+    fs.renameSync(OLD_LIVE, WALLPAPER_DIRS.live);
+  } catch {
+    /* (another drive) */
+  }
+}
+const LIVE_WALLPAPERS = fs.existsSync(WALLPAPER_DIRS.live) || !fs.existsSync(OLD_LIVE) ? WALLPAPER_DIRS.live : OLD_LIVE;
 // Folders linked as wallpapers (used in place, not copied): id -> folder, served as tyran://linked/<id>/...
 const LINKED_FILE = path.join(userDir, 'linked-folders.json');
 const linkedRoot = (id) => (readJson(LINKED_FILE) || []).find((f) => f.id === id)?.path || '';
@@ -151,4 +171,4 @@ function installLive(ses) {
   if (!ses.protocol.isProtocolHandled('livewp')) ses.protocol.handle('livewp', handleLive);
 }
 
-module.exports = { registerPrivileges, install, installLive, ROOT, USER_WALLPAPERS, LIVE_WALLPAPERS, PAGES, WALLPAPER_FOLDER_FILE, LINKED_FILE };
+module.exports = { registerPrivileges, install, installLive, ROOT, USER_WALLPAPERS, WALLPAPER_DIRS, LIVE_WALLPAPERS, OLD_LIVE, PAGES, WALLPAPER_FOLDER_FILE, LINKED_FILE };

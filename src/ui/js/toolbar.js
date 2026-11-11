@@ -23,7 +23,6 @@ export const TOOLBAR_ITEMS = {
   pip: { label: t('Hình trong hình'), icon: 'pip', cmd: 'page.pip' },
   sidebar: { label: t('Thanh bên'), icon: 'sidebar', cmd: 'sidebar.toggle' },
   palette: { label: t('Bảng lệnh'), icon: 'command', cmd: 'palette.open' },
-  theme: { label: t('Đổi theme'), icon: 'palette', cmd: 'theme.next' },
   wallpaper: { label: t('Đổi hình nền'), icon: 'shuffle', cmd: 'wallpaper.next' },
   lobby: { label: t('Chế độ Lobby'), icon: 'tv', cmd: 'wallpaper.lobby' },
   zen: { label: t('Chế độ tập trung'), icon: 'eye', cmd: 'window.zen' },

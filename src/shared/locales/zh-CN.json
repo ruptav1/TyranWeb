@@ -1089,5 +1089,8 @@
  "Đã tắt chặn quảng cáo trên {0}": "已在 {0} 上关闭广告拦截",
  "Đã bật chặn quảng cáo trên {0}": "已在 {0} 上开启广告拦截",
  "Đã bật VPN": "已开启 VPN",
- "Đã tắt VPN": "已关闭 VPN"
+ "Đã tắt VPN": "已关闭 VPN",
+ "Dừng nhạc nền": "停止背景音乐",
+ "Dừng hẳn (cả ứng dụng khác)": "停止（包括其他应用）",
+ "Dừng hẳn (chỉ tab khác)": "停止（仅其他标签页）"
 }

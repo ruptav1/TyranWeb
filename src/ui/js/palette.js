@@ -4,7 +4,6 @@ import { api, h, $, esc, faviconHtml, prettyUrl } from './util.js';
 import { S } from './state.js';
 import { T, activate, active } from './tabs.js';
 import { openUrl } from './bookmarks.js';
-import { PRESETS, presetPatch } from 'tyran://shared/themes.js';
 import { icon } from 'tyran://shared/icons.js';
 import { t } from 'tyran://shared/i18n.js';
 
@@ -69,7 +68,6 @@ export function openPalette(initial = '') {
     const out = [];
     for (const c of commandSource()) out.push({ kind: t('Lệnh'), icon: c.icon || 'command', title: c.label, hint: c.keys?.[0] || '', run: c.run });
     for (const t of T.list) out.push({ kind: 'Tab', fav: t, title: t.title, sub: prettyUrl(t.url), run: () => activate(t.id) });
-    for (const p of PRESETS) out.push({ kind: 'Theme', icon: 'palette', title: `Theme: ${p.name}`, sub: p.sub, swatch: p.appearance.accent, run: () => api.invoke('settings:set', presetPatch(p)) });
     for (const [id, label, ic] of SETTINGS_SECTIONS) out.push({ kind: t('Cài đặt'), icon: ic, title: t('Cài đặt: {0}', label), run: () => openUrl(`tyran://settings/#${id}`, { newTab: true }) });
     for (const b of S.bookmarks.items) out.push({ kind: t('Dấu trang'), fav: b, title: b.title || b.url, sub: prettyUrl(b.url), run: () => openUrl(b.url) });
     return out;

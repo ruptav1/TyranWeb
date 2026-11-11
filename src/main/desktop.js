@@ -26,15 +26,15 @@ async function desktopWallpaper() {
   const reg = await registry();
   const src = [TRANSCODED, reg.file].find((f) => f && fs.existsSync(f) && fs.statSync(f).size > 0);
   if (!src) return null;
-  const dst = path.join(USER_WALLPAPERS, COPY);
+  const dst = path.join(USER_WALLPAPERS, 'previews', COPY);
   const st = fs.statSync(src);
   const have = fs.existsSync(dst) ? fs.statSync(dst) : null;
   if (!have || have.size !== st.size || have.mtimeMs < st.mtimeMs) {
-    fs.mkdirSync(USER_WALLPAPERS, { recursive: true });
+    fs.mkdirSync(path.dirname(dst), { recursive: true });
     fs.copyFileSync(src, dst);
   }
   const style = reg.tile === '1' ? 'tile' : STYLES[Number(reg.style)] || 'fill';
-  return { url: `tyran://userdata/${COPY}?${Math.round(st.mtimeMs)}`, style };
+  return { url: `tyran://userdata/previews/${COPY}?${Math.round(st.mtimeMs)}`, style };
 }
 
 module.exports = { desktopWallpaper };

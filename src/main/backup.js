@@ -55,7 +55,9 @@ async function make(win, media, file) {
     for (const f of CORE) if (fs.existsSync(path.join(data.dir, f))) fs.copyFileSync(path.join(data.dir, f), path.join(stage, f));
     if (fs.existsSync(path.join(data.dir, 'cursors'))) fs.cpSync(path.join(data.dir, 'cursors'), path.join(stage, 'cursors'), { recursive: true });
     // (tar takes its options before the first file only)
-    const args = ['-a', '-c', '-f', r.filePath, '--exclude', `${wallpapers}/ba-previews`, '-C', stage, '.'];
+    // (not the pictures kept of game lobbies and characters, nor the downloaded characters in live/: only
+    // the imported web wallpapers of live/, below)
+    const args = ['-a', '-c', '-f', r.filePath, '--exclude', `${wallpapers}/ba-previews`, '--exclude', `${wallpapers}/previews`, '--exclude', `${wallpapers}/live`, '--exclude', `${wallpapers}/live.moving`, '-C', stage, '.'];
     if (media) {
       if (fs.existsSync(USER_WALLPAPERS)) args.push('-C', path.dirname(USER_WALLPAPERS), wallpapers);
       const live = livePackages();

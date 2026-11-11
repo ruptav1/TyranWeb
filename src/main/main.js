@@ -17,6 +17,7 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 const data = require('./data');
+require('./wpfolders').organize(); // (the wallpaper folder sorted into its folders, before anything reads it)
 const sessions = require('./sessions');
 const windows = require('./windows');
 const ipc = require('./ipc');
@@ -251,6 +252,7 @@ app.whenReady().then(async () => {
   mark('randomLobby');
   startup();
   require('./cleaner').auto(); // (Dọn rác, once a week)
+  setTimeout(() => require('./wpfolders').moveLive().catch((err) => console.warn('[wallpapers] live:', err.message)), 20000); // (live/ beside the wallpapers)
   if (data.settings.data.privacy?.warp) require('./warp').sync().catch(() => {}); // (through Cloudflare WARP)
 });
 

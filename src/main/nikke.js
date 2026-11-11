@@ -69,10 +69,10 @@ const installed = (id) => {
 };
 const outfitInstalled = (id, o) => !!outfitOf(id, o) && installed(id) && !!manifestOf(id)?.outfits?.[o] && fs.existsSync(path.join(dirOf(id), 'outfit', o));
 // pictures of her for Settings, taken by the wallpaper (nikke_<id or outfit>.jpg)
-const previewFile = (key) => path.join(USER_WALLPAPERS, 'ba-previews', `nikke_${key}.jpg`);
+const previewFile = (key) => path.join(USER_WALLPAPERS, 'previews', 'lobbies', `nikke_${key}.jpg`);
 const previewUrl = (key) => {
   const pic = previewFile(key);
-  return fs.existsSync(pic) ? `tyran://userdata/ba-previews/nikke_${key}.jpg?${Math.round(fs.statSync(pic).mtimeMs)}` : '';
+  return fs.existsSync(pic) ? `tyran://userdata/previews/lobbies/nikke_${key}.jpg?${Math.round(fs.statSync(pic).mtimeMs)}` : '';
 };
 
 // ---------------------------------------------------------------- cards
@@ -80,10 +80,10 @@ const previewUrl = (key) => {
 // (nikke-cards/<id>.png, made in a hidden window), else Nikke-db's full-length picture of her (kept
 // small, fb-<id>.png), else the NIKKE wiki's (its smaller copy, fetched as shown), else her small
 // portrait from Nikke-db.
-const CARDS = path.join(USER_WALLPAPERS, 'nikke-cards');
+const CARDS = path.join(USER_WALLPAPERS, 'previews', 'nikke');
 const cardUrl = (name) => {
   const file = path.join(CARDS, name);
-  return fs.existsSync(file) ? `tyran://userdata/nikke-cards/${name}?${Math.round(fs.statSync(file).mtimeMs)}` : '';
+  return fs.existsSync(file) ? `tyran://userdata/previews/nikke/${name}?${Math.round(fs.statSync(file).mtimeMs)}` : '';
 };
 const hasFb = (id, look) => (look === id ? CHARACTERS[id].fb : CHARACTERS[id].outfits?.[look]?.fb);
 function cardOf(id, look = id) {

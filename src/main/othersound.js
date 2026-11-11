@@ -1,6 +1,7 @@
 'use strict';
-// Whether something else is making sound, so the new tab page's music rests meanwhile and comes
-// back once it has been quiet a moment (Settings → Hình nền → Nhạc nền → Khi có âm thanh khác):
+// Whether something else is making sound, so the wallpaper's music stops (for good: the UI keeps it
+// stopped till it is turned on again; it is also told when it has been quiet a moment)
+// (Settings → Hình nền → Nhạc nền → Khi có âm thanh khác):
 //  - 'tabs': a tab, a web panel or a page's popup window in TyranWeb (Chromium says when a page is
 //    audible); the music's own players (the sidebar's Nhạc nền panel) are not "something else"
 //  - 'apps': ...or any other program on the PC (sounds.ps1: Windows' own meter of each app's sound,

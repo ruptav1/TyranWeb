@@ -11,7 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const { BrowserWindow, session } = require('electron');
 const data = require('./data');
-const { USER_WALLPAPERS } = require('./protocol');
+const { WALLPAPER_DIRS: WD } = require('./protocol'); // (videos/, their posters in thumbnails/)
 
 const PARTITION = 'persist:tyran-store';
 // each site: the pages that may be read, the addresses its videos come from
@@ -94,7 +94,7 @@ async function download(sender, item) {
   const ctrl = new AbortController();
   jobs.set(id, ctrl);
   const name = `video-${data.uid()}`;
-  const part = path.join(USER_WALLPAPERS, name + '.part');
+  const part = path.join(WD.videos, name + '.part');
   try {
     // (the page it is on as its referrer: Electron's fetch refuses a Referer header set by hand)
     const res = await store().fetch(item.file, { referrer: item.page, signal: ctrl.signal });
@@ -105,7 +105,7 @@ async function download(sender, item) {
     if (total > VIDEO_MAX) throw new Error('too big');
     const named = /filename\*?=(?:UTF-8'')?"?([^";]+)/i.exec(res.headers.get('content-disposition') || '')?.[1] || '';
     const ext = /\.webm$/i.test(named) || /webm/i.test(res.headers.get('content-type') || '') ? '.webm' : '.mp4';
-    fs.mkdirSync(USER_WALLPAPERS, { recursive: true });
+    fs.mkdirSync(WD.videos, { recursive: true });
     const out = fs.createWriteStream(part);
     let got = 0;
     let head = Buffer.alloc(0);
@@ -124,7 +124,7 @@ async function download(sender, item) {
     await new Promise((ok, fail) => out.end((err) => (err ? fail(err) : ok())));
     if (!isVideo(head)) throw new Error('not a video');
     const file = name + ext;
-    fs.renameSync(part, path.join(USER_WALLPAPERS, file));
+    fs.renameSync(part, path.join(WD.videos, file));
     if (!sender.isDestroyed()) sender.send('livewalls:progress', { id, got, total: got });
     const services = require('./services');
     if (!(await poster(file, item.thumb))) await services.makePoster(file);
@@ -159,7 +159,8 @@ async function poster(file, thumb) {
     if (!res.ok || !/^image\//.test(type)) return false;
     const buf = Buffer.from(await res.arrayBuffer());
     if (buf.length > 8 * 1024 * 1024) return false;
-    fs.writeFileSync(path.join(USER_WALLPAPERS, file + '.thumb.jpg'), buf);
+    fs.mkdirSync(WD.thumbnails, { recursive: true });
+    fs.writeFileSync(path.join(WD.thumbnails, file + '.thumb.jpg'), buf);
     return true;
   } catch {
     return false;

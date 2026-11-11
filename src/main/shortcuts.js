@@ -53,7 +53,6 @@ const DEFAULT_SHORTCUTS = {
   'palette.open': { label: 'Bảng lệnh / tìm nhanh', keys: ['Ctrl+Shift+A', 'Ctrl+K'], reserved: false },
   'sidebar.toggle': { label: 'Ẩn / hiện thanh bên', keys: ['Ctrl+Shift+E'], reserved: false },
   'split.toggle': { label: 'Chia đôi màn hình', keys: ['Ctrl+Shift+X'], reserved: false },
-  'theme.next': { label: 'Đổi sang theme tiếp theo', keys: ['Ctrl+Shift+Y'], reserved: false },
   'wallpaper.next': { label: 'Đổi hình nền tiếp theo', keys: ['Ctrl+Shift+W'], reserved: false },
   'wallpaper.lobby': { label: 'Chế độ Lobby (ẩn giao diện, tương tác với hình nền)', keys: ['Ctrl+Shift+L'], reserved: true },
   'ui.devtools': { label: 'DevTools của giao diện (cho CSS tùy chỉnh)', keys: [], reserved: false },

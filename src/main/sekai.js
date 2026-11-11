@@ -44,19 +44,19 @@ const libInstalled = (id, motion) => !!manifestOf(id)?.libs?.[libKey(motion)];
 const lookInstalled = (id, look) => base(id) && !!manifestOf(id)?.looks?.[look] && fs.existsSync(path.join(dirOf(id), 'look', look));
 // "downloaded" is her card's own look (her first), as for Azur Lane: her other outfits come one by one
 const installed = (id) => base(id) && lookInstalled(id, CHARS[id].looks[0].id);
-const previewFile = (key) => path.join(USER_WALLPAPERS, 'ba-previews', `sekai_${key}.jpg`);
+const previewFile = (key) => path.join(USER_WALLPAPERS, 'previews', 'lobbies', `sekai_${key}.jpg`);
 const previewUrl = (key) => {
   const pic = previewFile(key);
-  return fs.existsSync(pic) ? `tyran://userdata/ba-previews/sekai_${key}.jpg?${Math.round(fs.statSync(pic).mtimeMs)}` : '';
+  return fs.existsSync(pic) ? `tyran://userdata/previews/lobbies/sekai_${key}.jpg?${Math.round(fs.statSync(pic).mtimeMs)}` : '';
 };
 
 // ---------------------------------------------------------------- cards
 // Each outfit's card: drawn by TyranWeb from her model once downloaded (sekai-cards/<outfit>.png),
 // else her portrait from the game's character select.
-const CARDS = path.join(USER_WALLPAPERS, 'sekai-cards');
+const CARDS = path.join(USER_WALLPAPERS, 'previews', 'sekai');
 const cardUrl = (name) => {
   const file = path.join(CARDS, name);
-  return fs.existsSync(file) ? `tyran://userdata/sekai-cards/${name}?${Math.round(fs.statSync(file).mtimeMs)}` : '';
+  return fs.existsSync(file) ? `tyran://userdata/previews/sekai/${name}?${Math.round(fs.statSync(file).mtimeMs)}` : '';
 };
 
 async function drawCard(id, look) {

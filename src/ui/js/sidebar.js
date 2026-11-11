@@ -435,9 +435,17 @@ const soundOn = () => {
   return isLobby() ? !!w.web?.audio : !!own() && w.musicOn !== false;
 };
 const ostShown = () => L().sidebarOpen && panelId === 'ost';
-// it is heard while a tab shows the lobby (layout.js), and nothing else makes sound meanwhile (a tab,
-// another program: main/othersound.js, Settings → Hình nền → Nhạc nền → Khi có âm thanh khác)
-const heard = () => S.lobbyOpen !== false && !S.otherAudio;
+// it is heard while a tab shows the lobby (layout.js), and until something else makes sound (a tab,
+// another program: main/othersound.js, Settings → Hình nền → Nhạc nền → Khi có âm thanh khác): then
+// it stops for good, till turned on again (the panel's play button, its switch in Settings)
+const heard = () => S.lobbyOpen !== false && !S.musicStopped;
+function playMusic(on) {
+  if (on && !soundOn()) api.invoke('settings:set', { wallpaper: isLobby() ? { web: { audio: true } } : { musicOn: true } }).catch(() => {});
+  if (S.musicStopped === !on) return;
+  S.musicStopped = !on;
+  emit('other-audio', S.otherAudio);
+}
+let wasOn = null;
 
 async function lobbySong() {
   const w = S.settings.wallpaper;
@@ -641,10 +649,13 @@ function ensureOst() {
       row('musicVolume', 'music', t('Âm lượng nhạc'), true),
       row('musicVolume', 'music', t('Âm lượng nhạc nền'), false)
     );
+    // (play / stop: stopped by another sound, it plays again only from here or from its switch)
+    const play = h('button', { class: 'icon-btn ost-play', onclick: () => playMusic(!(soundOn() && !S.musicStopped)) });
     const head = h(
       'div',
       { class: 'panel-head' },
       h('b', { text: t('Nhạc nền') }),
+      play,
       h('button', { class: 'icon-btn', title: t('Phát lại từ đầu'), html: icon('reload', 15), onclick: () => (own() && own().kind !== 'youtube' ? restartOwn() : syncOst({ force: true })) }),
       h('button', { class: 'icon-btn', title: t('Mở trong tab (bài / playlist đang dùng, hoặc cả playlist OST)'), html: icon('external', 15), onclick: () => createTab({ url: own()?.url || OST_PLAYLIST }) })
     );
@@ -654,7 +665,8 @@ function ensureOst() {
     const files = h('div', { class: 'own-files' });
     ownView.hidden = files.hidden = true;
     const wrap = h('div', { class: 'wp-wrap ost-wrap' }, head, info, volRow, ytView, ownView, files);
-    ost = { wrap, wv, info, sliders, ytView, ownView, files, ready: false, video: '', list: '', held: false, ticking: false, again: false };
+    ost = { wrap, wv, info, sliders, ytView, ownView, files, play, ready: false, video: '', list: '', held: false, ticking: false, again: false };
+    paintPlay();
     syncSliders();
     wv.addEventListener('ipc-message', (e) => {
       if (e.channel === 'tyran:shortcut') emit('command', { id: e.args[0] });
@@ -669,7 +681,7 @@ function ensureOst() {
       if (first && ost.video && !wv.getURL().includes('v=' + ost.video)) return void wv.loadURL(ostUrl(ost.video, ost.list)).catch(() => {});
       if (/^https:\/\/((www|music)\.)?youtube\.com\//.test(wv.getURL())) {
         wv.insertCSS(OST_CSS).catch(() => {});
-        wv.executeJavaScript(`(${spectrumHook})()`).catch(() => {}); // (its song's levels, for the spectrum bar)
+        wv.executeJavaScript(`void (${spectrumHook})()`).catch(() => {}); // (its song's levels, for the spectrum bar)
         wv.executeJavaScript(AD_SKIP).catch(() => {});
       }
       muteOst(ost.held);
@@ -1025,7 +1037,7 @@ function startOwn() {
     if (!player.wvSig || !/^https:/.test(wv.getURL())) return; // (about:blank, between songs)
     player.started = true;
     wv.executeJavaScript(VOLUME_HOOK).then(setOwnLevel, () => {});
-    wv.executeJavaScript(`(${spectrumHook})()`).catch(() => {});
+    wv.executeJavaScript(`void (${spectrumHook})()`).catch(() => {});
     // Spotify's player waits for its play button
     if (player.mine?.kind === 'spotify') setTimeout(() => wv.executeJavaScript("document.querySelector('[data-testid=\"play-pause-button\"]')?.click()").catch(() => {}), 2500);
   });
@@ -1111,6 +1123,14 @@ let ostKey = '';
 let ostSound = false;
 let listening = null;
 function lobbyMusic() {
+  // (turned on again in Settings: it plays again, though something stopped it before)
+  const on = soundOn();
+  if (on && wasOn === false && S.musicStopped) {
+    S.musicStopped = false;
+    emit('other-audio', S.otherAudio);
+  }
+  wasOn = on;
+  paintPlay();
   // (while it is meant to play, main listens for other programs' sound too)
   const w0 = S.settings.wallpaper;
   const meant = (soundOn() || (w0.type === 'web' && !!w0.web?.audio)) && S.lobbyOpen !== false;
@@ -1132,6 +1152,12 @@ function lobbyMusic() {
     tickOst();
     setOwnLevel();
   }
+}
+function paintPlay() {
+  if (!ost?.play) return;
+  const playing = soundOn() && !S.musicStopped;
+  ost.play.innerHTML = icon(playing ? 'pause' : 'play', 15);
+  ost.play.title = playing ? t('Dừng nhạc nền') : t('Phát nhạc nền');
 }
 on('settings', lobbyMusic);
 on('lobby-open', lobbyMusic);

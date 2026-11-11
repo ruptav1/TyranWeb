@@ -50,9 +50,10 @@ const SETTINGS = {
     customCSS: '',
   },
   wallpaper: {
-    type: 'image', // image | video | web | color | gradient | mica | acrylic | transparent
+    // (a first start: Azusa (Racing), the video that comes with TyranWeb, with "Oriental Drop" as its music)
+    type: 'video', // image | video | web | color | gradient | mica | acrylic | transparent
     image: 'tyran://assets/wallpapers/clannad-nagisa-sakura.jpg',
-    video: '',
+    video: 'tyran://assets/wallpapers/videos/azusa-racing.mp4',
     videoRate: 1,
     motion: 'focus', // when video/web backgrounds animate: always | focus | newtab
     // volume: the lobby's overall level; musicVolume / voiceVolume: its song and its voices, on top of it
@@ -75,7 +76,9 @@ const SETTINGS = {
     frames: {}, // url -> { z, x, y }: a picture / video framed by hand (Cắt / phóng to)
     // a wallpaper's own music (key -> { kind: 'files', files, shuffle } | { kind: youtube | soundcloud | spotify, url, ... }),
     // whether it plays, and its volume (a Blue Archive lobby uses the lobby's volumes instead)
-    music: {},
+    music: {
+      'video:tyran://assets/wallpapers/videos/azusa-racing.mp4': { kind: 'youtube', url: 'https://music.youtube.com/watch?v=wzs3WHp7i4o', video: 'wzs3WHp7i4o', list: '', title: 'Oriental Drop' },
+    },
     musicOn: true,
     musicVolume: 0.6,
     pauseForSound: 'apps', // the music rests while something else makes sound: 'apps' (a tab or another program) | 'tabs' | 'off'

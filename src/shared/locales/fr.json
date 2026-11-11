@@ -1089,5 +1089,8 @@
  "Đã tắt chặn quảng cáo trên {0}": "Blocage désactivé sur {0}",
  "Đã bật chặn quảng cáo trên {0}": "Blocage activé sur {0}",
  "Đã bật VPN": "VPN activé",
- "Đã tắt VPN": "VPN désactivé"
+ "Đã tắt VPN": "VPN désactivé",
+ "Dừng nhạc nền": "Arrêter la musique",
+ "Dừng hẳn (cả ứng dụng khác)": "Arrêter (autres applis aussi)",
+ "Dừng hẳn (chỉ tab khác)": "Arrêter (autres onglets seulement)"
 }

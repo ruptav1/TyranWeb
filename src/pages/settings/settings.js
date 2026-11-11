@@ -1,7 +1,7 @@
 import { api, boot, onSettings, h, $, $$, esc, debounce, hostOf, host, openUrl } from 'tyran://shared/page.js';
 import { icon } from 'tyran://shared/icons.js';
 import { frameCss, frameOf, musicKey, ownMusic } from 'tyran://shared/theme.js';
-import { PRESETS, presetPatch, ACCENTS } from 'tyran://shared/themes.js';
+import { ACCENTS } from 'tyran://shared/themes.js';
 import { t, LOCALE, LANGS } from 'tyran://shared/i18n.js';
 
 let S = null;
@@ -270,22 +270,6 @@ function thumbOf(url) {
 }
 
 function appearance() {
-  const grid = h('div', { class: 'presets' });
-  for (const p of PRESETS) {
-    const card = h('button', { type: 'button', class: 'preset', dataset: { id: p.id } });
-    card.innerHTML = `<span class="preset-img" style="background-image:url('${esc(thumbOf(p.wallpaper.image))}')">
-        <span class="preset-mock" style="--a:${p.appearance.accent};--s:${p.appearance.surface};--t:${p.appearance.text}"><i></i><i></i><i></i></span>
-      </span>
-      <span class="preset-name"><span class="dot" style="background:${p.appearance.accent}"></span>${esc(p.name)}</span>
-      <span class="preset-sub">${esc(p.sub)}</span>`;
-    card.addEventListener('click', () => {
-      api.invoke('settings:set', presetPatch(p));
-      $$('.preset').forEach((n) => n.classList.toggle('on', n === card));
-    });
-    grid.append(card);
-  }
-  bind(grid, () => $$('.preset', grid).forEach((n) => n.classList.toggle('on', n.dataset.id === S.appearance.preset)));
-
   const swatches = h('div', { class: 'swatches' });
   for (const c of ACCENTS) {
     const b = h('button', { type: 'button', class: 'swatch', style: { background: c }, title: c });
@@ -310,8 +294,7 @@ function appearance() {
   ];
 
   return [
-    ...head(t('Giao diện'), t('Chọn một theme anime có sẵn, rồi tinh chỉnh từng chi tiết theo ý bạn. Mọi thay đổi áp dụng ngay lập tức.')),
-    grid,
+    ...head(t('Giao diện')),
     stitle(t('Màu sắc')),
     section_(
       row(t('Chế độ'), '', seg('appearance.dark', [[false, t('Sáng')], [true, t('Tối')]])),
@@ -595,8 +578,8 @@ function musicSection() {
         row(t('Âm lượng nhạc nền'), '', range('wallpaper.musicVolume', 0, 1, 0.05, fmt.pct))
       );
     }
-    // (main/othersound.js: a tab or another program making sound pauses it until it has been quiet a moment)
-    rows.push(row(t('Khi có âm thanh khác'), '', select('wallpaper.pauseForSound', [['apps', t('Tạm dừng (cả ứng dụng khác)')], ['tabs', t('Tạm dừng (chỉ tab khác)')], ['off', t('Vẫn phát')]])));
+    // (main/othersound.js: a tab or another program making sound stops it, till it is turned on again)
+    rows.push(row(t('Khi có âm thanh khác'), '', select('wallpaper.pauseForSound', [['apps', t('Dừng hẳn (cả ứng dụng khác)')], ['tabs', t('Dừng hẳn (chỉ tab khác)')], ['off', t('Vẫn phát')]])));
     box.append(stitle(t('Nhạc nền')), section_(...rows));
   });
 }
@@ -1086,6 +1069,8 @@ function videoTile(v) {
 function videoLibrary() {
   const grid = h('div', { class: 'wp-grid' }, ...wallpapers.videos.map(videoTile));
   const tools = mediaTools();
+  // (the video wallpaper store: tyran://store, searched over several sites)
+  tools[0].prepend(button(t('Kho nền video'), () => openUrl('tyran://store/', true), { ic: 'video', cls: 'small primary' }));
   const add = h('button', { type: 'button', class: 'wp-item wp-add', html: `${icon('plus', 22)}<span>${t('Thêm video từ máy')}</span>` });
   add.addEventListener('click', async () => {
     add.classList.add('busy');
@@ -1836,7 +1821,7 @@ const TOOLBAR_ITEMS = {
   back: [t('Quay lại'), 'back'], forward: [t('Tiến tới'), 'forward'], reload: [t('Tải lại'), 'reload'], home: [t('Trang chủ'), 'home'],
   omnibox: [t('Thanh địa chỉ'), 'search'], media: [t('Tải video'), 'video'], downloads: [t('Tải xuống'), 'download'],
   split: [t('Chia đôi màn hình'), 'split'], screenshot: [t('Chụp màn hình'), 'camera'], pip: [t('Hình trong hình'), 'pip'],
-  sidebar: [t('Thanh bên'), 'sidebar'], palette: [t('Bảng lệnh'), 'command'], theme: [t('Đổi theme'), 'palette'], wallpaper: [t('Đổi hình nền'), 'shuffle'], lobby: [t('Chế độ Lobby'), 'tv'],
+  sidebar: [t('Thanh bên'), 'sidebar'], palette: [t('Bảng lệnh'), 'command'], wallpaper: [t('Đổi hình nền'), 'shuffle'], lobby: [t('Chế độ Lobby'), 'tv'],
   zen: [t('Chế độ tập trung'), 'eye'], newtab: [t('Tab mới'), 'plus'], private: [t('Cửa sổ ẩn danh'), 'incognito'], settings: [t('Cài đặt'), 'sliders'], menu: [t('Menu'), 'more'],
 };
 

@@ -8,11 +8,11 @@ import { openMenu, closePopover, toast } from './menus.js';
 import { openFind } from './find.js';
 import { openPalette, setCommandSource } from './palette.js';
 import { bookmarkPopover } from './bookmarks.js';
-import { toggleSidebar } from './sidebar.js';
+import { toggleSidebar, openSidebar } from './sidebar.js';
+import { spectrumAt } from './visualizer.js';
 import { openDownloadsPopover } from './downloads.js';
 import { nextWallpaper, toggleLobby, lobbyTouch, nextNikkeOutfit, nextNikkeExpression } from './wallpaper.js';
 import { focus as focusOmnibox } from './omnibox.js';
-import { PRESETS, presetPatch } from 'tyran://shared/themes.js';
 import { icon } from 'tyran://shared/icons.js';
 import { t, LANG } from 'tyran://shared/i18n.js';
 
@@ -37,13 +37,6 @@ async function screenshot() {
   const file = await api.invoke('wc:action', tab.wcId, 'capture');
   toast(t('Đã chụp & sao chép vào clipboard'), { icon: 'camera', action: { label: t('Mở thư mục'), run: () => api.invoke('app:openPath', 'screenshots') } });
   return file;
-}
-
-function cycleTheme() {
-  const i = PRESETS.findIndex((p) => p.id === S.settings.appearance.preset);
-  const p = PRESETS[(i + 1) % PRESETS.length];
-  api.invoke('settings:set', presetPatch(p));
-  toast(`Theme: ${p.name} — ${p.sub}`, { icon: 'palette' });
 }
 
 function toggleZen() {
@@ -103,7 +96,6 @@ export const COMMANDS = {
   'palette.open': { icon: 'command', run: () => openPalette() },
   'sidebar.toggle': { icon: 'sidebar', run: () => toggleSidebar() },
   'split.toggle': { icon: 'split', run: () => tabs.toggleSplit() },
-  'theme.next': { icon: 'palette', run: cycleTheme },
   'wallpaper.next': { icon: 'shuffle', run: () => nextWallpaper(true) },
   'wallpaper.lobby': { icon: 'tv', run: () => toggleLobby() },
   'wallpaper.lobbyExit': { run: () => toggleLobby(false) },
@@ -367,7 +359,6 @@ export function openMainMenu(anchor) {
     { label: t('Tải xuống'), icon: 'download', hint: k('open.downloads'), run: () => openDownloadsPopover() },
     { label: t('Dấu trang'), icon: 'bookmark', hint: k('open.bookmarks'), run: () => run('open.bookmarks') },
     { sep: true },
-    { label: t('Đổi theme tiếp theo'), icon: 'palette', hint: k('theme.next'), run: () => run('theme.next') },
     { label: t('Đổi hình nền'), icon: 'shuffle', hint: k('wallpaper.next'), run: () => run('wallpaper.next') },
     { label: t('Kho nền video'), icon: 'video', run: () => run('open.store') },
     { label: t('Chế độ Lobby'), icon: 'tv', hint: k('wallpaper.lobby'), run: () => run('wallpaper.lobby') },
@@ -398,5 +389,15 @@ on('host-message', ({ tab, type, payload }) => {
     if (url) tabs.navigate(tab.id, url);
   } else if (type === 'lobby-touch' && tab.url?.startsWith(NEWTAB)) {
     lobbyTouch(tab, payload);
+  } else if (type === 'wall-click' && tab.url?.startsWith(NEWTAB)) {
+    // (a press on the new tab page's background: on the music's bars, the panel playing that music)
+    const page = tab.webview?.getBoundingClientRect();
+    let zoom = 1;
+    try {
+      zoom = tab.webview.getZoomFactor();
+    } catch {
+      /* not attached */
+    }
+    if (page && spectrumAt(page.left + Number(payload?.x) * zoom, page.top + Number(payload?.y) * zoom)) openSidebar('ost');
   }
 });
