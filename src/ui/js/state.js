@@ -11,4 +11,5 @@ export const S = {
   zen: false,
   otherAudio: false, // something else makes sound (main/othersound.js)
   musicStopped: false, // ...and so the wallpaper's music stopped, until it is turned on again (sidebar.js)
+  musicMeant: false, // the wallpaper has music and its sound is on (sidebar.js)
 };

@@ -1,4 +1,4 @@
-TyranWeb 1.1.76 — trình duyệt anime (Windows 10/11, 64-bit)
+TyranWeb 1.1.77 — trình duyệt anime (Windows 10/11, 64-bit)
 ==========================================================
 
 CÁCH CHẠY
@@ -78,8 +78,8 @@ GHI CHÚ
 - Lần đầu mở, hình nền là video Azusa (Racing) (Blue Archive, đi kèm app) với nhạc nền "Oriental
   Drop" (phát từ YouTube Music ở bảng Nhạc nền của thanh bên).
 - Nhạc nền dừng hẳn khi một tab hay một ứng dụng khác phát tiếng, và chỉ phát lại khi bạn bật lại
-  (nút phát ở bảng Nhạc nền của thanh bên, hoặc Cài đặt → Hình nền → Nhạc nền). Bấm vào thanh nhạc
-  dưới hình nền để mở bảng Nhạc nền.
+  (bấm vào thanh nhạc dưới hình nền, đang hiện dấu ▶; nút phát ở bảng Nhạc nền của thanh bên; hoặc
+  Cài đặt → Hình nền → Nhạc nền). Khi nhạc đang phát, bấm vào thanh nhạc để mở bảng Nhạc nền.
 - Tải video (nút máy quay trên thanh công cụ; số trên nút là số video trang đang phát):
   + Dán đường dẫn một bài đăng / video / GIF của YouTube, X, Facebook, Instagram, Reddit, Pixiv,
     TikTok, Bilibili, Niconico... (đang mở bài đó thì đường dẫn tự điền): hiện ảnh, thời lượng và

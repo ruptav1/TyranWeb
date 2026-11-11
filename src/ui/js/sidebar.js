@@ -534,6 +534,9 @@ async function tickOst() {
   if (!ost?.ready || ost.ramping) return;
   if (ost.ticking) return void (ost.again = true);
   ost.ticking = true;
+  // (YouTube does not always start the song on its own, the panel hidden: a song meant to play that
+  // never began is started; once it has played, a pause in its page is the user's and stays)
+  const kick = !!ost.video && !ost.held && soundOn() && heard();
   const r = await ost.wv
     .executeJavaScript(
       `(() => {
@@ -541,6 +544,9 @@ async function tickOst() {
         const p = document.getElementById('movie_player');
         window.__tyranWant ??= ${lobbyVolume()};
         if (!v || !p || !p.getVolume) return null;
+        if (!v.__tyranStart) { v.__tyranStart = true; v.addEventListener('playing', () => (window.__tyranStartedAt = location.href)); }
+        if (!v.paused) window.__tyranStartedAt = location.href;
+        if (${kick} && !window.__tyranHold && v.paused && window.__tyranStartedAt !== location.href && (location.href.includes('v=' + ${JSON.stringify(ost.video)}) ${ost.list ? `|| location.href.includes('list=' + ${JSON.stringify(ost.list)})` : ''}) && p.playVideo) p.playVideo();
         if (${JSON.stringify(ost.video)} && ${!ost.list} && location.href.includes('v=' + ${JSON.stringify(ost.video)})) v.loop = ${!nextOnEnd()}; // the lobby's song loops (a playlist plays on), unless its end moves on to the next lobby
         if (!v.__tyranEnd) { v.__tyranEnd = true; v.addEventListener('ended', () => (window.__tyranSongEnd = (window.__tyranSongEnd || 0) + 1)); }
         if (window.__tyranHold && location.href.includes('v=' + window.__tyranHoldId) && !v.paused) { p.pauseVideo(); p.seekTo(0, true); } // still waiting for the lobby
@@ -556,10 +562,20 @@ async function tickOst() {
         }
         const user = window.__tyranUserVol;
         window.__tyranUserVol = undefined;
-        return { cur: p.getVolume(), user };
+        const stuck = v.readyState === 0 && p.getPlayerState && p.getPlayerState() === -1;
+        return { cur: p.getVolume(), user, stuck, playing: !v.paused };
       })()`
     )
     .catch(() => null);
+  // (a song meant to play whose player never got going even when started: its page loaded again, a
+  // few times at most)
+  if (r?.playing) ost.reloads = 0;
+  ost.stuckTicks = kick && r?.stuck ? (ost.stuckTicks || 0) + 1 : 0;
+  if (ost.stuckTicks >= 6 && (ost.reloads || 0) < 3) {
+    ost.reloads = (ost.reloads || 0) + 1;
+    ost.stuckTicks = 0;
+    ost.wv.loadURL(ostUrl(ost.video, ost.list)).catch(() => {});
+  }
   const want = lobbyVolume();
   if (r && typeof r.user === 'number' && Math.round(r.user) !== want) {
     await musicFromYouTube(Math.round(r.user)); // moved with YouTube's own control
@@ -633,6 +649,8 @@ function ensureOst() {
     const wv = document.createElement('webview');
     wv.setAttribute('partition', S.private ? 'tyran-private' : 'persist:tyran');
     wv.setAttribute('allowpopups', '');
+    // (out of sight most of the time: its timers at full speed, so YouTube's player gets going)
+    wv.setAttribute('webpreferences', 'backgroundThrottling=no');
     const info = h('div', { class: 'ost-info' });
     // a lobby: its overall volume (song and voices) and the song's own; another wallpaper: its music's
     const sliders = [];
@@ -1130,6 +1148,10 @@ function lobbyMusic() {
     emit('other-audio', S.otherAudio);
   }
   wasOn = on;
+  if (S.musicMeant !== on) {
+    S.musicMeant = on;
+    emit('music-meant', on); // (the bar: visualizer.js)
+  }
   paintPlay();
   // (while it is meant to play, main listens for other programs' sound too)
   const w0 = S.settings.wallpaper;
@@ -1162,6 +1184,7 @@ function paintPlay() {
 on('settings', lobbyMusic);
 on('lobby-open', lobbyMusic);
 on('other-audio', lobbyMusic);
+on('music-play', () => playMusic(true)); // (the stopped bar pressed: commands.js)
 
 let railKey = '';
 on('settings', () => {

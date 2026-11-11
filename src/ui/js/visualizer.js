@@ -131,6 +131,9 @@ const visible = () => !!S.lobby || /^tyran:\/\/newtab\/?$/i.test(active()?.url |
 const shown = () => !!S.settings?.newtab?.visualizer;
 const autoHide = () => S.settings?.newtab?.visualizerAutoHide !== false;
 const animated = () => S.settings?.appearance?.animations !== false;
+// (the music stopped for good by another sound: the bar stays out, flat, with a play sign; pressed, the
+// music plays again: commands.js)
+const stopped = () => !!S.musicStopped && !!S.musicMeant;
 const INTRO = 1.3; // seconds: the lines (0-0.5), the line fading (0.5-1.0), the bars coming out (1.0-1.3)
 const OUTRO = 1.0;
 
@@ -154,7 +157,7 @@ function come(on) {
 
 function apply() {
   if (!shown()) come(false);
-  else if (!autoHide()) come(true); // (it stays out, flat while nothing is heard)
+  else if (!autoHide() || stopped()) come(true); // (it stays out, flat while nothing is heard)
   run();
 }
 
@@ -190,7 +193,7 @@ async function listenNow() {
     const t = performance.now() / 1000;
     if (v && v.some((x) => x > 30)) lastHeard = t;
     if (!shown()) return;
-    if (!autoHide() || t - lastHeard < 0.2) come(true);
+    if (!autoHide() || stopped() || t - lastHeard < 0.2) come(true);
     else if (t - lastHeard > QUIET) come(false);
     // (the louder parts stand out: a curve on the levels, the highs lifted a little as they are quieter)
     const raw = Float32Array.from({ length: BARS }, (_, i) => (v ? Math.min(1, (Math.max(0, (v[i] || 0) - 28) / 227) ** 1.35 * (0.9 + (0.4 * i) / BARS)) : 0));
@@ -280,6 +283,18 @@ function frame(nowMs) {
     }
     g.fill();
   }
+  // (stopped: a play sign over the middle of the flat bars)
+  if (stopped() && out > 0) {
+    const s = tall * 0.62 * out;
+    const cx = W / 2;
+    const cy = base - low - tall * 0.42;
+    g.beginPath();
+    g.moveTo(cx - s * 0.38, cy - s / 2);
+    g.lineTo(cx + s * 0.5, cy);
+    g.lineTo(cx - s * 0.38, cy + s / 2);
+    g.closePath();
+    g.fill();
+  }
   // the two thin lines from the ends, meeting in the middle
   if (lines > 0 && lineAlpha > 0) {
     g.globalAlpha = lineAlpha;
@@ -297,6 +312,7 @@ export const spectrumAt = (x, y) => !!bars && x >= bars.left && x <= bars.right 
 export function initVisualizer() {
   api.invoke('spectrum:code', String(spectrumHook)).catch(() => {}); // (for measuring in tabs)
   on('settings', apply);
+  for (const ev of ['other-audio', 'music-meant']) on(ev, apply);
   for (const ev of ['active', 'tabs:changed', 'lobby-mode']) on(ev, run);
   apply();
 }

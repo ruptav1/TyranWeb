@@ -1,5 +1,5 @@
 // Command registry, keyboard shortcuts, page / tab context menus and the main menu.
-import { api, h, on, NEWTAB, isInternal, resolveInput, searchUrlFor } from './util.js';
+import { api, h, on, emit, NEWTAB, isInternal, resolveInput, searchUrlFor } from './util.js';
 import { S } from './state.js';
 import { install } from './extensions.js';
 import * as tabs from './tabs.js';
@@ -398,6 +398,7 @@ on('host-message', ({ tab, type, payload }) => {
     } catch {
       /* not attached */
     }
-    if (page && spectrumAt(page.left + Number(payload?.x) * zoom, page.top + Number(payload?.y) * zoom)) openSidebar('ost');
+    // (stopped by another sound, the bar plays the music again)
+    if (page && spectrumAt(page.left + Number(payload?.x) * zoom, page.top + Number(payload?.y) * zoom)) S.musicStopped && S.musicMeant ? emit('music-play') : openSidebar('ost');
   }
 });
