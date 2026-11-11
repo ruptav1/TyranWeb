@@ -962,6 +962,14 @@ function blueArchivePage() {
   const GAME_CAMERA = new Set(['momoi_home', 'ch0086_home', 'wakamo_home']);
   // added light softened (soften): Saori (Dress), Atsuko (Swimsuit), Eimi (Armed)
   const SOFT_LIGHT = new Set(['ch0259_home', 'ch0267_home', 'ch0337_home']);
+  // a lobby framed by its picture but not as the game shows it: zoomed by `zoom` around the window's
+  // middle, then its picture moved up by `up` rig units; fitted to a recording of the lobby. Azusa
+  // (Racing), whose rig has no camera bone: to MotionBGs' video of it
+  const FRAME_FIX = { ch0380_home: { zoom: 1.015, up: 391 } };
+  // a pat that also moves Touch_Point_Rot: in these rigs the pat animations key Touch_Point_Rot and a
+  // constraint makes Touch_Point_Key follow it while they play, so the finger's pull on the key alone
+  // was undone (the head stayed). Azusa (Racing)
+  const PAT_ROT = new Set(['ch0380_home']);
   const only = (set) => set.has(String(T.key).toLowerCase());
   const sceneOf = (s) => only(SCENE_FIRST) && /_scene/i.test(s.__tyranSrc || '');
   const restPose = (s) => {
@@ -1236,6 +1244,16 @@ function blueArchivePage() {
       const cx = Math.min(r.x1 - half, Math.max(r.x0 + half, 0));
       x = W / 2 - cx * k;
       y = -0.25 * extra - r.y0 * k;
+      const fix = FRAME_FIX[String(T.key).toLowerCase()];
+      if (fix) {
+        const z = fix.zoom || 1;
+        k *= z;
+        x = W / 2 + (x - W / 2) * z;
+        y = H / 2 + (y - H / 2) * z - (fix.up || 0) * k;
+        // (never an empty strip at an edge: a taller window gets its picture down just enough)
+        if (y + r.y1 * k < H) y = H - r.y1 * k;
+        if (y + r.y0 * k > 0) y = -r.y0 * k;
+      }
     }
     T.camera = !!cam;
     T.base = { k, x, y };
@@ -1614,6 +1632,7 @@ function blueArchivePage() {
       point,
       eye,
       pointKey: findBone(s, 'Touch_Point_Key'),
+      pointRot: findBone(s, 'Touch_Point_Rot'),
       eyeKey: findBone(s, 'Touch_Eye_Key'),
       // a chin that no constraint moves is pulled directly (Hikari); otherwise it follows Touch_Point_Key
       chin: chin && !constrained.has(chin) ? chin : null,
@@ -1798,7 +1817,8 @@ function blueArchivePage() {
     const apply = st.apply.bind(st);
     st.apply = (skel) => {
       const r = rig(s);
-      const moved = [r.pointKey, r.eyeKey, r.chin, ...r.cheeks].filter(Boolean);
+      const rot = only(PAT_ROT) ? r.pointRot : null;
+      const moved = [r.pointKey, rot, r.eyeKey, r.chin, ...r.cheeks].filter(Boolean);
       // start from the setup pose so the animation's own motion is kept and offsets never pile up
       for (const b of moved) {
         b.x = b.data.x;
@@ -1836,6 +1856,7 @@ function blueArchivePage() {
       ease(touch.pull, outward(want(['pinch'], touch.start, 0.7 * pk * u, pk)));
       nudge(r.eyeKey, touch.eye);
       nudge(r.pointKey, touch.key);
+      if (rot && touch.keyFrom !== 'pinch') nudge(rot, touch.key);
       if (touch.keyFrom === 'pinch') {
         if (touch.pinched) nudge(touch.pinched, touch.pull);
         else nudge(r.chin, touch.key);

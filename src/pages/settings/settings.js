@@ -2217,7 +2217,14 @@ function shortcutsSection() {
   draw();
   return [
     ...head(t('Phím tắt'), t('Bấm “Đổi” rồi nhấn tổ hợp phím mới. Esc để hủy, Backspace để xóa phím tắt.')),
-    h('div', { class: 'toolbar-row' }, filter, button(t('Khôi phục tất cả'), () => api.invoke('settings:reset', 'shortcuts'), { ic: 'reload' })),
+    h(
+      'div',
+      { class: 'toolbar-row' },
+      filter,
+      button(t('Khôi phục tất cả'), () => api.invoke('settings:reset', 'shortcuts'), { ic: 'reload' }),
+      // (every command without keys, the browser's own ones too; Khôi phục tất cả brings them back)
+      confirmButton(t('Xóa tất cả'), t('Bấm lần nữa để xóa'), () => set('shortcuts', Object.fromEntries(Object.keys(shortcuts).map((id) => [id, []]))))
+    ),
     list,
   ];
 }

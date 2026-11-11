@@ -1,4 +1,4 @@
-TyranWeb 1.1.77 — trình duyệt anime (Windows 10/11, 64-bit)
+TyranWeb 1.1.78 — trình duyệt anime (Windows 10/11, 64-bit)
 ==========================================================
 
 CÁCH CHẠY
