@@ -1,4 +1,4 @@
-TyranWeb 1.1.74 — trình duyệt anime (Windows 10/11, 64-bit)
+TyranWeb 1.1.75 — trình duyệt anime (Windows 10/11, 64-bit)
 ==========================================================
 
 CÁCH CHẠY
@@ -51,7 +51,8 @@ CẦN INTERNET CHO
   của Ghostery; "Brave" dùng các danh sách Brave bật sẵn; "Brave đầy đủ" dùng đúng bộ máy
   adblock-rust của Brave, được tải và biên dịch trên máy khi chọn lần đầu (tải khoảng 400 MB,
   tạm chiếm tới 2 GB ổ đĩa, vài phút; xong chỉ giữ lại khoảng 25 MB). Không có sẵn trong file
-  zip này.
+  zip này. Khiên trong thanh địa chỉ: số quảng cáo đã chặn trên trang, bộ lọc đang dùng, và tắt
+  chặn quảng cáo riêng cho trang đó (các trang khác vẫn chặn).
 
 GHI CHÚ
 - Lần đầu mở, TyranWeb hỏi ngôn ngữ (Tiếng Việt, English, 日本語, 한국어, 简体中文, Español,
@@ -70,14 +71,24 @@ GHI CHÚ
   tắt app. Tab mở lại khi khởi động và tab ngủ cũng giữ các trang đó.
 - Nhạc nền của trang Tab mới tự tạm dừng khi một tab hay một ứng dụng khác đang phát tiếng, và
   phát tiếp khi đã im vài giây (Cài đặt → Hình nền → Nhạc nền → Khi có âm thanh khác).
-- Tải video trên mọi trang: khi trang đang phát video, cạnh nút chặn quảng cáo hiện nút máy
-  quay; bấm vào để thấy các video của trang (file mp4/webm/mov... và luồng HLS .m3u8, kèm chất
-  lượng, dung lượng, thời lượng) và tải về mục Tải xuống. Luồng HLS được ghép thành một file
-  .mp4. Không tải được video có DRM (Netflix, Spotify...) và phát trực tiếp; YouTube không hiện ở
-  đây. Chỉ tải video bạn có quyền tải.
+- Tải video (nút máy quay cạnh nút chặn quảng cáo; số trên nút là số video trang đang phát):
+  + Dán đường dẫn một bài đăng / video / GIF của YouTube, X, Facebook, Instagram, Reddit, Pixiv,
+    TikTok, Bilibili, Niconico... (đang mở bài đó thì đường dẫn tự điền): hiện ảnh, thời lượng và
+    các chất lượng (độ phân giải, fps, dung lượng), cả "chỉ âm thanh" và GIF cho video ngắn.
+    Dùng yt-dlp (github.com/yt-dlp/yt-dlp, Unlicense), tải về lần đầu dùng (khoảng 24 MB, kiểm
+    tra SHA-256) và tự cập nhật. Ghép hình với tiếng, ảnh động Pixiv và GIF cần FFmpeg: dùng
+    FFmpeg có sẵn trên máy, nếu không có thì tải ffmpeg.exe 6.1.1 của eugeneware/ffmpeg-static
+    (khoảng 30 MB, GPL-3.0). Bài cần đăng nhập thì dùng phiên đăng nhập của trang đó trong
+    TyranWeb (cookie của đúng trang đó được ghi ra file tạm cho yt-dlp và xoá ngay sau đó).
+    Khi bật Cloudflare WARP trong TyranWeb, yt-dlp cũng đi qua WARP.
+  + Các video trang đang phát (file mp4/webm/mov... và luồng HLS .m3u8), mỗi cái kèm ảnh, độ
+    phân giải, fps, thời lượng, dung lượng; luồng HLS được ghép thành một file .mp4.
+  + Không tải được video có DRM (Netflix, Spotify...) và phát trực tiếp. Chỉ tải video bạn có
+    quyền tải.
 - Dọn rác (Cài đặt → Quyền riêng tư → Dọn rác): bộ nhớ đệm và file tải dở của TyranWeb, file tạm
   của Windows cũ hơn 7 ngày; dọn ngay hoặc tự dọn mỗi tuần. File đang được dùng thì giữ lại.
-- Đổi IP / VPN (Cài đặt → Quyền riêng tư → Cloudflare WARP): cần cài ứng dụng Cloudflare WARP
+- Đổi IP / VPN (nút VPN trong thanh địa chỉ, hoặc Cài đặt → Quyền riêng tư → Cloudflare WARP; nút
+  sáng xanh khi các trang đang thật sự đi qua WARP): cần cài ứng dụng Cloudflare WARP
   (miễn phí, 1.1.1.1) và để nó ở chế độ proxy (có nút chuyển). Bật "Đi qua Cloudflare WARP" thì
   chỉ TyranWeb đi qua WARP; "Đổi IP" kết nối lại để lấy IP khác. IP do Cloudflare cấp, không
   chọn được quốc gia.
@@ -94,5 +105,5 @@ BẢN QUYỀN
 - Dự án cá nhân, phi thương mại.
 - TyranWeb dùng giấy phép GNU AGPL-3.0 (LICENSE.txt), vì có dùng code của ba-archive
   (github.com/ba-archive/blue-archive, AGPL-3.0). Mã nguồn: https://github.com/ruptav1/TyranWeb Thư viện gsap (GreenSock) theo giấy phép miễn phí
-  của nó; mux.js (Brightcove, Apache-2.0) ghép video HLS khi tải; bộ chạy Spine chính thức của Esoteric Software được tải về khi cần, theo giấy phép Spine
+  của nó; mux.js (Brightcove, Apache-2.0) ghép video HLS khi tải; yt-dlp và FFmpeg không có trong file zip, chỉ được tải về khi dùng, theo giấy phép của chúng; bộ chạy Spine chính thức của Esoteric Software được tải về khi cần, theo giấy phép Spine
   Runtimes.

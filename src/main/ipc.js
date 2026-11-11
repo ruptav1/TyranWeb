@@ -110,6 +110,21 @@ function register({ onSettings } = {}) {
   // ---- settings ----
   handle('settings:get', () => data.settings.data);
   handle('settings:set', (e, patch) => changeSettings(patch));
+  // the ad blocker: the engine in use, and blocking on or off for a page's site (the address bar's
+  // shield; on its own list, the rest stays as it is)
+  handle('adblock:engine', () => adblock.engine());
+  // whether TyranWeb's pages go through Cloudflare WARP right now (the address bar's VPN button)
+  handle('warp:routed', () => require('./warp').routed());
+  require('./warp').onRouteChange((on) => broadcast('warp:routed', on));
+  adblock.onEngineChange((name, asked) => broadcast('adblock:engine', { name, asked }));
+  handle('adblock:site', (e, url, on) => {
+    const site = adblock.siteOf(String(url || ''));
+    if (site && typeof on === 'boolean') {
+      const list = (data.settings.data.privacy.adblockOff || []).filter((d) => d !== site);
+      changeSettings({ privacy: { adblockOff: on ? list : [...list, site] } });
+    }
+    return { site, on: !adblock.isOff(String(url || '')) };
+  });
   handle('i18n:get', () => require('./i18n').info());
   // NIKKE and Azur Lane, still being tried out, are opened with a password (only its SHA-256 is kept);
   // once given, Settings remembers it
@@ -227,6 +242,12 @@ function register({ onSettings } = {}) {
   // Truy tìm video (main/sniffer.js): what a tab plays, and downloading one of them
   handle('media:list', (e, wcId) => require('./sniffer').list(guestOf(e, wcId).id), { uiOnly: true });
   handle('media:download', (e, wcId, id, variant) => require('./sniffer').download(guestOf(e, wcId), String(id || ''), Number.isInteger(variant) ? variant : undefined), { uiOnly: true });
+  handle('media:probe', (e, wcId, id) => require('./sniffer').probe(guestOf(e, wcId), String(id || '')), { uiOnly: true });
+  // Tải từ đường dẫn (main/grab.js): a post's link read (yt-dlp; Pixiv by main/pixiv.js) in the tab's
+  // session (its logins), and one of its videos downloaded
+  handle('grab:analyze', (e, url, wcId) => require('./grab').analyze(String(url || ''), wcId ? guestOf(e, wcId).session : require('electron').session.fromPartition(require('./sessions').PARTITION)), { uiOnly: true });
+  handle('grab:download', (e, token, index, key) => require('./grab').download(String(token || ''), Number(index), String(key || '')), { uiOnly: true });
+  handle('grab:ready', () => require('./tools').haveYtdlp(), { uiOnly: true });
   handle('cleaner:measure', () => require('./cleaner').measure());
   handle('cleaner:clean', (e, what) => require('./cleaner').clean({ app: !!what?.app, temp: !!what?.temp }));
   // Cloudflare WARP (main/warp.js): its state, where the pages come from, and the user's presses

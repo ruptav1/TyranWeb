@@ -29,10 +29,12 @@ async function state() {
 }
 
 let current = '';
+let onRoute = () => {}; // (whether the pages go through WARP now: the address bar's VPN button)
 async function apply(rules) {
   const key = JSON.stringify(rules);
   if (key === current) return;
   current = key;
+  onRoute(!!proxy());
   await Promise.all(routed().map((ses) => ses.setProxy(rules).then(() => ses.closeAllConnections?.()).catch(() => {})));
 }
 
@@ -86,4 +88,7 @@ async function where() {
   }
 }
 
-module.exports = { state, sync, action, where };
+// the WARP proxy TyranWeb's pages go through now ('' when none): yt-dlp goes the same way (grab.js)
+const proxy = () => (current.includes('socks5://') ? JSON.parse(current).proxyRules : '');
+
+module.exports = { state, sync, action, where, proxy, routed: () => !!proxy(), onRouteChange: (fn) => (onRoute = fn) };

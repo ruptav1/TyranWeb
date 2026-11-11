@@ -97,7 +97,7 @@ const SETTINGS = {
     sidebarPanel: 'bookmarks',
     showStatusBubble: true,
     tabCloseButton: 'hover', // hover | always
-    toolbarItems: ['back', 'forward', 'reload', 'home', 'omnibox', 'adblock', 'downloads', 'split', 'screenshot', 'sidebar', 'palette', 'menu'],
+    toolbarItems: ['back', 'forward', 'reload', 'home', 'omnibox', 'media', 'downloads', 'split', 'screenshot', 'sidebar', 'palette', 'menu'],
     hiddenToolbarItems: ['home', 'screenshot', 'palette'],
   },
   newtab: {
@@ -133,6 +133,7 @@ const SETTINGS = {
   privacy: {
     adblock: true,
     adblockEngine: 'ghostery', // 'ghostery' | 'brave' (Brave's lists) | 'brave-full' (Brave's engine, built here: main/brave-build.js)
+    adblockOff: [], // the sites (their domains) blocking is off for: the shield in the address bar
     doNotTrack: true,
     blockThirdPartyCookies: false, // (main/privacy.js)
     httpsOnly: false,

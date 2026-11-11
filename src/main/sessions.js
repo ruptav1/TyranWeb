@@ -248,7 +248,7 @@ async function downloadAction(id, action) {
   switch (action) {
     case 'pause': item?.pause(); break;
     case 'resume': if (item?.canResume()) item.resume(); break;
-    case 'cancel': if (item) item.cancel(); else require('./sniffer').cancel(id); break; // (a stream: Truy tìm video)
+    case 'cancel': if (item) item.cancel(); else require('./dljobs').cancel(id); break; // (one TyranWeb makes itself: a stream, a post, a Pixiv animation)
     case 'open': if (file && fs.existsSync(file)) return shell.openPath(file); return 'missing';
     case 'show': if (file && fs.existsSync(file)) shell.showItemInFolder(file); else return 'missing'; break;
     case 'remove':

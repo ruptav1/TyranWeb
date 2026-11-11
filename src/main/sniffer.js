@@ -5,22 +5,22 @@
 // press a file is downloaded by the browser's own download (in Tải xuống) with the referrer its
 // player used, a stream piece by piece into an .mp4 (main/hls.js), in Tải xuống as well. Pieces of
 // a stream, a site's own adaptive pieces (YouTube's), a variant listed under its master and tiny
-// files (previews, ads) are not listed.
+// files (previews, ads) are not listed. Each one's picture and facts come from main/mediaprobe.js
+// when the list is opened.
 const fs = require('fs');
 const path = require('path');
-const { app, webContents } = require('electron');
-const data = require('./data');
+const { webContents, session } = require('electron');
 const hls = require('./hls');
+const dljobs = require('./dljobs');
+const mediaprobe = require('./mediaprobe');
 const { step } = require('./webrequest');
 
 const found = new Map(); // tab's webContents id → Map(url → item)
-const jobs = new Map(); // a stream's download id → AbortController
 const HLS_TYPE = /^(application\/(vnd\.apple\.mpegurl|x-mpegurl)|audio\/(x-)?mpegurl)$/i;
 const VIDEO_EXT = /\.(mp4|webm|m4v|mov|mkv|flv)$/i;
 const PIECE = /\.(ts|m4s|m4a|aac|vtt|webvtt|key|jpe?g|png|gif|webp)$/i;
 const MIN_FILE = 512 * 1024;
 let seq = 0;
-let broadcast = () => {};
 
 const header = (h, name) => {
   for (const k in h || {}) if (k.toLowerCase() === name) return String(Array.isArray(h[k]) ? h[k][0] : h[k]);
@@ -55,7 +55,7 @@ function seen(d) {
 
 function add(wcId, x) {
   const wc = webContents.fromId(wcId);
-  if (!wc || wc.isDestroyed()) return;
+  if (!wc || wc.isDestroyed() || !wc.hostWebContents) return; // (tabs only)
   let list = found.get(wcId);
   if (!list) found.set(wcId, (list = new Map()));
   const key = x.url.split('#')[0];
@@ -77,7 +77,7 @@ async function read(wc, item) {
   try {
     const pl = hls.parse(await get(wc.session, item.url, item.referrer), item.url);
     const list = found.get(wc.id);
-    item.variants = pl.variants.map((v) => ({ width: v.width, height: v.height, bandwidth: v.bandwidth, audioApart: v.audioApart }));
+    item.variants = pl.variants.map((v) => ({ width: v.width, height: v.height, bandwidth: v.bandwidth, fps: v.fps, audioApart: v.audioApart }));
     item.duration = pl.duration;
     item.drm = pl.drm;
     item.live = pl.live;
@@ -107,8 +107,9 @@ function tell(wc) {
 }
 
 function get(ses, url, referrer, { binary = false, range = null, signal } = {}) {
-  return ses
-    .fetch(url, { referrer: referrer || undefined, signal, headers: range ? { range: `bytes=${range.offset}-${range.offset + range.length - 1}` } : undefined })
+  const end = range && Number.isFinite(range.length) ? range.offset + range.length - 1 : '';
+  return mediaprobe
+    .fetchFrom(ses, url, referrer, { signal, headers: range ? { range: `bytes=${range.offset}-${end}` } : undefined })
     .then(async (res) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return binary ? Buffer.from(await res.arrayBuffer()) : res.text();
@@ -117,6 +118,7 @@ function get(ses, url, referrer, { binary = false, range = null, signal } = {}) 
 
 // ---- the sessions and tabs it watches
 function watch(ses) {
+  mediaprobe.referers(ses);
   step(ses, 'onHeadersReceived', 'media', (d, cb) => {
     try {
       seen(d);
@@ -139,30 +141,46 @@ function guest(wc) {
 // what the video button lists
 function list(wcId) {
   return shown(wcId)
-    .map((i) => ({ id: i.id, kind: i.kind, url: i.url, size: i.size, duration: i.duration || 0, variants: i.variants || [], drm: !!i.drm, live: !!i.live, title: i.title, at: i.at }))
+    .map((i) => ({ id: i.id, kind: i.kind, url: i.url, size: i.size, duration: i.duration || 0, variants: i.variants || [], drm: !!i.drm, live: !!i.live, title: i.title, at: i.at, meta: i.meta || null }))
     .sort((a, b) => b.at - a.at);
 }
 
-// ---- downloading it
-const safe = (s) => String(s || 'video').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120) || 'video';
-function unique(file) {
-  const { dir, name, ext } = path.parse(file);
-  let out = file;
-  for (let i = 1; fs.existsSync(out) || fs.existsSync(out + '.part'); i++) out = path.join(dir, `${name} (${i})${ext}`);
-  return out;
+// ---- its picture and facts (size in pixels, frame rate, length), once
+function probe(wc, id) {
+  const item = shown(wc.id).find((i) => i.id === id);
+  if (!item) return Promise.reject(new Error('gone'));
+  item.probing ||= (async () => {
+    const fetcher = (u, o) => get(wc.session, u, item.referrer, o);
+    let meta = {};
+    if (!item.drm) meta = await mediaprobe.probe(wc.session, item, fetcher).catch(() => ({}));
+    if (!meta.thumb && !wc.isDestroyed()) meta.thumb = await mediaprobe.fromPage(wc, item).catch(() => '');
+    if (item.kind === 'hls') {
+      // (each variant's frame rate: the one it states, else read from its first piece)
+      const rates = await hls.frameRates({ get: fetcher, url: item.url }).catch(() => []);
+      if (item.variants?.length) item.variants.forEach((v, i) => (v.fps = mediaprobe.snap(rates[i] || v.fps || 0)));
+      else if (rates[0]) meta.fps = mediaprobe.snap(rates[0]);
+      const top = item.variants?.length ? item.variants[hls.best(item.variants)] : null;
+      if (top?.height) Object.assign(meta, { width: top.width, height: top.height, fps: top.fps || meta.fps });
+      meta.duration = item.duration || meta.duration;
+    }
+    item.meta = meta;
+    return { meta, variants: item.variants || [] };
+  })();
+  return item.probing;
 }
+
+// ---- downloading it
+const isPrivate = (wc) => wc.session === session.fromPartition(require('./sessions').PRIVATE_PARTITION);
 
 async function download(wc, id, variant) {
   const item = shown(wc.id).find((i) => i.id === id);
   if (!item) throw new Error('gone');
   if (item.kind === 'file') {
-    wc.downloadURL(item.url, { headers: item.referrer ? { Referer: item.referrer } : {} });
+    wc.downloadURL(item.url, { headers: item.referrer ? { Referer: item.referrer } : {} }); // (a tab's own download takes a Referer as it is)
     return { kind: 'file' };
   }
   if (item.drm) throw new Error('drm');
   if (item.live) throw new Error('live');
-  const g = data.settings.data.general;
-  const dir = g.downloadDir && fs.existsSync(g.downloadDir) ? g.downloadDir : app.getPath('downloads');
   const v = item.variants?.[variant];
   const host = (() => {
     try {
@@ -171,19 +189,15 @@ async function download(wc, id, variant) {
       return '';
     }
   })();
-  const file = unique(path.join(dir, `${safe(item.title || host)}${v?.height ? ` ${v.height}p` : ''}.mp4`));
-  const isPrivate = wc.session === require('electron').session.fromPartition(require('./sessions').PRIVATE_PARTITION);
-  const rec = { id: data.uid('d'), url: item.url, filename: path.basename(file), path: file, mime: 'video/mp4', totalBytes: 0, receivedBytes: 0, state: 'progressing', paused: false, canResume: false, startTime: Date.now(), private: isPrivate };
+  const file = dljobs.unique(path.join(dljobs.dir(), `${dljobs.safe(item.title || host)}${v?.height ? ` ${v.height}p` : ''}.mp4`));
   const ctrl = new AbortController();
-  jobs.set(rec.id, ctrl);
-  broadcast('downloads:update', { ...rec });
-  run(wc.session, item, variant, rec, ctrl.signal).finally(() => jobs.delete(rec.id));
-  return { kind: 'hls', id: rec.id };
+  const job = dljobs.start({ url: item.url, path: file, mime: 'video/mp4', private: isPrivate(wc), cancel: () => ctrl.abort() });
+  run(wc.session, item, variant, job, ctrl.signal);
+  return { kind: 'hls', id: job.rec.id };
 }
 
-async function run(ses, item, variant, rec, signal) {
+async function run(ses, item, variant, job, signal) {
   const fetcher = (u, o = {}) => get(ses, u, item.referrer, { ...o, signal });
-  let told = 0;
   const into = async (url, file, v) => {
     const out = fs.createWriteStream(file + '.part');
     try {
@@ -193,14 +207,8 @@ async function run(ses, item, variant, rec, signal) {
         variant: v,
         out,
         signal,
-        progress: (p) => {
-          rec.receivedBytes = p.bytes;
-          rec.totalBytes = Math.round((p.bytes / p.done) * p.total); // (an estimate from the pieces so far)
-          if (Date.now() - told > 300) {
-            told = Date.now();
-            broadcast('downloads:update', { ...rec });
-          }
-        },
+        // (its size: an estimate from the pieces so far)
+        progress: (p) => job.update({ receivedBytes: p.bytes, totalBytes: Math.round((p.bytes / p.done) * p.total) }),
       });
       await new Promise((ok, fail) => out.end((err) => (err ? fail(err) : ok())));
       fs.renameSync(file + '.part', file);
@@ -212,31 +220,13 @@ async function run(ses, item, variant, rec, signal) {
     }
   };
   try {
-    const r = await into(item.url, rec.path, Number.isInteger(variant) ? variant : undefined);
+    const r = await into(item.url, job.rec.path, Number.isInteger(variant) ? variant : undefined);
     // (its sound in a playlist of its own: beside it, as an .m4a)
-    if (r.audioUrl) await into(r.audioUrl, unique(rec.path.replace(/\.mp4$/i, ' (audio).m4a')), undefined).catch(() => {});
-    Object.assign(rec, { state: 'completed', receivedBytes: r.bytes, totalBytes: r.bytes, endTime: Date.now() });
+    if (r.audioUrl) await into(r.audioUrl, dljobs.unique(job.rec.path.replace(/\.mp4$/i, ' (audio).m4a')), undefined).catch(() => {});
+    job.finish('completed', { receivedBytes: r.bytes, totalBytes: r.bytes });
   } catch (err) {
-    Object.assign(rec, { state: signal.aborted ? 'cancelled' : 'interrupted', endTime: Date.now(), error: String(err?.message || err) });
+    job.finish(signal.aborted ? 'cancelled' : 'interrupted', { error: String(err?.message || err) });
   }
-  if (!rec.private) {
-    data.downloadStore.data.items.unshift({ ...rec });
-    data.downloadStore.data.items.splice(500);
-    data.downloadStore.save();
-  }
-  broadcast('downloads:update', { ...rec });
-  if (rec.state === 'completed') broadcast('downloads:done', { ...rec });
 }
 
-function cancel(id) {
-  const c = jobs.get(id);
-  if (!c) return false;
-  c.abort();
-  return true;
-}
-
-function init(b) {
-  broadcast = b;
-}
-
-module.exports = { init, watch, guest, list, download, cancel };
+module.exports = { watch, guest, list, probe, download };

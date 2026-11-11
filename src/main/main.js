@@ -244,7 +244,8 @@ app.whenReady().then(async () => {
     },
   });
   otherSound.init(ipc.broadcast);
-  require('./sniffer').init(ipc.broadcast);
+  require('./dljobs').init(ipc.broadcast);
+  require('./tools').init((name, at) => ipc.broadcast('grab:tool', { name, at }));
   mark('sessions+extensions');
   await randomLobby();
   mark('randomLobby');

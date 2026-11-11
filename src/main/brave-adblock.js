@@ -244,13 +244,18 @@ function sheets(selectors) {
 const strings = (a, max) => (Array.isArray(a) ? a.filter((x) => typeof x === 'string' && x.length < 512).slice(0, max) : []);
 
 let ipcReady = false;
+let skip = () => false; // (a page of a site blocking is off for: adblock.js)
+function setSkip(fn) {
+  skip = fn;
+}
+
 function ipc() {
   if (ipcReady) return;
   ipcReady = true;
   // (synchronous: the scriptlets must run before the page's own scripts)
   ipcMain.on('brave-adblock:page', (e, url) => {
     try {
-      if (!active || !engine || typeof url !== 'string' || !/^https?:/.test(url)) return void (e.returnValue = null);
+      if (!active || !engine || typeof url !== 'string' || !/^https?:/.test(url) || skip(e)) return void (e.returnValue = null);
       const r = native.Engine_urlCosmeticResources(engine, url);
       e.returnValue = { css: sheets(r.hide_selectors), script: r.injected_script, procedural: r.procedural_actions, exceptions: r.exceptions, generic: !r.generichide };
     } catch {
@@ -258,12 +263,13 @@ function ipc() {
     }
   });
   ipcMain.handle('brave-adblock:more', (e, classes, ids, exceptions) => {
-    if (!active || !engine) return [];
+    if (!active || !engine || skip(e)) return [];
     return sheets(native.Engine_hiddenClassIdSelectors(engine, strings(classes, 5000), strings(ids, 5000), strings(exceptions, 5000)));
   });
 }
 
 module.exports = {
+  setSkip,
   HOME,
   ENGINE,
   META,

@@ -5,6 +5,7 @@ import { S } from './state.js';
 import { T, active, activate, navigate, createTab } from './tabs.js';
 import { icon } from 'tyran://shared/icons.js';
 import { t } from 'tyran://shared/i18n.js';
+import { shieldPopover, vpnPopover, shieldState, vpnState } from './shields.js';
 
 let box;
 let input;
@@ -12,6 +13,8 @@ let display;
 let siteBtn;
 let zoomBadge;
 let starBtn;
+let shieldBtn;
+let vpnBtn;
 let dropdown = null;
 let items = [];
 let sel = 0;
@@ -24,7 +27,10 @@ export function buildOmnibox() {
   display = h('div', { class: 'omni-display' });
   zoomBadge = h('button', { class: 'omni-chip zoom-chip', hidden: true, title: t('Mức thu phóng — bấm để đặt lại') });
   starBtn = h('button', { class: 'omni-star icon-btn', title: t('Thêm dấu trang (Ctrl+D)'), html: icon('star', 16) });
-  box = h('div', { class: 'omnibox' }, siteBtn, h('div', { class: 'omni-field' }, input, display), zoomBadge, starBtn);
+  // (the ad blocker on this site, and the VPN: shields.js)
+  shieldBtn = h('button', { class: 'omni-shield icon-btn' });
+  vpnBtn = h('button', { class: 'omni-vpn', text: 'VPN', title: 'VPN · Cloudflare WARP' });
+  box = h('div', { class: 'omnibox' }, siteBtn, h('div', { class: 'omni-field' }, input, display), zoomBadge, shieldBtn, vpnBtn, starBtn);
 
   input.addEventListener('focus', () => {
     box.classList.add('focused');
@@ -56,6 +62,8 @@ export function buildOmnibox() {
   zoomBadge.addEventListener('click', () => emit('command', { id: 'page.zoomReset' }));
   starBtn.addEventListener('click', () => emit('bookmark-popover', starBtn));
   siteBtn.addEventListener('click', () => emit('site-info', siteBtn));
+  shieldBtn.addEventListener('click', () => shieldPopover(shieldBtn));
+  vpnBtn.addEventListener('click', () => vpnPopover(vpnBtn));
   sync();
   return box;
 }
@@ -73,6 +81,8 @@ on('active', () => {
 });
 on('tab:update', (t) => t.id === T.activeId && (typing() || closeDropdown(), sync()));
 on('bookmarks', sync);
+on('shields', () => sync());
+on('settings', () => sync());
 on('focus-omnibox', focus);
 
 export function focus() {
@@ -112,6 +122,15 @@ export function sync() {
   starBtn.innerHTML = icon('star', 16, marked ? 'filled' : '');
   starBtn.classList.toggle('on', marked);
   starBtn.hidden = !/^https?:/i.test(url);
+
+  const sh = shieldState(tab);
+  shieldBtn.hidden = !/^https?:/i.test(url);
+  shieldBtn.classList.toggle('off', !sh.on);
+  shieldBtn.innerHTML = icon(sh.on ? 'shieldCheck' : 'shield', 16) + (sh.on && sh.blocked ? `<span class="badge">${sh.blocked > 99 ? '99+' : sh.blocked}</span>` : '');
+  shieldBtn.title = sh.on ? t('Đã chặn {0} quảng cáo / trình theo dõi trên trang này', sh.blocked) : t('Chặn quảng cáo đang tắt');
+  const vpn = vpnState();
+  vpnBtn.classList.toggle('on', vpn.on);
+  vpnBtn.classList.toggle('asked', vpn.asked && !vpn.on);
 }
 
 // ---------------------------------------------------------------- suggestions

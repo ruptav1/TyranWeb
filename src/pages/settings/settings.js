@@ -1834,7 +1834,7 @@ function onlineSearch() {
 // ---------------------------------------------------------------- layout
 const TOOLBAR_ITEMS = {
   back: [t('Quay lại'), 'back'], forward: [t('Tiến tới'), 'forward'], reload: [t('Tải lại'), 'reload'], home: [t('Trang chủ'), 'home'],
-  omnibox: [t('Thanh địa chỉ'), 'search'], adblock: [t('Chặn quảng cáo'), 'shieldCheck'], downloads: [t('Tải xuống'), 'download'],
+  omnibox: [t('Thanh địa chỉ'), 'search'], media: [t('Tải video'), 'video'], downloads: [t('Tải xuống'), 'download'],
   split: [t('Chia đôi màn hình'), 'split'], screenshot: [t('Chụp màn hình'), 'camera'], pip: [t('Hình trong hình'), 'pip'],
   sidebar: [t('Thanh bên'), 'sidebar'], palette: [t('Bảng lệnh'), 'command'], theme: [t('Đổi theme'), 'palette'], wallpaper: [t('Đổi hình nền'), 'shuffle'], lobby: [t('Chế độ Lobby'), 'tv'],
   zen: [t('Chế độ tập trung'), 'eye'], newtab: [t('Tab mới'), 'plus'], private: [t('Cửa sổ ẩn danh'), 'incognito'], settings: [t('Cài đặt'), 'sliders'], menu: [t('Menu'), 'more'],
@@ -1843,10 +1843,13 @@ const TOOLBAR_ITEMS = {
 function toolbarEditor() {
   const list = h('div', { class: 'tb-list' });
   const render_ = () => {
-    const order = [...S.layout.toolbarItems];
+    const raw = S.layout.toolbarItems;
+    const order = raw.filter((id) => TOOLBAR_ITEMS[id]); // (an item gone: the shield, in the address bar now)
+    // (Tải video: shown where the shield was, as the toolbar puts it, until placed)
+    if (!order.includes('media')) order.splice(raw.includes('adblock') ? Math.min(order.length, raw.indexOf('adblock')) : Math.max(0, order.indexOf('menu')), 0, 'media');
     for (const id of Object.keys(TOOLBAR_ITEMS)) if (!order.includes(id)) order.push(id);
     const hidden = new Set(S.layout.hiddenToolbarItems || []);
-    for (const id of Object.keys(TOOLBAR_ITEMS)) if (!S.layout.toolbarItems.includes(id)) hidden.add(id);
+    for (const id of Object.keys(TOOLBAR_ITEMS)) if (!raw.includes(id) && id !== 'media') hidden.add(id);
     list.innerHTML = '';
     for (const id of order) {
       const [label, ic] = TOOLBAR_ITEMS[id];

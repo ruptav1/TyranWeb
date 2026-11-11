@@ -5,13 +5,16 @@
 //  - 'brave': the same engine with the lists Brave turns on by default (brave-adblock.js);
 //  - 'brave-full': Brave's own engine, adblock-rust, once built on this computer (brave-adblock.js,
 //    brave-build.js); 'brave' stands in while it cannot be loaded.
+// Sites the user turned it off for (the shield in the address bar: privacy.adblockOff, by site
+// domain) get neither its blocking nor its hiding, on every page of theirs and in their frames.
 // The library's own enableBlockingInSession() registers global IPC handlers per session and so
 // cannot serve two sessions (normal + private); we wire each session ourselves instead, through the
 // sessions' shared webRequest steps (webrequest.js).
 const fs = require('fs');
 const path = require('path');
-const { net, ipcMain } = require('electron');
-const { dir } = require('./data');
+const { net, ipcMain, webContents } = require('electron');
+const data = require('./data');
+const { dir } = data;
 const brave = require('./brave-adblock');
 const { step } = require('./webrequest');
 
@@ -31,7 +34,61 @@ const ghostery = {}; // 'ghostery' | 'brave' -> its engine, once loaded
 const sessions = new Map(); // session -> { id, preload } of its preload script
 const counts = new Map(); // webContentsId -> blocked requests on the current page
 let onCount = () => {};
+let onEngine = () => {};
 let ipcReady = false;
+
+// ---------------------------------------------------------------- sites it is off for
+function siteOf(url) {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '');
+    let d = '';
+    try {
+      d = require('tldts-experimental').getDomain(host, { allowPrivateDomains: true }) || ''; // (a site of its own on github.io)
+    } catch {
+      /* (the host itself then) */
+    }
+    return d || host;
+  } catch {
+    return '';
+  }
+}
+const offList = () => data.settings.data.privacy.adblockOff || [];
+// (a page of that site or of any of its subdomains)
+function isOff(url) {
+  const list = offList();
+  if (!url || !list.length) return false;
+  let host = '';
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    return false;
+  }
+  return list.some((d) => host === d || host.endsWith('.' + d));
+}
+// (the page a request is for: its own address when it is the page, else its tab's)
+function requestOff(d) {
+  if (!offList().length) return false;
+  if (d.resourceType === 'mainFrame') return isOff(d.url);
+  let top = '';
+  try {
+    top = d.frame?.top?.url || '';
+  } catch {
+    /* (its frame is gone) */
+  }
+  if (!top && d.webContentsId) {
+    const wc = webContents.fromId(d.webContentsId);
+    if (wc && !wc.isDestroyed()) top = wc.getURL();
+  }
+  return isOff(top);
+}
+const senderOff = (e) => {
+  try {
+    return isOff(e.sender.getURL());
+  } catch {
+    return false;
+  }
+};
+brave.setSkip(senderOff);
 
 function count(wcId) {
   counts.set(wcId, (counts.get(wcId) || 0) + 1);
@@ -100,7 +157,9 @@ async function engineFor(m) {
 
 // `e` handles every session's requests from now on (their preload scripts follow it)
 function use(e, m) {
+  const was = current?.name;
   current = { ...e, mode: m };
+  if (was && was !== e.name) onEngine(e.name, mode); // (another engine now: the user is told)
   brave.setActive(e.name === 'brave-full');
   for (const [ses, reg] of sessions) {
     if (reg.preload === e.preload) continue;
@@ -121,14 +180,14 @@ function activate() {
 }
 
 // ---------------------------------------------------------------- sessions
-const onBeforeRequest = (d, cb) => (current ? current.onBeforeRequest(d, cb) : cb({}));
-const onHeadersReceived = (d, cb) => (current?.onHeadersReceived ? current.onHeadersReceived(d, cb) : cb({}));
+const onBeforeRequest = (d, cb) => (current && !requestOff(d) ? current.onBeforeRequest(d, cb) : cb({}));
+const onHeadersReceived = (d, cb) => (current?.onHeadersReceived && !requestOff(d) ? current.onHeadersReceived(d, cb) : cb({}));
 
 function enableIn(ses) {
   if (sessions.has(ses)) return;
   if (!ipcReady) {
-    ipcMain.handle('@ghostery/adblocker/inject-cosmetic-filters', (e, url, msg) => current?.blocker?.onInjectCosmeticFilters(e, url, msg));
-    ipcMain.handle('@ghostery/adblocker/is-mutation-observer-enabled', (e) => (current?.blocker ? current.blocker.onIsMutationObserverEnabled(e) : false));
+    ipcMain.handle('@ghostery/adblocker/inject-cosmetic-filters', (e, url, msg) => (senderOff(e) ? undefined : current?.blocker?.onInjectCosmeticFilters(e, url, msg)));
+    ipcMain.handle('@ghostery/adblocker/is-mutation-observer-enabled', (e) => (current?.blocker && !senderOff(e) ? current.blocker.onIsMutationObserverEnabled(e) : false));
     brave.ipc();
     ipcReady = true;
   }
@@ -159,9 +218,16 @@ async function setMode(m) {
   if (sessions.size && current?.mode !== mode) await activate();
 }
 
+// the engine asked for and the one in use (null while none is loaded)
+const engine = () => ({ asked: mode, using: current?.name || null });
+
 module.exports = {
   setEnabled,
   setMode,
+  engine,
+  siteOf,
+  isOff,
+  onEngineChange: (fn) => (onEngine = fn),
   resetCount: (id) => counts.delete(id),
   getCount: (id) => counts.get(id) || 0,
   onBlockedCount: (fn) => (onCount = fn),

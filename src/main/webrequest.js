@@ -4,9 +4,10 @@
 // own listeners; they run in ORDER, a cancel or redirect ends the chain, and header changes pass on
 // to the next step.
 //  - onBeforeRequest: 'https' (HTTPS-only, privacy.js), 'adblock'
-//  - onBeforeSendHeaders: 'cookies' (third-party cookies, privacy.js), 'dnt' (sessions.js)
+//  - onBeforeSendHeaders: 'cookies' (third-party cookies, privacy.js), 'dnt' (sessions.js), 'referer' (the
+//    referrer of what TyranWeb fetches for a page: mediaprobe.js)
 //  - onHeadersReceived: 'adblock' (its CSP rules), 'cookies', 'media' (Truy tìm video: sniffer.js, looks only)
-const ORDER = ['https', 'adblock', 'cookies', 'dnt', 'media'];
+const ORDER = ['https', 'adblock', 'cookies', 'dnt', 'referer', 'media'];
 const hubs = new WeakMap(); // session -> { event: Map(name -> step) }
 
 function stepsOf(ses, event) {
