@@ -14,7 +14,6 @@ const SETTINGS = {
     searchSuggestions: true,
     askDownloadLocation: false,
     downloadDir: '',
-    newTabPosition: 'afterActive', // afterActive | end
     checkUpdates: true, // look for a newer TyranWeb on GitHub (main/updates.js)
     backupMedia: false, // backups (Settings → Giới thiệu) hold the wallpapers, videos and music added too
     tabSleepMinutes: 0, // a tab not looked at for this long sleeps (0: never); pinned, playing and shown tabs never

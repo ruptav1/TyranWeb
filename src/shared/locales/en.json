@@ -1093,5 +1093,10 @@
  "Dừng nhạc nền": "Stop the music",
  "Dừng hẳn (cả ứng dụng khác)": "Stop (other apps too)",
  "Dừng hẳn (chỉ tab khác)": "Stop (other tabs only)",
- "Xóa tất cả": "Clear all"
+ "Xóa tất cả": "Clear all",
+ "{0} tab": "{0} tabs",
+ "Nhóm tab": "Tab groups",
+ "Mở lại cửa sổ": "Reopen window",
+ "Chưa có nhóm tab nào": "No tab groups yet",
+ "Tìm trong nhóm tab…": "Search tab groups…"
 }

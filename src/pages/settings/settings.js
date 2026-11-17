@@ -1973,7 +1973,6 @@ function general() {
     ),
     stitle(t('Tab')),
     section_(
-      row(t('Mở tab mới'), '', seg('general.newTabPosition', [['afterActive', t('Cạnh tab hiện tại')], ['end', t('Cuối danh sách')]])),
       row(t('Cho tab ngủ sau'), '', select('general.tabSleepMinutes', [[0, t('Không bao giờ')], [5, t('5 phút')], [10, t('10 phút')], [15, t('15 phút')], [30, t('30 phút')], [60, t('1 giờ')], [120, t('2 giờ')]]))
     ),
     stitle(t('Tải xuống')),

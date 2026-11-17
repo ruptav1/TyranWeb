@@ -59,6 +59,8 @@ const downloadStore = new JsonStore(path.join(dir, 'downloads.json'), { items: [
 const sessionStore = new JsonStore(path.join(dir, 'session.json'), { windows: [] }, { delay: 800 });
 const notesStore = new JsonStore(path.join(dir, 'notes.json'), { text: '', updated: 0 });
 const windowStore = new JsonStore(path.join(dir, 'window-state.json'), { bounds: null, maximized: false });
+// windows closed (and those open when TyranWeb quit), each with its tabs: Lịch sử → Nhóm tab (windows.js)
+const windowHistoryStore = new JsonStore(path.join(dir, 'window-history.json'), { items: [] }, { delay: 800 });
 
 const MAX_VISITS = 40000;
 const MERGE_WINDOW = 10 * 60 * 1000;
@@ -257,7 +259,7 @@ function updateSettings(patch) {
 }
 
 function flushAll() {
-  for (const s of [settings, historyStore, bookmarkStore, downloadStore, sessionStore, notesStore, windowStore]) {
+  for (const s of [settings, historyStore, bookmarkStore, downloadStore, sessionStore, notesStore, windowStore, windowHistoryStore]) {
     if (s.timer) s.flush();
   }
 }
@@ -277,5 +279,6 @@ module.exports = {
   sessionStore,
   notes,
   windowStore,
+  windowHistoryStore,
   flushAll,
 };

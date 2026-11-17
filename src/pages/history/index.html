@@ -9,12 +9,23 @@
     <link rel="stylesheet" href="tyran://shared/page.css" />
     <link rel="stylesheet" href="tyran://shared/listpage.css" />
     <script type="module" src="history.js"></script>
+    <style>
+      /* Nhóm tab: a window's tabs when it closed, reopened whole (history.js) */
+      .single-head .seg { margin-left: 14px; }
+      .group-icons { display: flex; flex: none; gap: 3px; max-width: 190px; overflow: hidden; }
+      .group-icons img, .group-icons .favicon, .group-icons .fav-letter { flex: none; }
+      .group-tabs { display: flex; flex-direction: column; margin: 0 0 8px 64px; border-left: 2px solid var(--line); }
+      .group-tabs .list-item { padding-left: 12px; }
+      .group-tabs[hidden] { display: none; }
+      .group-row { cursor: pointer; }
+    </style>
   </head>
   <body>
     <main class="single">
       <header class="single-head">
         <img src="tyran://shared/logo.svg" alt="" />
         <h1 class="page-title">Lịch sử</h1>
+        <div class="seg" id="mode"><button type="button" data-mode="pages">Trang web</button><button type="button" data-mode="groups">Nhóm tab</button></div>
         <span class="grow"></span>
         <select id="range">
           <option value="3600000">1 giờ qua</option>

@@ -1,4 +1,4 @@
-TyranWeb 1.1.78 — trình duyệt anime (Windows 10/11, 64-bit)
+TyranWeb 1.1.79 — trình duyệt anime (Windows 10/11, 64-bit)
 ==========================================================
 
 CÁCH CHẠY
@@ -73,6 +73,11 @@ GHI CHÚ
 - Sao lưu / khôi phục: Cài đặt → Giới thiệu → Sao lưu, ra một file .zip (cài đặt, dấu trang,
   lịch sử, ghi chú, các tab đang mở; tùy chọn kèm ảnh, video, nhạc đã thêm). Không gồm đăng
   nhập các trang web và nhân vật game đã tải.
+- Tab mới luôn nằm cuối, cạnh nút +. Kéo tab: các tab khác trượt ra nhường chỗ; kéo ra khỏi thanh
+  tab thì thành cửa sổ mới; thả lên thanh tab của cửa sổ khác thì thành tab của cửa sổ đó. Kéo cửa
+  sổ (bằng thanh tiêu đề, hoặc bằng tab duy nhất của nó) thả lên thanh tab cửa sổ khác thì gộp vào.
+- Lịch sử → Nhóm tab: mỗi cửa sổ đã đóng (và các cửa sổ đang mở lúc thoát app) cùng các tab của nó;
+  bấm để xem các tab, mở lại cả cửa sổ bằng nút bên phải.
 - Tab vừa đóng: Ctrl+Shift+T mở lại cùng các trang trước / sau và chỗ đang cuộn tới, cả sau khi
   tắt app. Tab mở lại khi khởi động và tab ngủ cũng giữ các trang đó.
 - Lần đầu mở, hình nền là video Azusa (Racing) (Blue Archive, đi kèm app) với nhạc nền "Oriental

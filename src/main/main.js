@@ -259,6 +259,7 @@ app.whenReady().then(async () => {
 let cleaned = false;
 app.on('before-quit', async (e) => {
   windows.saveSession({ fresh: true }); // (each open tab's history as it is now: where its pages are scrolled to)
+  windows.recordAll(); // (the windows open now, as groups in Lịch sử → Nhóm tab)
   windows.setQuitting();
   data.flushAll();
   if (data.settings.data.privacy.clearOnExit && !cleaned) {

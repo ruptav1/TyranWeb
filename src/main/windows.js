@@ -8,7 +8,7 @@ const tabHistory = require('./tabhistory');
 const { t } = require('./i18n');
 
 const ICON = path.join(__dirname, '..', '..', 'assets', 'icon', 'icon.png');
-const windows = new Map(); // id -> { win, private, tabs, active }
+const windows = new Map(); // id -> { win, private, tabs, active, strip, focusedAt, noHistory, drag }
 
 // (Mica, Acrylic: Windows' own materials behind the window; transparent: nothing, the desktop shows)
 function backgroundFor(settings) {
@@ -28,10 +28,11 @@ function validBounds(b) {
   return visible ? b : null;
 }
 
-function createWindow({ isPrivate = false, restore = null, url = null, closed = false } = {}) {
+// (bounds: where it opens, as a tab dragged out of another window is dropped)
+function createWindow({ isPrivate = false, restore = null, url = null, closed = false, bounds = null } = {}) {
   require('./timing')('createWindow' + (isPrivate ? ' (private)' : ''));
   const s = data.settings.data;
-  const saved = isPrivate ? null : validBounds(data.windowStore.data.bounds);
+  const saved = (bounds && validBounds(bounds)) || (isPrivate ? null : validBounds(data.windowStore.data.bounds));
   const area = screen.getPrimaryDisplay().workAreaSize;
   const win = new BrowserWindow({
     width: saved?.width || Math.min(1360, Math.round(area.width * 0.88)),
@@ -59,7 +60,7 @@ function createWindow({ isPrivate = false, restore = null, url = null, closed = 
     },
   });
   windows.set(win.id, { win, private: isPrivate, tabs: [], active: 0, initial: { restore, url, closed } });
-  if (!isPrivate && data.windowStore.data.maximized) win.maximize();
+  if (!isPrivate && !bounds && data.windowStore.data.maximized) win.maximize();
 
   const query = new URLSearchParams({ wid: String(win.id) });
   if (isPrivate) query.set('private', '1');
@@ -88,11 +89,30 @@ function createWindow({ isPrivate = false, restore = null, url = null, closed = 
     if (cmd === 'browser-backward') win.webContents.send('command', { id: 'nav.back' });
     if (cmd === 'browser-forward') win.webContents.send('command', { id: 'nav.forward' });
   });
-  win.on('focus', () => win.webContents.send('win:state', state(win)));
+  win.on('focus', () => {
+    const entry = windows.get(win.id);
+    if (entry) entry.focusedAt = Date.now();
+    win.webContents.send('win:state', state(win));
+  });
+  // (moved by its title bar onto another window's tab strip: its tabs go there, as Chrome's do; not
+  // while TyranWeb moves it itself, along with a dragged tab)
+  win.on('moved', () => {
+    const entry = windows.get(win.id);
+    if (!entry || entry.drag) return;
+    const at = screen.getCursorScreenPoint();
+    const target = stripAt(at, win.id, entry.private);
+    if (target) win.webContents.send('win:mergeInto', { targetId: target.win.id, x: at.x, y: at.y });
+  });
   win.on('blur', () => win.webContents.send('win:state', state(win)));
 
-  // (the last window closing: its tabs are kept with their histories as they are now)
-  win.on('close', () => !isPrivate && saveSession({ fresh: true }));
+  // (the last window closing: its tabs are kept with their histories as they are now; any window closed
+  // goes into the history of tab groups, unless its tabs went to another window)
+  win.on('close', () => {
+    if (isPrivate) return;
+    saveSession({ fresh: true });
+    const entry = windows.get(win.id);
+    if (entry && !entry.noHistory && !quitting) recordGroup(entry);
+  });
   win.on('closed', () => {
     const entry = windows.get(win.id);
     windows.delete(win.id);
@@ -139,6 +159,54 @@ function saveSession({ fresh = false } = {}) {
   }
 }
 
+// ---- tab strips: where each window's is on the screen (reported by its interface), and which one a
+// point is over (a dragged tab or window dropped there); the window most recently used first
+function stripAt(point, exceptId, isPrivate) {
+  const hits = [...windows.values()].filter((w) => {
+    if (w.win.id === exceptId || w.win.isDestroyed() || !w.strip || !!w.private !== !!isPrivate || w.win.isMinimized() || !w.win.isVisible()) return false;
+    const c = w.win.getContentBounds();
+    const r = { x: c.x + w.strip.x, y: c.y + w.strip.y, w: w.strip.w, h: w.strip.h };
+    return point.x >= r.x && point.x <= r.x + r.w && point.y >= r.y - 6 && point.y <= r.y + r.h + 6;
+  });
+  return hits.sort((a, b) => (b.focusedAt || 0) - (a.focusedAt || 0))[0] || null;
+}
+
+// tabs given to a window (from another one), placed where the point is over its strip
+function adopt(entry, tabs, point) {
+  const c = entry.win.getContentBounds();
+  if (entry.win.isMinimized()) entry.win.restore();
+  entry.win.webContents.send('tabs:adopt', { tabs, x: point ? point.x - c.x : null, y: point ? point.y - c.y : null });
+  entry.win.focus();
+}
+
+// ---- the history of tab groups (Lịch sử → Nhóm tab): a window's tabs when it closed, with their
+// back/forward lists; new tab pages left out; the same group twice in a row kept once
+let onGroups = () => {};
+function recordGroup(entry) {
+  const tabs = (entry.tabs || [])
+    .filter((t) => t && !/^tyran:\/\/newtab/i.test(t.url))
+    .map(({ wcId, ...t }) => {
+      const h = wcId ? tabHistory.read(webContents.fromId(wcId)) : null;
+      return h ? { ...t, history: h } : t;
+    });
+  if (!tabs.length) return;
+  const store = data.windowHistoryStore;
+  const items = store.data.items || [];
+  const key = (g) => g.tabs.map((t) => t.url).join('\n');
+  if (items[0] && key(items[0]) === key({ tabs })) items[0].at = Date.now();
+  else items.unshift({ id: data.uid('g'), at: Date.now(), tabs, active: Math.min(entry.active | 0, tabs.length - 1) });
+  store.data.items = items.slice(0, 40);
+  store.save();
+  onGroups();
+}
+// (TyranWeb quitting: every window open then, as a group)
+let recordedAll = false; // (before-quit can come twice)
+function recordAll() {
+  if (recordedAll) return;
+  recordedAll = true;
+  for (const w of windows.values()) if (!w.private && !w.noHistory) recordGroup(w);
+}
+
 // Tabs closed (Ctrl+Shift+T reopens them, after a restart too); never those of an incognito window
 function addClosed(winId, tab) {
   if (windows.get(winId)?.private) return;
@@ -182,6 +250,11 @@ function applyBackground(settings) {
 module.exports = {
   windows,
   createWindow,
+  stripAt,
+  adopt,
+  recordGroup,
+  recordAll,
+  onGroupsChange: (fn) => (onGroups = fn),
   updateSession,
   saveSession,
   addClosed,

@@ -1093,5 +1093,10 @@
  "Dừng nhạc nền": "Arrêter la musique",
  "Dừng hẳn (cả ứng dụng khác)": "Arrêter (autres applis aussi)",
  "Dừng hẳn (chỉ tab khác)": "Arrêter (autres onglets seulement)",
- "Xóa tất cả": "Tout effacer"
+ "Xóa tất cả": "Tout effacer",
+ "{0} tab": "{0} onglets",
+ "Nhóm tab": "Groupes d’onglets",
+ "Mở lại cửa sổ": "Rouvrir la fenêtre",
+ "Chưa có nhóm tab nào": "Aucun groupe d’onglets pour l’instant",
+ "Tìm trong nhóm tab…": "Rechercher dans les groupes d’onglets…"
 }

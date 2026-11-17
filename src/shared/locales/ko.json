@@ -1093,5 +1093,10 @@
  "Dừng nhạc nền": "배경 음악 중지",
  "Dừng hẳn (cả ứng dụng khác)": "중지(다른 앱 포함)",
  "Dừng hẳn (chỉ tab khác)": "중지(다른 탭만)",
- "Xóa tất cả": "모두 지우기"
+ "Xóa tất cả": "모두 지우기",
+ "{0} tab": "탭 {0}개",
+ "Nhóm tab": "탭 그룹",
+ "Mở lại cửa sổ": "창 다시 열기",
+ "Chưa có nhóm tab nào": "아직 탭 그룹이 없습니다",
+ "Tìm trong nhóm tab…": "탭 그룹 검색…"
 }

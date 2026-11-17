@@ -1093,5 +1093,10 @@
  "Dừng nhạc nền": "Parar a música",
  "Dừng hẳn (cả ứng dụng khác)": "Parar (outros apps também)",
  "Dừng hẳn (chỉ tab khác)": "Parar (só outras abas)",
- "Xóa tất cả": "Limpar tudo"
+ "Xóa tất cả": "Limpar tudo",
+ "{0} tab": "{0} abas",
+ "Nhóm tab": "Grupos de abas",
+ "Mở lại cửa sổ": "Reabrir janela",
+ "Chưa có nhóm tab nào": "Nenhum grupo de abas ainda",
+ "Tìm trong nhóm tab…": "Pesquisar nos grupos de abas…"
 }

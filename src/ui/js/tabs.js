@@ -1,6 +1,6 @@
 // Tabs: one <webview> per tab, inside a "pane". Handles sleeping tabs, split view,
 // drag-to-reorder, closed-tab history and session saving.
-import { api, h, $, emit, debounce, NEWTAB, isInternal, isNewTab, hostOf, faviconHtml, clamp } from './util.js';
+import { api, h, $, on, emit, debounce, NEWTAB, isInternal, isNewTab, hostOf, faviconHtml, clamp } from './util.js';
 import { S } from './state.js';
 import { icon } from 'tyran://shared/icons.js';
 import { t } from 'tyran://shared/i18n.js';
@@ -55,15 +55,7 @@ export function createTab({ url = NEWTAB, background = false, index, pinned = fa
     historyToken: null,
   };
   if (history) keepHistory(tab, history);
-  if (index === undefined) {
-    const cur = indexOf(T.activeId);
-    if (S.settings.general.newTabPosition === 'afterActive' && cur >= 0 && !pinned) {
-      let i = cur + 1;
-      // keep tabs opened from the same page together, like Chrome
-      while (openerId && T.list[i] && T.list[i].openerId === openerId) i++;
-      index = i;
-    } else index = T.list.length;
-  }
+  if (index === undefined) index = T.list.length; // (a new tab always goes last, by the + button)
   if (!pinned) index = Math.max(index, T.list.filter((t) => t.pinned).length);
   T.list.splice(index, 0, tab);
   if (!sleeping) mount(tab);
@@ -120,6 +112,11 @@ function keepHistory(tab, history) {
   tab.history = history;
   tab.historyToken = `${stashBase}-${++stashSeq}`;
   api.invoke('tabs:stash', tab.historyToken, history).catch(() => {});
+}
+
+// a tab as another window is given it (its back/forward list read from its page there, or the one it keeps)
+export function tabPayload(tab) {
+  return { url: tab.url, title: tab.title, favicon: tab.favicon, pinned: tab.pinned, wcId: tab.ready ? tab.wcId : null, history: tab.ready ? null : tab.history };
 }
 
 // its back/forward list as the page has it now (or the one it keeps while it has none)
@@ -409,12 +406,14 @@ export function splitWith(id) {
 }
 
 // ---------------------------------------------------------------- closing
-export function closeTab(id, { force = false } = {}) {
+// (moved: the tab went to another window, so it is not a closed tab; the window's last one going
+// there closes the window instead of leaving a new tab)
+export function closeTab(id, { force = false, moved = false } = {}) {
   const i = indexOf(id);
   if (i < 0) return;
   const tab = T.list[i];
   if (tab.pinned && !force && T.list.length > 1 && id !== T.activeId) return;
-  const kept = !isNewTab(tab.url) && { id: `c${Date.now().toString(36)}${stashBase}${++seq}`, url: tab.url, title: tab.title, favicon: tab.favicon, index: i, pinned: tab.pinned, incognito: tab.incognito, history: null };
+  const kept = !moved && !isNewTab(tab.url) && { id: `c${Date.now().toString(36)}${stashBase}${++seq}`, url: tab.url, title: tab.title, favicon: tab.favicon, index: i, pinned: tab.pinned, incognito: tab.incognito, history: null };
   if (kept) {
     T.closed.push(kept);
     T.closed.splice(0, Math.max(0, T.closed.length - 25));
@@ -442,6 +441,7 @@ export function closeTab(id, { force = false } = {}) {
   emit('tabs:changed');
   // closing the last tab keeps the window (and the app) open on a fresh new tab
   if (!T.list.length) {
+    if (moved) return void api.invoke('win:action', 'closeMoved');
     createTab();
     return;
   }
@@ -660,7 +660,7 @@ function revealActive() {
 function buildTab(tab) {
   const el = h(
     'div',
-    { class: 'tab', dataset: { id: tab.id }, draggable: 'true', role: 'tab' },
+    { class: 'tab', dataset: { id: tab.id }, draggable: 'false', role: 'tab' },
     h('span', { class: 'tab-icon' }),
     h('span', { class: 'tab-incog', title: t('Tab ẩn danh'), html: icon('incognito', 13) }),
     h('span', { class: 'tab-title' }),
@@ -739,49 +739,204 @@ function wireStrip(strip) {
     { passive: false }
   );
 
-  // drag & drop reordering (and dropping links to open them)
-  let dragId = null;
-  const clearMarks = () => scroll.querySelectorAll('.drop-before, .drop-after').forEach((n) => n.classList.remove('drop-before', 'drop-after'));
-  scroll.addEventListener('dragstart', (e) => {
+  // ---- dragging a tab, as in Chrome (pointer events, not the page's drag and drop): along the strip it
+  // follows the pointer and the others slide out of its way, among the pinned or the other tabs; taken
+  // out of the strip it leaves the window: dropped on another window's strip it becomes one of that
+  // window's tabs, where it is dropped; elsewhere it opens a window of its own there. A window's only
+  // tab takes the whole window along instead (into another window's strip as well).
+  const OUT = 36; // px beyond the strip's edge that take a tab out of it
+  let drag = null;
+  const along = (vertical, r) => (vertical ? r.top + r.height / 2 : r.left + r.width / 2);
+  const shiftCss = (vertical, px) => (px ? (vertical ? `translateY(${px}px)` : `translateX(${px}px)`) : '');
+  scroll.addEventListener('pointerdown', (e) => {
     const el = e.target.closest('.tab');
-    if (!el) return;
-    dragId = el.dataset.id;
-    const t = byId(dragId);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/uri-list', t.url);
-    e.dataTransfer.setData('text/plain', t.url);
-    el.classList.add('dragging');
+    if (!el || e.button !== 0 || e.target.closest('.tab-close, .tab-audio')) return;
+    drag = { id: el.dataset.id, el, pid: e.pointerId, x0: e.clientX, y0: e.clientY, on: false, out: false, win: false };
   });
-  scroll.addEventListener('dragend', (e) => {
-    e.target.closest?.('.tab')?.classList.remove('dragging');
-    dragId = null;
-    clearMarks();
+  const begin = () => {
+    const d = drag;
+    const tab = byId(d.id);
+    d.vertical = strip.classList.contains('vertical');
+    d.group = [...scroll.querySelectorAll('.tab')].filter((x) => !!byId(x.dataset.id)?.pinned === !!tab?.pinned);
+    d.rects = d.group.map((x) => x.getBoundingClientRect());
+    d.from = d.group.indexOf(d.el);
+    d.to = d.from;
+    const me = d.rects[d.from];
+    const next = d.rects[d.from + 1];
+    const prev = d.rects[d.from - 1];
+    const gap = next ? (d.vertical ? next.top - me.bottom : next.left - me.right) : prev ? (d.vertical ? me.top - prev.bottom : me.left - prev.right) : 0;
+    d.size = (d.vertical ? me.height : me.width) + Math.max(0, gap);
+    d.on = true;
+    try {
+      d.el.setPointerCapture(d.pid);
+    } catch {
+      /* (the pointer is gone) */
+    }
+    d.el.classList.add('dragging');
+    strip.classList.add('tab-drag');
+  };
+  const settle = (d) => {
+    strip.classList.remove('tab-drag');
+    for (const x of d.group || []) x.style.transform = '';
+    d.el.classList.remove('dragging', 'torn');
+    d.ghost?.remove();
+  };
+  // (out of the strip: the gap it leaves stays where it was; a ghost of it follows the pointer, or its
+  // window does)
+  const goOut = (d, e) => {
+    for (const x of d.group) x.style.transform = '';
+    d.el.classList.add('torn');
+    if (T.list.length === 1) {
+      d.win = true;
+      api.invoke('win:dragStart', e.clientX, e.clientY).catch(() => {});
+      return;
+    }
+    d.ghost = d.el.cloneNode(true);
+    d.ghost.classList.remove('dragging', 'torn', 'active');
+    d.ghost.classList.add('tab-ghost');
+    d.ghost.style.cssText = `width:${d.rects[d.from].width}px;height:${d.rects[d.from].height}px`;
+    document.body.append(d.ghost);
+  };
+  const goIn = (d) => {
+    d.el.classList.remove('torn');
+    d.ghost?.remove();
+    d.ghost = null;
+  };
+  let moving = 0;
+  window.addEventListener('pointermove', (e) => {
+    const d = drag;
+    if (!d || e.pointerId !== d.pid) return;
+    const dx = e.clientX - d.x0;
+    const dy = e.clientY - d.y0;
+    if (!d.on) {
+      if (Math.hypot(dx, dy) < 6) return;
+      begin();
+    }
+    // the window going along with the pointer (its only tab dragged out): until the pointer is let go
+    if (d.win) {
+      if (!moving) {
+        moving = requestAnimationFrame(() => {
+          moving = 0;
+          if (drag === d) api.invoke('win:dragMove', d.sx, d.sy).catch(() => {});
+        });
+      }
+      d.sx = e.screenX;
+      d.sy = e.screenY;
+      return;
+    }
+    const sr = strip.getBoundingClientRect();
+    const out = d.vertical ? e.clientX < sr.left - OUT || e.clientX > sr.right + OUT : e.clientY < sr.top - OUT || e.clientY > sr.bottom + OUT;
+    if (out !== d.out) {
+      d.out = out;
+      if (out) goOut(d, e);
+      else goIn(d);
+      if (d.win) return;
+    }
+    if (out) {
+      if (d.ghost) {
+        d.ghost.style.left = `${e.clientX - 40}px`;
+        d.ghost.style.top = `${e.clientY - 14}px`;
+      }
+      return;
+    }
+    // along the strip: it follows the pointer within its group's span, and whichever tab's middle it
+    // has passed slides into the place it left
+    const me = d.rects[d.from];
+    const first = d.rects[0];
+    const last = d.rects[d.rects.length - 1];
+    const lo = d.vertical ? first.top - me.top : first.left - me.left;
+    const hi = d.vertical ? last.bottom - me.bottom : last.right - me.right;
+    const moved = Math.max(lo, Math.min(hi, d.vertical ? dy : dx));
+    d.el.style.transform = shiftCss(d.vertical, moved);
+    const c = along(d.vertical, me) + moved;
+    let to = d.from;
+    d.group.forEach((x, j) => {
+      if (j === d.from) return;
+      const cj = along(d.vertical, d.rects[j]);
+      let px = 0;
+      if (j > d.from && c > cj) {
+        px = -d.size;
+        to++;
+      } else if (j < d.from && c < cj) {
+        px = d.size;
+        to--;
+      }
+      x.style.transform = shiftCss(d.vertical, px);
+    });
+    d.to = to;
   });
-  scroll.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    clearMarks();
-    const el = e.target.closest('.tab');
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const vertical = strip.classList.contains('vertical');
-    const after = vertical ? e.clientY > r.top + r.height / 2 : e.clientX > r.left + r.width / 2;
-    el.classList.add(after ? 'drop-after' : 'drop-before');
-  });
-  scroll.addEventListener('dragleave', (e) => {
-    if (!scroll.contains(e.relatedTarget)) clearMarks();
-  });
+  const finish = async (e) => {
+    const d = drag;
+    if (!d || e.pointerId !== d.pid) return;
+    drag = null;
+    if (!d.on) return;
+    // (the others back in place at once, before the strip is drawn again in its new order)
+    for (const x of d.group) x.style.transition = 'none';
+    settle(d);
+    requestAnimationFrame(() => d.group.forEach((x) => (x.style.transition = '')));
+    if (e.type === 'pointercancel') return;
+    if (d.win) {
+      const target = await api.invoke('win:dragEnd', e.screenX, e.screenY).catch(() => null);
+      if (target) await giveAll(target, e.screenX, e.screenY);
+      return;
+    }
+    if (!d.out) {
+      if (d.to !== d.from) moveTab(d.id, indexOf(d.group[d.to].dataset.id));
+      return;
+    }
+    const tab = byId(d.id);
+    if (!tab) return;
+    const done = await api.invoke('tabs:release', { tabs: [tabPayload(tab)], x: e.screenX, y: e.screenY }).catch(() => '');
+    if (done) closeTab(d.id, { force: true, moved: true });
+  };
+  window.addEventListener('pointerup', finish);
+  window.addEventListener('pointercancel', finish);
+
+  // links dropped on the strip open in a tab there
+  scroll.addEventListener('dragover', (e) => e.preventDefault());
   scroll.addEventListener('drop', (e) => {
     e.preventDefault();
-    const el = e.target.closest('.tab');
-    const after = el?.classList.contains('drop-after');
-    clearMarks();
-    let target = el ? indexOf(el.dataset.id) + (after ? 1 : 0) : T.list.length;
-    if (dragId) {
-      if (indexOf(dragId) < target) target--;
-      moveTab(dragId, target);
-    } else {
-      const url = (e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain') || '').split('\n')[0].trim();
-      if (/^https?:\/\//i.test(url)) createTab({ url, index: target });
-    }
+    const url = (e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain') || '').split('\n')[0].trim();
+    if (/^https?:\/\//i.test(url)) createTab({ url, index: indexAt(e.clientX, e.clientY) });
   });
+
+  // where the strip is, for a tab dragged from another window (main/windows.js stripAt)
+  const report = () => {
+    const r = strip.getBoundingClientRect();
+    api.invoke('win:strip', r.width && r.height ? { x: r.left, y: r.top, w: r.width, h: r.height } : null).catch(() => {});
+  };
+  new ResizeObserver(report).observe(strip);
+  window.addEventListener('resize', report);
+  on('layout-changed', () => requestAnimationFrame(report));
+  report();
 }
+
+// the place in the strip a point (in the window) is at: before the first tab whose middle is past it
+function indexAt(x, y) {
+  if (!T.strip || x == null) return T.list.length;
+  const vertical = T.strip.classList.contains('vertical');
+  const els = [...T.strip.querySelectorAll('.tabs-scroll .tab')];
+  const i = els.findIndex((el) => {
+    const r = el.getBoundingClientRect();
+    return vertical ? y < r.top + r.height / 2 : x < r.left + r.width / 2;
+  });
+  return i < 0 ? T.list.length : i;
+}
+
+// every tab of this window given to another one (a window dropped on its strip); this one then closes
+async function giveAll(targetId, x, y) {
+  const ok = await api.invoke('tabs:sendTo', targetId, T.list.map(tabPayload), x, y).catch(() => false);
+  if (ok) api.invoke('win:action', 'closeMoved');
+}
+api.on('win:mergeInto', ({ targetId, x, y }) => giveAll(targetId, x, y));
+
+// tabs from another window, placed where they were dropped (else last); the first one shown
+api.on('tabs:adopt', ({ tabs, x, y }) => {
+  let at = indexAt(x, y);
+  let first = null;
+  for (const t of tabs || []) {
+    const tab = createTab({ url: t.url, title: t.title, favicon: t.favicon, pinned: !!t.pinned, history: t.history || null, index: at++, background: true, sleeping: !!first });
+    first ||= tab;
+  }
+  if (first) activate(first.id);
+});

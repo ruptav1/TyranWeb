@@ -1093,5 +1093,10 @@
  "Dừng nhạc nền": "Detener la música",
  "Dừng hẳn (cả ứng dụng khác)": "Detener (también otras apps)",
  "Dừng hẳn (chỉ tab khác)": "Detener (solo otras pestañas)",
- "Xóa tất cả": "Borrar todo"
+ "Xóa tất cả": "Borrar todo",
+ "{0} tab": "{0} pestañas",
+ "Nhóm tab": "Grupos de pestañas",
+ "Mở lại cửa sổ": "Volver a abrir la ventana",
+ "Chưa có nhóm tab nào": "Aún no hay grupos de pestañas",
+ "Tìm trong nhóm tab…": "Buscar en los grupos de pestañas…"
 }

@@ -559,8 +559,36 @@ body.lobby #app {
 #tabstrip:not(.vertical).narrow .tab:not(.active) .tab-close {
   display: none;
 }
-.tab.dragging {
-  opacity: 0.35;
+/* a tab dragged (tabs.js): it follows the pointer, the others slide out of its way; out of the strip it
+   leaves a faint gap and a ghost of it follows the pointer */
+.tab,
+.tab * {
+  -webkit-user-drag: none;
+}
+#tabstrip.tab-drag .tab {
+  transition: transform 170ms var(--ease), background var(--dur) var(--ease);
+}
+#tabstrip.tab-drag .tab.dragging {
+  z-index: 3;
+  transition: none;
+  cursor: grabbing;
+  box-shadow: 0 6px 18px var(--shadow-color), 0 0 0 1px var(--line);
+}
+#tabstrip.tab-drag .tab:not(.dragging):hover {
+  background: transparent;
+}
+.tab.torn {
+  opacity: 0.3;
+}
+.tab-ghost {
+  position: fixed;
+  z-index: 70;
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  color: var(--text);
+  box-shadow: 0 10px 28px var(--shadow-color), 0 0 0 1px var(--line);
+  opacity: 0.95;
+  pointer-events: none;
 }
 .tab.drop-before::before,
 .tab.drop-after::after {

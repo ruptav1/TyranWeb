@@ -559,6 +559,8 @@ function register({ onSettings } = {}) {
       case 'minimize': win.minimize(); break;
       case 'maximize': win.isMaximized() ? win.unmaximize() : win.maximize(); break;
       case 'close': win.close(); break;
+      // (its tabs went to another window: not a group for Lịch sử → Nhóm tab)
+      case 'closeMoved': { const entry = windows.windows.get(win.id); if (entry) entry.noHistory = true; win.close(); break; }
       case 'fullscreen': win.setFullScreen(!win.isFullScreen()); break;
       case 'leaveFullscreen': if (win.isFullScreen()) win.setFullScreen(false); break;
       case 'new': windows.createWindow(); break;
@@ -593,6 +595,103 @@ function register({ onSettings } = {}) {
   }, { uiOnly: true });
   handle('tabs:history', (e, wcId) => tabHistory.read(liveTab(e, wcId)), { uiOnly: true });
   handle('tabs:stash', (e, token, history) => tabHistory.stash(String(token), history), { uiOnly: true });
+
+  // ---- tabs between windows, as in Chrome: a tab dragged out of its strip goes to the window whose
+  // strip it is dropped on, else into a window of its own where it is dropped; a window dragged (by
+  // its title bar, or by its only tab) onto another window's strip gives it its tabs
+  const tabsOf = (e, tabs) =>
+    (Array.isArray(tabs) ? tabs : [])
+      .filter((t) => t && typeof t.url === 'string')
+      .slice(0, 300)
+      .map((t) => {
+        const wc = liveTab(e, t.wcId);
+        const history = wc ? tabHistory.read(wc) : tabHistory.clean(t.history);
+        return { url: t.url.slice(0, 8192), title: String(t.title || '').slice(0, 500), favicon: String(t.favicon || '').slice(0, 100000), pinned: !!t.pinned, ...(history ? { history } : {}) };
+      });
+  const entryOf = (e) => windows.windows.get(BrowserWindow.fromWebContents(e.sender)?.id);
+  handle('win:strip', (e, r) => {
+    const entry = entryOf(e);
+    const n = (v) => Math.round(Number(v) || 0);
+    if (entry) entry.strip = r ? { x: n(r.x), y: n(r.y), w: n(r.w), h: n(r.h) } : null;
+  }, { uiOnly: true });
+  // (→ 'moved': into that window, 'window': a window of its own; the sender then closes those tabs)
+  handle('tabs:release', (e, { tabs, x, y } = {}) => {
+    const src = BrowserWindow.fromWebContents(e.sender);
+    const entry = windows.windows.get(src.id);
+    const list = tabsOf(e, tabs);
+    if (!list.length) return '';
+    const at = { x: Number(x) || 0, y: Number(y) || 0 };
+    const target = windows.stripAt(at, src.id, !!entry?.private);
+    if (target) {
+      windows.adopt(target, list, at);
+      return 'moved';
+    }
+    const b = src.getBounds();
+    const w = src.isMaximized() ? Math.round(b.width * 0.7) : b.width;
+    const h = src.isMaximized() ? Math.round(b.height * 0.75) : b.height;
+    windows.createWindow({ isPrivate: !!entry?.private, restore: { tabs: list, active: 0 }, bounds: { x: Math.round(at.x - Math.min(160, w / 3)), y: Math.round(at.y - 18), width: w, height: h } });
+    return 'window';
+  }, { uiOnly: true });
+  handle('tabs:sendTo', (e, targetId, tabs, x, y) => {
+    const entry = entryOf(e);
+    const target = windows.windows.get(Number(targetId));
+    if (!target || target.win.isDestroyed() || !!target.private !== !!entry?.private) return false;
+    windows.adopt(target, tabsOf(e, tabs), x == null ? null : { x: Number(x), y: Number(y) });
+    return true;
+  }, { uiOnly: true });
+  // the only tab of a window dragged out of its strip: the window follows the pointer
+  handle('win:dragStart', (e, gx, gy) => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    const entry = windows.windows.get(win.id);
+    if (!entry) return;
+    let grab = { x: Number(gx) || 0, y: Number(gy) || 0 };
+    if (win.isMaximized()) {
+      const wide = win.getContentBounds().width;
+      win.unmaximize();
+      grab = { x: Math.round(grab.x * (win.getContentBounds().width / wide)), y: grab.y };
+    }
+    const b = win.getBounds();
+    const c = win.getContentBounds();
+    entry.drag = { grab, edge: { x: c.x - b.x, y: c.y - b.y } };
+  }, { uiOnly: true });
+  handle('win:dragMove', (e, x, y) => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    const d = windows.windows.get(win.id)?.drag;
+    if (d) win.setPosition(Math.round(Number(x) - d.grab.x - d.edge.x), Math.round(Number(y) - d.grab.y - d.edge.y));
+  }, { uiOnly: true });
+  // (→ the window whose strip the pointer is over, if any)
+  handle('win:dragEnd', (e, x, y) => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    const entry = windows.windows.get(win.id);
+    if (!entry) return null;
+    setTimeout(() => entry && (entry.drag = null), 300); // (its last 'moved' is not a drop of its own)
+    return windows.stripAt({ x: Number(x) || 0, y: Number(y) || 0 }, win.id, entry.private)?.win.id ?? null;
+  }, { uiOnly: true });
+
+  // ---- Lịch sử → Nhóm tab: the windows closed (windows.js), reopened whole
+  windows.onGroupsChange(() => broadcast('winhistory:changed'));
+  handle('winhistory:list', () => (data.windowHistoryStore.data.items || []).map((g) => ({ id: g.id, at: g.at, active: g.active, tabs: g.tabs.map((t) => ({ url: t.url, title: t.title, favicon: t.favicon })) })));
+  handle('winhistory:open', (e, id) => {
+    const g = (data.windowHistoryStore.data.items || []).find((x) => x.id === id);
+    if (!g) return false;
+    windows.createWindow({ restore: { tabs: g.tabs, active: g.active | 0 } });
+    return true;
+  });
+  handle('winhistory:remove', (e, id) => {
+    const store = data.windowHistoryStore;
+    store.data.items = (store.data.items || []).filter((x) => x.id !== id);
+    store.save();
+    broadcast('winhistory:changed');
+    return true;
+  });
+  handle('winhistory:clear', (e, since) => {
+    const store = data.windowHistoryStore;
+    const from = Number(since) || 0;
+    store.data.items = from ? (store.data.items || []).filter((x) => x.at < from) : [];
+    store.save();
+    broadcast('winhistory:changed');
+    return true;
+  });
   handle('closed:add', (e, tab) => {
     if (!tab || typeof tab.url !== 'string' || !/^[\w-]{1,80}$/.test(String(tab.id))) return;
     const history = tabHistory.clean(tab.history);
