@@ -1981,7 +1981,8 @@ function general() {
         const d = await api.invoke('downloads:pickDir');
         if (d) set('general.downloadDir', d).then(refresh);
       }, { cls: 'small' })),
-      row(t('Hỏi nơi lưu mỗi lần tải'), '', sw('general.askDownloadLocation'))
+      row(t('Hỏi nơi lưu mỗi lần tải'), '', sw('general.askDownloadLocation')),
+      row(t('Kiểm tra tệp tải về'), '', sw('general.scanDownloads'))
     ),
     stitle(t('Khác')),
     section_(row(t('Cuộn mượt'), '', sw('general.smoothScrolling'))),
@@ -2084,6 +2085,16 @@ function privacy() {
       row(t('Chặn cookie bên thứ ba'), '', sw('privacy.blockThirdPartyCookies')),
       row(t('Chỉ dùng HTTPS'), '', sw('privacy.httpsOnly')),
       row(t('Xóa dữ liệu khi thoát'), '', sw('privacy.clearOnExit'))
+    ),
+    stitle(t('Chống theo dõi')),
+    section_(
+      row(t('Xóa tham số theo dõi khỏi liên kết'), '', sw('privacy.stripParams')),
+      row(t('Bỏ qua trang chuyển hướng theo dõi'), '', sw('privacy.debounce')),
+      row(t('Mở trang gốc thay cho trang AMP'), '', sw('privacy.deAmp')),
+      row(t('Chặn thông báo cookie'), '', sw('privacy.cookieNotices')),
+      row(t('Chống nhận dạng trình duyệt'), '', sw('privacy.fingerprint')),
+      row(t('Chỉ cho trang web biết một ngôn ngữ'), '', sw('privacy.languages')),
+      row(t('Chống lộ IP qua WebRTC'), '', sw('privacy.webrtc'))
     ),
     stitle(t('Xóa dữ liệu duyệt web')),
     h(

@@ -14,6 +14,7 @@ const SETTINGS = {
     searchSuggestions: true,
     askDownloadLocation: false,
     downloadDir: '',
+    scanDownloads: true, // finished downloads scanned by Windows Defender (main/filescan.js)
     checkUpdates: true, // look for a newer TyranWeb on GitHub (main/updates.js)
     backupMedia: false, // backups (Settings → Giới thiệu) hold the wallpapers, videos and music added too
     tabSleepMinutes: 0, // a tab not looked at for this long sleeps (0: never); pinned, playing and shown tabs never
@@ -139,7 +140,18 @@ const SETTINGS = {
     doNotTrack: true,
     blockThirdPartyCookies: false, // (main/privacy.js)
     httpsOnly: false,
+    // Brave's protections: tracking parameters off the addresses, trackers' pages skipped, AMP pages
+    // left for theirs (main/tracking.js), cookie notices hidden (main/adblock.js), what pages read of
+    // the browser changed a little, one language, no addresses given away by WebRTC (main/fingerprint.js)
+    stripParams: true,
+    debounce: true,
+    deAmp: true,
+    cookieNotices: true,
+    fingerprint: true,
+    languages: true,
+    webrtc: true,
     clearOnExit: false,
+    cookiesSealed: false, // saved cookies written again once, encrypted (main/cookieseal.js)
     // Dọn rác (main/cleaner.js): TyranWeb's caches and leftovers, Windows' temp files older than a week,
     // by itself once a week at start; when it was last done
     cleanApp: true,

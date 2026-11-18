@@ -5,6 +5,9 @@
 //  - 'brave': the same engine with the lists Brave turns on by default (brave-adblock.js);
 //  - 'brave-full': Brave's own engine, adblock-rust, once built on this computer (brave-adblock.js,
 //    brave-build.js); 'brave' stands in while it cannot be loaded.
+// Chặn thông báo cookie (privacy.cookieNotices) is Brave's "Cookie notice blocker" lists in an engine
+// of their own (Ghostery's, 'cookies'), whichever engine blocks the ads and whether it does, so the
+// switch works with all three; Brave's lists for the ads leave them out (brave-adblock.js).
 // Sites the user turned it off for (the shield in the address bar: privacy.adblockOff, by site
 // domain) get neither its blocking nor its hiding, on every page of theirs and in their frames.
 // The library's own enableBlockingInSession() registers global IPC handlers per session and so
@@ -23,15 +26,21 @@ const GHOSTERY_PRELOAD = require.resolve('@ghostery/adblocker-electron-preload',
 });
 // Ghostery's uBlock Origin resources (scriptlets, redirects), as its own list loading takes them
 const GHOSTERY_RESOURCES = 'https://raw.githubusercontent.com/ghostery/adblocker/master/packages/adblocker/assets/ublock-origin/resources.json';
-const CACHES = { ghostery: 'adblock-engine.bin', brave: 'adblock-brave.bin' };
+// ('brave' was adblock-brave.bin while it held the cookie notice lists too)
+const CACHES = { ghostery: 'adblock-engine.bin', brave: 'adblock-brave-2.bin', cookies: 'adblock-cookies.bin' };
+fs.rm(path.join(dir, 'adblock-brave.bin'), { force: true }, () => {});
 const REFRESH = 4 * 864e5; // lists older than this are fetched again, in the background
 const ENGINES = ['ghostery', 'brave', 'brave-full'];
 
 let mode = 'ghostery'; // the engine asked for
 let current = null; // the engine in use: { name, mode, preload, onBeforeRequest, onHeadersReceived, blocker? }
 let activation = null; // { mode, promise } of the engine being loaded
-const ghostery = {}; // 'ghostery' | 'brave' -> its engine, once loaded
-const sessions = new Map(); // session -> { id, preload } of its preload script
+const ghostery = {}; // 'ghostery' | 'brave' | 'cookies' -> its engine, once loaded
+const known = new Set(); // the tabs' sessions (attach)
+const enabled = new Set(); // ...the ads are blocked in (setEnabled)
+const regs = new Map(); // session -> Map(preload file -> its registration id)
+let noticesOn = false; // Chặn thông báo cookie
+let notices = null; // ...its engine, once loaded
 const counts = new Map(); // webContentsId -> blocked requests on the current page
 let onCount = () => {};
 let onEngine = () => {};
@@ -98,7 +107,7 @@ brave.setOnBlocked(count);
 
 // ---------------------------------------------------------------- Ghostery's engine
 function wire(name, b) {
-  b.on('request-blocked', (req) => typeof req.tabId === 'number' && current?.blocker === b && count(req.tabId));
+  b.on('request-blocked', (req) => typeof req.tabId === 'number' && (current?.blocker === b || notices?.blocker === b) && count(req.tabId));
   return { name, preload: GHOSTERY_PRELOAD, blocker: b, onBeforeRequest: b.onBeforeRequest, onHeadersReceived: b.onHeadersReceived };
 }
 
@@ -109,14 +118,14 @@ function loadGhostery(name) {
     const { ElectronBlocker } = require('@ghostery/adblocker-electron');
     const fetchFn = (url, opts) => net.fetch(url, opts);
     const fresh =
-      name === 'brave'
-        ? async () => {
-            const b = ElectronBlocker.parse(await brave.listsText());
+      name === 'ghostery'
+        ? () => ElectronBlocker.fromPrebuiltAdsAndTracking(fetchFn)
+        : async () => {
+            const b = ElectronBlocker.parse(await brave.listsText(name === 'cookies' ? 'cookies' : 'ads'));
             const res = await net.fetch(GHOSTERY_RESOURCES).then((r) => (r.ok ? r.text() : null), () => null);
             if (res) b.updateResources(res, '' + res.length);
             return b;
-          }
-        : () => ElectronBlocker.fromPrebuiltAdsAndTracking(fetchFn);
+          };
     const file = path.join(dir, CACHES[name]);
     const b = await ElectronBlocker.fromCached(fresh, { path: file, read: fs.promises.readFile, write: fs.promises.writeFile });
     ghostery[name] = wire(name, b);
@@ -132,6 +141,7 @@ function loadGhostery(name) {
           await fs.promises.writeFile(file, next.serialize());
           ghostery[name] = wire(name, next);
           if (current?.name === name) use(ghostery[name], current.mode);
+          if (name === 'cookies' && notices) notices = ghostery.cookies;
         })
         .catch((err) => console.warn('[adblock] could not refresh filter lists:', err.message));
     }
@@ -161,11 +171,7 @@ function use(e, m) {
   current = { ...e, mode: m };
   if (was && was !== e.name) onEngine(e.name, mode); // (another engine now: the user is told)
   brave.setActive(e.name === 'brave-full');
-  for (const [ses, reg] of sessions) {
-    if (reg.preload === e.preload) continue;
-    ses.unregisterPreloadScript(reg.id);
-    sessions.set(ses, { id: ses.registerPreloadScript({ type: 'frame', filePath: e.preload }), preload: e.preload });
-  }
+  syncAll();
 }
 
 function activate() {
@@ -182,48 +188,93 @@ function activate() {
 // ---------------------------------------------------------------- sessions
 const onBeforeRequest = (d, cb) => (current && !requestOff(d) ? current.onBeforeRequest(d, cb) : cb({}));
 const onHeadersReceived = (d, cb) => (current?.onHeadersReceived && !requestOff(d) ? current.onHeadersReceived(d, cb) : cb({}));
+const onNoticeRequest = (d, cb) => (notices && !requestOff(d) ? notices.onBeforeRequest(d, cb) : cb({}));
 
-function enableIn(ses) {
-  if (sessions.has(ses)) return;
-  if (!ipcReady) {
-    ipcMain.handle('@ghostery/adblocker/inject-cosmetic-filters', (e, url, msg) => (senderOff(e) ? undefined : current?.blocker?.onInjectCosmeticFilters(e, url, msg)));
-    ipcMain.handle('@ghostery/adblocker/is-mutation-observer-enabled', (e) => (current?.blocker && !senderOff(e) ? current.blocker.onIsMutationObserverEnabled(e) : false));
-    brave.ipc();
-    ipcReady = true;
+// Ghostery's preload asks from the top frame only (it runs in every frame: main.js), as before;
+// both its engines answer it, the one for the ads and the one for cookie notices.
+const topFrame = (e) => !!e.senderFrame && !e.senderFrame.parent;
+const mainIn = (ses) => enabled.has(ses) && !!current?.blocker;
+const noticesIn = (ses) => noticesOn && !!notices && known.has(ses);
+function ipc() {
+  if (ipcReady) return;
+  ipcReady = true;
+  ipcMain.handle('@ghostery/adblocker/inject-cosmetic-filters', (e, url, msg) => {
+    if (!topFrame(e) || senderOff(e)) return undefined;
+    const ses = e.sender.session;
+    return Promise.all([mainIn(ses) && current.blocker.onInjectCosmeticFilters(e, url, msg), noticesIn(ses) && notices.blocker.onInjectCosmeticFilters(e, url, msg)]).then(() => undefined);
+  });
+  ipcMain.handle('@ghostery/adblocker/is-mutation-observer-enabled', (e) => {
+    if (!topFrame(e) || senderOff(e)) return false;
+    const ses = e.sender.session;
+    return !!((mainIn(ses) && current.blocker.config.enableMutationObserver) || (noticesIn(ses) && notices.blocker.config.enableMutationObserver));
+  });
+  brave.ipc();
+}
+
+// a session's preload scripts and request steps as its settings are now
+function sync(ses) {
+  const main = enabled.has(ses) && !!current;
+  const cookie = noticesIn(ses);
+  const want = new Set();
+  if (main) want.add(current.preload);
+  if (cookie) want.add(GHOSTERY_PRELOAD);
+  if (want.size) ipc();
+  let reg = regs.get(ses);
+  if (!reg) regs.set(ses, (reg = new Map()));
+  for (const [file, id] of reg) {
+    if (want.has(file)) continue;
+    ses.unregisterPreloadScript(id);
+    reg.delete(file);
   }
-  sessions.set(ses, { id: ses.registerPreloadScript({ type: 'frame', filePath: current.preload }), preload: current.preload });
-  step(ses, 'onHeadersReceived', 'adblock', onHeadersReceived);
-  step(ses, 'onBeforeRequest', 'adblock', onBeforeRequest);
+  for (const file of want) if (!reg.has(file)) reg.set(file, ses.registerPreloadScript({ type: 'frame', filePath: file }));
+  step(ses, 'onHeadersReceived', 'adblock', main ? onHeadersReceived : null);
+  step(ses, 'onBeforeRequest', 'adblock', main ? onBeforeRequest : null);
+  step(ses, 'onBeforeRequest', 'notices', cookie ? onNoticeRequest : null);
+}
+function syncAll() {
+  for (const ses of new Set([...known, ...enabled])) sync(ses);
 }
 
-function disableIn(ses) {
-  if (!sessions.has(ses)) return;
-  step(ses, 'onHeadersReceived', 'adblock', null);
-  step(ses, 'onBeforeRequest', 'adblock', null);
-  ses.unregisterPreloadScript(sessions.get(ses).id);
-  sessions.delete(ses);
+// a tab's session (cookie notices are blocked there when that is on)
+function attach(ses) {
+  known.add(ses);
+  sync(ses);
 }
 
-async function setEnabled(ses, enabled) {
-  if (!enabled) return disableIn(ses), true;
+async function setEnabled(ses, on) {
+  if (!on) {
+    enabled.delete(ses);
+    sync(ses);
+    return true;
+  }
   if (current?.mode !== mode) await activate();
   if (!current) return false;
-  enableIn(ses);
+  enabled.add(ses);
+  sync(ses);
   return true;
 }
 
 // another engine (Settings); loaded now if blocking is on
 async function setMode(m) {
   mode = ENGINES.includes(m) ? m : 'ghostery';
-  if (sessions.size && current?.mode !== mode) await activate();
+  if (enabled.size && current?.mode !== mode) await activate();
+}
+
+// Chặn thông báo cookie on or off (its lists loaded the first time)
+async function setNotices(on) {
+  noticesOn = !!on;
+  if (noticesOn && !notices) notices = await loadGhostery('cookies');
+  syncAll();
 }
 
 // the engine asked for and the one in use (null while none is loaded)
 const engine = () => ({ asked: mode, using: current?.name || null });
 
 module.exports = {
+  attach,
   setEnabled,
   setMode,
+  setNotices,
   engine,
   siteOf,
   isOff,

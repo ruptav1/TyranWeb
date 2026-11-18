@@ -4,7 +4,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 const EVENTS = new Set([
   'settings:changed', 'shortcuts:changed', 'bookmarks:changed', 'history:changed',
-  'downloads:update', 'downloads:done', 'downloads:changed',
+  'downloads:update', 'downloads:done', 'downloads:changed', 'downloads:threat',
   'tab:open', 'command', 'perm:request', 'adblock:count', 'win:state', 'win:placement', 'share:request', 'share:tab', 'closed:cleared', 'audio:other', 'media:found', 'grab:tool', 'tabs:adopt', 'win:mergeInto', 'adblock:engine', 'warp:routed', 'cursor:changed', 'extensions:changed', 'crx:activate', 'crx:close',
   'nikke:changed', 'azur:changed', 'sekai:changed', 'apps:changed', 'update:state',
 ]);

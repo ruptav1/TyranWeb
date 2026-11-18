@@ -18,6 +18,10 @@ const HOME = path.join(dir, 'brave-adblock');
 const ENGINE = path.join(HOME, 'adblock-rs.node');
 const META = path.join(HOME, 'engine.json'); // { version, built } of the engine there
 const CACHE = path.join(HOME, 'filters.dat'); // the lists, compiled (adblock-rust's own format)
+// (which lists filters.dat holds: 2 = without the cookie notice lists; an older one is still used
+// until the lists are compiled again, at once in the background)
+const LISTS = path.join(HOME, 'filters.json');
+const LISTS_VERSION = 2;
 const RESOURCES = path.join(HOME, 'resources.json');
 const PRELOAD = path.join(__dirname, '..', 'preload', 'brave-adblock.js');
 const WORKER = path.join(__dirname, 'brave-worker.js');
@@ -48,21 +52,26 @@ async function fetchOk(url, opts) {
 }
 
 // ---------------------------------------------------------------- the lists
-async function listUrls() {
+// Brave's default lists: its "Cookie notice blocker" ('cookies': Chặn thông báo cookie, an engine of
+// its own in adblock.js) or all the others ('ads')
+const cookieList = (l) => /cookie notice/i.test(l.title || '') || l.sources?.some((s) => /cookiemonster/i.test(s.url || ''));
+async function listUrls(kind) {
   try {
     const catalog = await (await fetchOk(CATALOG)).json();
     const mobile = (l) => l.platforms?.length && l.platforms.every((p) => /^(ios|android)$/i.test(p));
-    const urls = catalog.filter((l) => l.default_enabled && !mobile(l)).flatMap((l) => l.sources.map((s) => s.url));
-    if (urls.length > 10) return [...new Set(urls)];
+    const lists = catalog.filter((l) => l.default_enabled && !mobile(l));
+    const cookies = new Set(lists.filter(cookieList).flatMap((l) => l.sources.map((s) => s.url)));
+    const urls = kind === 'cookies' ? [...cookies] : lists.filter((l) => !cookieList(l)).flatMap((l) => l.sources.map((s) => s.url)).filter((u) => !cookies.has(u));
+    if (urls.length > (kind === 'cookies' ? 0 : 10)) return [...new Set(urls)];
   } catch (err) {
     console.warn('[brave] list catalog:', err.message);
   }
-  return FALLBACK;
+  return FALLBACK.filter((u) => /cookie/i.test(u) === (kind === 'cookies'));
 }
 
 // Brave's default lists as one text; one that cannot be fetched now is left out (unless most are).
-async function listsText() {
-  const urls = await listUrls();
+async function listsText(kind = 'ads') {
+  const urls = await listUrls(kind);
   const texts = await Promise.all(
     urls.map(async (u) => {
       try {
@@ -74,7 +83,7 @@ async function listsText() {
     })
   );
   const got = texts.filter((x) => x != null);
-  if (got.length < urls.length * 0.8) throw new Error(t('Không tải được danh sách lọc của Brave'));
+  if (!got.length || got.length < Math.floor(urls.length * 0.8)) throw new Error(t('Không tải được danh sách lọc của Brave'));
   return got.join('\n');
 }
 
@@ -169,6 +178,7 @@ function refresh() {
     native.Engine_useResources(next, res);
     writeAtomic(CACHE, Buffer.from(native.Engine_serialize(next)));
     writeAtomic(RESOURCES, JSON.stringify(res));
+    writeAtomic(LISTS, JSON.stringify({ lists: LISTS_VERSION }));
     engine = next;
   })().finally(() => (refreshing = null));
   return refreshing;
@@ -190,7 +200,7 @@ async function load() {
     const e = native.Engine_constructor(native.FilterSet_constructor(false));
     native.Engine_deserialize(e, arrayBuffer(fs.readFileSync(CACHE)));
     native.Engine_useResources(e, JSON.parse(fs.readFileSync(RESOURCES, 'utf8')));
-    age = Date.now() - fs.statSync(CACHE).mtimeMs;
+    age = readJson(LISTS)?.lists === LISTS_VERSION ? Date.now() - fs.statSync(CACHE).mtimeMs : Infinity;
     engine = e;
   } catch {
     /* not compiled yet */

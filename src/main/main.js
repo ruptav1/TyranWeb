@@ -4,6 +4,11 @@ const path = require('path');
 const mark = require('./timing');
 const { app, BrowserWindow, Menu, nativeTheme, session } = require('electron');
 
+// Started with Chromium's remote debugging (another program then drives the browser and reads every
+// cookie through it, as cookie-stealing malware does with browsers): TyranWeb does not start, before
+// any session is open. (--inspect and NODE_OPTIONS are refused by the packaged app's fuses: package.json)
+if (app.isPackaged && ['remote-debugging-port', 'remote-debugging-pipe', 'remote-debugging-address', 'remote-allow-origins'].some((s) => app.commandLine.hasSwitch(s))) process.exit(0);
+
 // Optional separate profile folder (portable use, testing): TYRAN_PROFILE=D:\path
 if (process.env.TYRAN_PROFILE) app.setPath('userData', process.env.TYRAN_PROFILE);
 
@@ -150,7 +155,9 @@ app.on('web-contents-created', (event, contents) => {
     delete prefs.preloadURL;
     prefs.preload = WEBVIEW_PRELOAD;
     prefs.nodeIntegration = false;
-    prefs.nodeIntegrationInSubFrames = false;
+    // (the preloads run in every frame, still sandboxed and without Node: Brave's protections in the
+    // page's iframes; the others look after the top frame only)
+    prefs.nodeIntegrationInSubFrames = true;
     prefs.contextIsolation = true;
     prefs.sandbox = true;
     prefs.webSecurity = true;
@@ -246,12 +253,14 @@ app.whenReady().then(async () => {
   });
   otherSound.init(ipc.broadcast);
   require('./dljobs').init(ipc.broadcast);
+  require('./filescan').init(ipc.broadcast); // (Kiểm tra tệp tải về)
   require('./tools').init((name, at) => ipc.broadcast('grab:tool', { name, at }));
   mark('sessions+extensions');
   await randomLobby();
   mark('randomLobby');
   startup();
   require('./cleaner').auto(); // (Dọn rác, once a week)
+  setTimeout(() => require('./cookieseal').seal().catch(() => {}), 5000); // (saved logins encrypted on disk, once)
   setTimeout(() => require('./wpfolders').moveLive().catch((err) => console.warn('[wallpapers] live:', err.message)), 20000); // (live/ beside the wallpapers)
   if (data.settings.data.privacy?.warp) require('./warp').sync().catch(() => {}); // (through Cloudflare WARP)
 });

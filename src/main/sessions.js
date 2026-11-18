@@ -198,6 +198,7 @@ function serializeDownload(id, item, extra = {}) {
     receivedBytes: item.getReceivedBytes(),
     state: item.getState(),
     paused: item.isPaused(),
+    scan: require('./filescan').scanOf(id), // (Defender's verdict: Kiểm tra tệp tải về)
     canResume: item.canResume(),
     startTime: Math.round(item.getStartTime() * 1000),
     ...extra,
@@ -221,7 +222,15 @@ function setupDownloads(ses, isPrivate) {
       broadcast('downloads:update', serializeDownload(id, item, { private: isPrivate }));
     };
     push(true);
-    item.on('updated', () => push(false));
+    let broke = false;
+    item.on('updated', (e, state) => {
+      push(false);
+      // (broken off, maybe by Defender taking the file away: Chromium tells it here, not in 'done')
+      if (state === 'interrupted' && !broke) {
+        broke = true;
+        require('./filescan').interrupted(serializeDownload(id, item, { private: isPrivate }));
+      }
+    });
     item.once('done', (e, state) => {
       liveDownloads.delete(id);
       const record = serializeDownload(id, item, { state, endTime: Date.now(), private: isPrivate });
@@ -231,7 +240,10 @@ function setupDownloads(ses, isPrivate) {
         data.downloadStore.save();
       }
       broadcast('downloads:update', record);
-      if (state === 'completed') broadcast('downloads:done', record);
+      if (state === 'completed') {
+        broadcast('downloads:done', record);
+        require('./filescan').add(record); // (marked as from the internet, scanned: Kiểm tra tệp tải về)
+      } else if (state === 'interrupted' && !broke) require('./filescan').interrupted(record); // (Defender may have taken it)
     });
   });
 }
@@ -249,7 +261,12 @@ async function downloadAction(id, action) {
     case 'pause': item?.pause(); break;
     case 'resume': if (item?.canResume()) item.resume(); break;
     case 'cancel': if (item) item.cancel(); else require('./dljobs').cancel(id); break; // (one TyranWeb makes itself: a stream, a post, a Pixiv animation)
-    case 'open': if (file && fs.existsSync(file)) return shell.openPath(file); return 'missing';
+    case 'open':
+      // (not a file a threat was found in; a program still being scanned once it is found clean)
+      if (!(await require('./filescan').mayOpen(id, file))) return 'threat';
+      if (file && fs.existsSync(file)) return shell.openPath(file);
+      return 'missing';
+    case 'quarantine': return require('./filescan').quarantine(id);
     case 'show': if (file && fs.existsSync(file)) shell.showItemInFolder(file); else return 'missing'; break;
     case 'remove':
       data.downloadStore.data.items = data.downloadStore.data.items.filter((d) => d.id !== id);
@@ -283,6 +300,8 @@ function setupSession(ses, isPrivate) {
     cb({ requestHeaders: { ...details.requestHeaders, DNT: '1', 'Sec-GPC': '1' } });
   });
   privacy.apply(ses, data.settings.data.privacy);
+  require('./fingerprint').setup(ses); // (Brave's protections in the pages, WebRTC)
+  adblock.attach(ses);
   try {
     const langs = ses.availableSpellCheckerLanguages || [];
     ses.setSpellCheckerLanguages(['en-US', 'vi'].filter((l) => langs.includes(l)));
@@ -316,6 +335,7 @@ function init(broadcastFn) {
   browsing = setupSession(session.fromPartition(PARTITION), false);
   privateSes = setupSession(session.fromPartition(PRIVATE_PARTITION), true);
   wallpaperSes = setupWallpaperSession(session.fromPartition(WALLPAPER_PARTITION));
+  adblock.setNotices(!!data.settings.data.privacy.cookieNotices).catch(() => {});
   // Incognito tabs can sit in ordinary windows too: once nothing uses the private session any more
   // (its last tab or window closed), whatever it kept is wiped.
   app.on('web-contents-created', (e, wc) => {
@@ -333,7 +353,7 @@ function init(broadcastFn) {
   });
 }
 
-// third-party cookies, HTTPS-only (Settings → Quyền riêng tư)
+// third-party cookies, HTTPS-only, Brave's protections (Settings → Quyền riêng tư)
 function setPrivacy() {
   for (const ses of [browsing, privateSes]) privacy.apply(ses, data.settings.data.privacy);
 }

@@ -9,6 +9,34 @@ import { t } from 'tyran://shared/i18n.js';
 let button = null;
 let pop = null;
 
+// The row's colour: none while downloading, yellow paused, green done, red cancelled, failed or with
+// a threat in it (Kiểm tra tệp tải về: main/filescan.js)
+const VT = 'https://www.virustotal.com/gui/file/';
+const RISKY = /\.(exe|bat|cmd|com|scr|msi|msix|ps1|vbs|js|jar|dll|lnk|hta|zip|rar|7z)$/i;
+const flagged = (d) => ['threat', 'removed'].includes(d.scan?.state);
+function tone(d) {
+  if (d.state === 'progressing') return d.paused ? 'paused' : '';
+  if (d.state === 'completed') return flagged(d) ? 'bad' : 'done';
+  return 'bad';
+}
+function scanText(s) {
+  switch (s?.state) {
+    case 'queued':
+    case 'scanning':
+      return t('Đang kiểm tra…');
+    case 'clean':
+      return t('An toàn');
+    case 'threat':
+      return s.threat ? t('Có mã độc: {0}', s.threat) : t('Có mã độc');
+    case 'removed':
+      return s.threat ? t('Đã chặn: {0}', s.threat) : t('Đã chặn');
+    case 'unavailable':
+    case 'error':
+      return t('Không kiểm tra được');
+  }
+  return '';
+}
+
 export function downloadsButton() {
   button = h('button', { class: 'icon-btn dl-btn', title: t('Tải xuống (Ctrl+J)') });
   button.addEventListener('click', () => showPopover(button));
@@ -40,9 +68,9 @@ function statusText(d) {
     const pct = d.totalBytes ? Math.round((d.receivedBytes / d.totalBytes) * 100) + '% · ' : '';
     return `${d.paused ? t('Tạm dừng · ') : ''}${pct}${fmtBytes(d.receivedBytes)}${d.totalBytes ? ' / ' + fmtBytes(d.totalBytes) : ''}`;
   }
-  if (d.state === 'completed') return t('Hoàn tất · {0}', fmtBytes(d.totalBytes || d.receivedBytes));
+  if (d.state === 'completed') return [t('Hoàn tất · {0}', fmtBytes(d.totalBytes || d.receivedBytes)), scanText(d.scan)].filter(Boolean).join(' · ');
   if (d.state === 'cancelled') return t('Đã hủy');
-  return t('Thất bại');
+  return [t('Thất bại'), scanText(d.scan)].filter(Boolean).join(' · ');
 }
 
 function row(d) {
@@ -52,12 +80,15 @@ function row(d) {
     actions.push(d.paused ? ['resume', 'play', t('Tiếp tục')] : ['pause', 'pause', t('Tạm dừng')]);
     actions.push(['cancel', 'x', t('Hủy')]);
   } else if (d.state === 'completed') {
-    actions.push(['show', 'folder', t('Mở thư mục')]);
-  } else {
-    actions.push(['retry', 'reload', t('Thử lại')]);
+    if (d.scan?.state === 'threat') actions.push(['quarantine', 'trash', t('Cách ly')]);
+    if (d.scan?.sha256 && (flagged(d) || RISKY.test(d.filename || ''))) actions.push(['virustotal', 'shield', 'VirusTotal']);
+    if (d.scan?.state !== 'removed') actions.push(['show', 'folder', t('Mở thư mục')]);
+  } else if (!flagged(d)) {
+    actions.push(['retry', 'reload', t('Thử lại')]); // (not one Defender stopped)
   }
-  return `<div class="dl-row ${d.state}" data-id="${esc(d.id)}">
-    <span class="dl-file">${icon(d.state === 'completed' ? 'check' : 'download', 16)}</span>
+  const ic = d.state === 'progressing' ? (d.paused ? 'pause' : 'download') : d.state !== 'completed' ? 'x' : flagged(d) ? 'warn' : 'check';
+  return `<div class="dl-row ${d.state} ${tone(d)}" data-id="${esc(d.id)}">
+    <span class="dl-file">${icon(ic, 16)}</span>
     <span class="dl-info"><span class="dl-name" title="${esc(d.path || d.filename)}">${esc(d.filename)}</span>
       <span class="dl-status">${esc(statusText(d))}</span>
       ${d.state === 'progressing' ? `<span class="dl-bar"><i style="width:${pct.toFixed(1)}%"></i></span>` : ''}</span>
@@ -86,16 +117,21 @@ async function showPopover(anchor) {
     const rowEl = e.target.closest('.dl-row');
     if (!rowEl) return;
     const id = rowEl.dataset.id;
-    if (btn) {
-      const r = await api.invoke('downloads:action', id, btn.dataset.act);
-      if (r === 'missing') toast(t('Không tìm thấy file (có thể đã bị xóa/di chuyển)'), { icon: 'warn' });
-    } else {
-      const d = S.downloads.get(id);
-      if (d?.state === 'completed') api.invoke('downloads:action', id, 'open');
-    }
+    const d = S.downloads.get(id);
+    if (btn?.dataset.act === 'virustotal') {
+      closePopover();
+      if (d?.scan?.sha256) createTab({ url: VT + d.scan.sha256 });
+    } else if (btn) told(await api.invoke('downloads:action', id, btn.dataset.act));
+    else if (d?.state === 'completed') told(await api.invoke('downloads:action', id, 'open'));
   });
   pop = { render };
   openPopover(body, anchor, { align: 'end', onClose: () => (pop = null), focus: false });
+}
+
+// what an action came back with, told
+function told(r) {
+  if (r === 'missing') toast(t('Không tìm thấy file (có thể đã bị xóa/di chuyển)'), { icon: 'warn' });
+  if (r === 'threat') toast(t('Tệp này có mã độc nên không được mở'), { icon: 'warn' });
 }
 
 export function openDownloadsPopover() {
@@ -123,7 +159,13 @@ export function initDownloads() {
   });
   api.on('downloads:done', (d) => {
     if (d.private && !hasIncognito()) return;
-    toast(t('Đã tải xong: {0}', d.filename), { icon: 'check', action: { label: t('Mở'), run: () => api.invoke('downloads:action', d.id, 'open') } });
+    toast(t('Đã tải xong: {0}', d.filename), { icon: 'check', action: { label: t('Mở'), run: () => api.invoke('downloads:action', d.id, 'open').then(told) } });
+  });
+  api.on('downloads:threat', (d) => {
+    if (d.private && !hasIncognito()) return;
+    const name = d.scan?.threat || '?';
+    if (d.scan?.state === 'removed') toast(t('Windows Defender đã chặn {0} ({1})', d.filename, name), { icon: 'warn' });
+    else toast(t('Có mã độc trong {0} ({1})', d.filename, name), { icon: 'warn', action: { label: t('Cách ly'), run: () => api.invoke('downloads:action', d.id, 'quarantine') } });
   });
   api.on('downloads:changed', async () => {
     const list = await api.invoke('downloads:list');

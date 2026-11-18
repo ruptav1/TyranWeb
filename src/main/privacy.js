@@ -7,6 +7,8 @@
 //  - Chỉ dùng HTTPS (privacy.httpsOnly): a page asked for over http:// is asked for over https://
 //    instead (not local addresses); one that cannot be reached so is offered over http:// by the
 //    tab's error page (httpUrl), and its site is then allowed until TyranWeb closes.
+//  - and the steps of Brave's protections: trackers' pages skipped, tracking parameters taken off
+//    (tracking.js), one language told (fingerprint.js).
 const path = require('path');
 const { step } = require('./webrequest');
 // (the public-suffix list Ghostery's ad blocker brings along)
@@ -71,6 +73,11 @@ function apply(ses, privacy) {
   step(ses, 'onBeforeSendHeaders', 'cookies', privacy.blockThirdPartyCookies ? noCookieSent : null);
   step(ses, 'onHeadersReceived', 'cookies', privacy.blockThirdPartyCookies ? noCookieKept : null);
   step(ses, 'onBeforeRequest', 'https', privacy.httpsOnly ? toHttps : null);
+  const tracking = require('./tracking');
+  tracking.init();
+  step(ses, 'onBeforeRequest', 'debounce', privacy.debounce || privacy.deAmp ? tracking.debounceStep : null);
+  step(ses, 'onBeforeRequest', 'params', privacy.stripParams ? tracking.paramsStep : null);
+  step(ses, 'onBeforeSendHeaders', 'lang', privacy.languages ? require('./fingerprint').langStep : null);
 }
 
 // For the tab's error page: the http:// address of a page HTTPS-only asked for over https:// ('' none).

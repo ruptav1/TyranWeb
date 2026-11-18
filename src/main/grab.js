@@ -7,7 +7,6 @@
 // Node (Electron as Node); the user's login on that site in TyranWeb goes with it as a cookie file
 // of that site's cookies only, which exists only while yt-dlp runs.
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const { session } = require('electron');
@@ -70,7 +69,9 @@ async function cookieFile(ses, url) {
     const d = c.domain.replace(/^\./, '');
     lines.push([(c.httpOnly ? '#HttpOnly_' : '') + (c.hostOnly ? d : '.' + d), c.hostOnly ? 'FALSE' : 'TRUE', c.path || '/', c.secure ? 'TRUE' : 'FALSE', Math.round(c.expirationDate || 0), c.name, c.value].join('\t'));
   }
-  const file = path.join(os.tmpdir(), `tyranweb-ck-${crypto.randomBytes(8).toString('hex')}.txt`);
+  // (in TyranWeb's own temporary folder, not Windows' shared one, and gone as soon as yt-dlp is done)
+  fs.mkdirSync(TMP, { recursive: true });
+  const file = path.join(TMP, `ck-${crypto.randomBytes(8).toString('hex')}.txt`);
   fs.writeFileSync(file, lines.join('\n') + '\n', { mode: 0o600 });
   return file;
 }

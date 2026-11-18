@@ -85,6 +85,35 @@
   background: var(--accent);
   border-radius: 4px;
 }
+/* Tải xuống: yellow paused, green done, red cancelled, failed or with a threat in it */
+.list-item.dl-done {
+  background: rgba(63, 178, 127, 0.12);
+}
+.list-item.dl-done:hover {
+  background: rgba(63, 178, 127, 0.19);
+}
+.list-item.dl-bad {
+  background: rgba(214, 69, 69, 0.11);
+}
+.list-item.dl-bad:hover {
+  background: rgba(214, 69, 69, 0.18);
+}
+.list-item.dl-bad .li-sub {
+  color: #d64545;
+}
+.list-item.dl-paused {
+  background: rgba(230, 170, 30, 0.13);
+}
+.list-item.dl-paused:hover {
+  background: rgba(230, 170, 30, 0.2);
+}
+.list-item.dl-paused .dl-progress i {
+  background: #e0a91e;
+}
+.state-ico.warn {
+  background: rgba(230, 170, 30, 0.2);
+  color: #b7860b;
+}
 .li-col {
   display: flex;
   flex-direction: column;

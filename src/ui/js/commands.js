@@ -380,6 +380,8 @@ on('host-message', ({ tab, type, payload }) => {
     if (!/^(https?|tyran):/i.test(url) && !(/^chrome-extension:\/\/[a-p]{32}\//.test(url) && tab.url.startsWith('tyran://'))) return;
     if (payload.newTab) createTab({ url, background: !!payload.background, openerId: tab.id });
     else tabs.navigate(tab.id, url);
+  } else if (type === 'toast' && tab.url?.startsWith('tyran://') && typeof payload === 'string') {
+    toast(payload.slice(0, 300), { icon: 'warn' }); // (a warning from one of TyranWeb's own pages: Tải xuống)
   } else if (type === 'ext-install' && tab.url.startsWith('tyran://')) {
     install(String(payload || ''));
   } else if (type === 'command' && COMMANDS[payload]) {

@@ -73,7 +73,10 @@ function start(o) {
         data.downloadStore.save();
       }
       broadcast('downloads:update', { ...rec });
-      if (state === 'completed') broadcast('downloads:done', { ...rec });
+      if (state === 'completed') {
+        broadcast('downloads:done', { ...rec });
+        require('./filescan').add({ ...rec }); // (marked as from the internet, scanned)
+      }
     },
   };
 }

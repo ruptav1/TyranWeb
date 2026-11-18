@@ -50,7 +50,9 @@ function afterSettingsChange(prev) {
   if (s.wallpaper.web?.lobbyPick === 'season' && prev.wallpaper.web?.lobbyPick !== 'season') pickLobbyNow();
   if (prev.privacy.adblockEngine !== s.privacy.adblockEngine) adblock.setMode(s.privacy.adblockEngine);
   if (prev.privacy.adblock !== s.privacy.adblock) sessions.setAdblock(s.privacy.adblock);
-  if (prev.privacy.blockThirdPartyCookies !== s.privacy.blockThirdPartyCookies || prev.privacy.httpsOnly !== s.privacy.httpsOnly) sessions.setPrivacy();
+  if (['blockThirdPartyCookies', 'httpsOnly', 'stripParams', 'debounce', 'deAmp', 'languages'].some((k) => prev.privacy[k] !== s.privacy[k])) sessions.setPrivacy();
+  if (prev.privacy.cookieNotices !== s.privacy.cookieNotices) adblock.setNotices(!!s.privacy.cookieNotices).catch(() => {});
+  if (prev.privacy.webrtc !== s.privacy.webrtc) require('./fingerprint').refreshWebrtc();
   if (prev.wallpaper.type !== s.wallpaper.type || prev.appearance.bg !== s.appearance.bg) windows.applyBackground(s);
   onSettingsChanged(s, prev);
   // another language (Settings → Chung): TyranWeb starts again in it, its tabs restored (the first

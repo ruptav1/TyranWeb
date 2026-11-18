@@ -1382,6 +1382,26 @@ body.resizing webview {
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
+/* (the sidebar's downloads: yellow paused, green done, red cancelled, failed or with a threat) */
+.panel-item.dl-done {
+  background: rgba(63, 178, 127, 0.13);
+}
+.panel-item.dl-done .pi-ico {
+  color: #2f9a6a;
+}
+.panel-item.dl-bad {
+  background: rgba(214, 69, 69, 0.12);
+}
+.panel-item.dl-bad .pi-ico,
+.panel-item.dl-bad .pi-sub {
+  color: #d64545;
+}
+.panel-item.dl-paused {
+  background: rgba(230, 170, 30, 0.14);
+}
+.panel-item.dl-paused .pi-ico {
+  color: #b7860b;
+}
 .panel-item:hover {
   background: var(--hover);
 }
@@ -1964,9 +1984,42 @@ span.app-ico {
   background: var(--hover);
   color: var(--text-2);
 }
-.dl-row.completed .dl-file {
-  background: rgba(63, 178, 127, 0.14);
+/* (none while downloading, yellow paused, green done, red cancelled, failed or with a threat in it) */
+.dl-row.done {
+  background: rgba(63, 178, 127, 0.13);
+}
+.dl-row.done:hover {
+  background: rgba(63, 178, 127, 0.2);
+}
+.dl-row.done .dl-file {
+  background: rgba(63, 178, 127, 0.22);
   color: #2f9a6a;
+}
+.dl-row.bad {
+  background: rgba(214, 69, 69, 0.12);
+}
+.dl-row.bad:hover {
+  background: rgba(214, 69, 69, 0.19);
+}
+.dl-row.bad .dl-file {
+  background: rgba(214, 69, 69, 0.2);
+  color: #d64545;
+}
+.dl-row.bad .dl-status {
+  color: #d64545;
+}
+.dl-row.paused {
+  background: rgba(230, 170, 30, 0.14);
+}
+.dl-row.paused:hover {
+  background: rgba(230, 170, 30, 0.21);
+}
+.dl-row.paused .dl-file {
+  background: rgba(230, 170, 30, 0.24);
+  color: #b7860b;
+}
+.dl-row.paused .dl-bar i {
+  background: #e0a91e;
 }
 .dl-info {
   display: flex;

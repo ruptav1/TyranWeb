@@ -329,11 +329,19 @@ function downloadsPanel(body, head) {
     list.innerHTML = '';
     for (const d of items.slice(0, 100)) {
       const pct = d.totalBytes ? Math.round((d.receivedBytes / d.totalBytes) * 100) : 0;
-      const row = h('div', { class: 'panel-item', title: d.path || d.filename });
-      row.innerHTML = `<span class="pi-ico">${icon(d.state === 'completed' ? 'check' : 'download', 16)}</span><span class="pi-text"><span class="pi-title">${esc(d.filename)}</span><span class="pi-sub">${
-        d.state === 'progressing' ? `${pct}% · ${fmtBytes(d.receivedBytes)}` : d.state === 'completed' ? `${fmtBytes(d.totalBytes)} · ${timeAgo(d.endTime || d.startTime)}` : t('Đã hủy / lỗi')
-      }</span></span>`;
-      row.addEventListener('click', () => api.invoke('downloads:action', d.id, d.state === 'completed' ? 'open' : 'show'));
+      // (none while downloading, yellow paused, green done, red cancelled, failed or with a threat in it)
+      const flagged = ['threat', 'removed'].includes(d.scan?.state);
+      const tone = d.state === 'progressing' ? (d.paused ? 'dl-paused' : '') : d.state === 'completed' && !flagged ? 'dl-done' : 'dl-bad';
+      const ic = d.state === 'progressing' ? (d.paused ? 'pause' : 'download') : d.state !== 'completed' ? 'x' : flagged ? 'warn' : 'check';
+      const scan = flagged ? (d.scan.state === 'threat' ? t('Có mã độc: {0}', d.scan.threat || '?') : t('Đã chặn: {0}', d.scan.threat || '?')) : '';
+      const row = h('div', { class: `panel-item ${tone}`, title: d.path || d.filename });
+      row.innerHTML = `<span class="pi-ico">${icon(ic, 16)}</span><span class="pi-text"><span class="pi-title">${esc(d.filename)}</span><span class="pi-sub">${esc(
+        d.state === 'progressing' ? `${d.paused ? t('Tạm dừng · ') : ''}${pct}% · ${fmtBytes(d.receivedBytes)}` : d.state === 'completed' ? scan || `${fmtBytes(d.totalBytes)} · ${timeAgo(d.endTime || d.startTime)}` : scan || t('Đã hủy / lỗi')
+      )}</span></span>`;
+      row.addEventListener('click', async () => {
+        const r = await api.invoke('downloads:action', d.id, d.state === 'completed' && !flagged ? 'open' : 'show');
+        if (r === 'threat') toast(t('Tệp này có mã độc nên không được mở'), { icon: 'warn' });
+      });
       list.append(row);
     }
     if (!items.length) list.append(h('div', { class: 'empty-note', text: t('Chưa có tệp nào') }));

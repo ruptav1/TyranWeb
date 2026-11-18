@@ -1,4 +1,4 @@
-TyranWeb 1.1.79 — trình duyệt anime (Windows 10/11, 64-bit)
+TyranWeb 1.1.80 — trình duyệt anime (Windows 10/11, 64-bit)
 ==========================================================
 
 CÁCH CHẠY
@@ -53,7 +53,14 @@ CẦN INTERNET CHO
   adblock-rust của Brave, được tải và biên dịch trên máy khi chọn lần đầu (tải khoảng 400 MB,
   tạm chiếm tới 2 GB ổ đĩa, vài phút; xong chỉ giữ lại khoảng 25 MB). Không có sẵn trong file
   zip này. Khiên trong thanh địa chỉ: số quảng cáo đã chặn trên trang, bộ lọc đang dùng, và tắt
-  chặn quảng cáo riêng cho trang đó (các trang khác vẫn chặn).
+  bảo vệ riêng cho trang đó (các trang khác vẫn được bảo vệ).
+- Chống theo dõi kiểu Brave (Cài đặt → Quyền riêng tư → Chống theo dõi, bật sẵn, tắt riêng từng
+  mục được): xoá tham số theo dõi khỏi liên kết (fbclid, gclid, si của YouTube...), bỏ qua trang
+  chuyển hướng theo dõi, mở trang gốc thay cho trang AMP, chặn thông báo cookie, chống nhận dạng
+  trình duyệt (canvas, WebGL, âm thanh, số nhân CPU bị làm nhiễu nhẹ, khác nhau theo từng trang
+  web và mỗi lần mở app), chỉ cho trang web biết một ngôn ngữ, chống lộ IP qua WebRTC. Dùng danh
+  sách của Brave (github.com/brave/adblock-lists, MPL-2.0); phần làm nhiễu do TyranWeb tự viết
+  theo cách Brave làm, chưa áp dụng bên trong web worker.
 
 GHI CHÚ
 - Lần đầu mở, TyranWeb hỏi ngôn ngữ (Tiếng Việt, English, 日本語, 한국어, 简体中文, Español,
@@ -61,6 +68,16 @@ GHI CHÚ
   động lại).
 - Thanh bên → Ứng dụng trên máy: mở các ứng dụng có chữ ký số hợp lệ trong Start menu (cả ứng
   dụng Store), ghim cái hay dùng lên thanh bên.
+- Kiểm tra tệp tải về (Cài đặt → Chung → Tải xuống, bật sẵn): mọi tệp tải xong (cả video tải
+  từ đường dẫn) được Windows Defender quét, kể cả bên trong file nén zip/rar/7z; .exe, .bat và
+  các tệp chạy được quét trước. Tệp có mã độc bị đánh dấu đỏ, không mở được từ TyranWeb, có nút
+  Cách ly; nút VirusTotal mở trang kết quả của tệp theo mã SHA-256 (chỉ gửi mã, không gửi tệp).
+  Tệp tải về được đánh dấu "từ internet" như Chrome, nên SmartScreen của Windows kiểm tra
+  chương trình khi chạy. Cần Windows Defender đang bật.
+- Bảo vệ đăng nhập: cookie lưu trên ổ đĩa được mã hoá bằng khoá của Windows (như Chrome);
+  TyranWeb không chạy khi bị mở kèm cổng gỡ lỗi từ xa, không nhận --inspect hay NODE_OPTIONS,
+  và từ chối chạy nếu file app.asar bị sửa. Không phần mềm nào chặn được hoàn toàn mã độc đã
+  chạy trên máy với quyền của bạn: hãy để Windows Defender bật và đừng chạy file lạ.
 - Cài đặt, dấu trang, lịch sử, hình nền tự thêm... lưu ở %APPDATA%\TyranWeb (không nằm
   trong thư mục app). Xoá thư mục app không xoá các dữ liệu đó.
 - Thư mục lưu hình nền (Cài đặt → Hình nền → Thư mục lưu hình nền) chia sẵn: images (nền ảnh),

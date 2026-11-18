@@ -1,7 +1,7 @@
 {
   "name": "tyranweb",
   "productName": "TyranWeb",
-  "version": "1.1.79",
+  "version": "1.1.80",
   "description": "Trình duyệt web chủ đề anime 2000–2010, UI clean và tùy biến tự do.",
   "main": "src/main/main.js",
   "author": "TyranWeb",
@@ -48,7 +48,17 @@
         "from": "LICENSE",
         "to": "LICENSE.txt"
       }
-    ]
+    ],
+    "electronFuses": {
+      "runAsNode": true,
+      "enableCookieEncryption": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true,
+      "loadBrowserProcessSpecificV8Snapshot": false,
+      "grantFileProtocolExtraPrivileges": false
+    }
   },
   "dependencies": {
     "@ghostery/adblocker-electron": "2.20.1",

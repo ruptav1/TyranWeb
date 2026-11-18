@@ -51,19 +51,19 @@ export async function shieldPopover(anchor) {
   const global = !!S.settings.privacy.adblock;
   const using = engine?.using || engine?.asked || S.settings.privacy.adblockEngine;
   const rows = [];
-  if (global && site?.site) {
+  // (the site's switch turns off all of it there: the ad blocking and Brave's other protections)
+  if (site?.site) {
     const sw = h('input', { type: 'checkbox', checked: site.on });
     sw.addEventListener('change', async () => {
       await api.invoke('adblock:site', tab.url, sw.checked);
-      toast(t(sw.checked ? 'Đã bật chặn quảng cáo trên {0}' : 'Đã tắt chặn quảng cáo trên {0}', site.site), { icon: sw.checked ? 'shieldCheck' : 'shield' });
+      toast(t(sw.checked ? 'Đã bật bảo vệ trên {0}' : 'Đã tắt bảo vệ trên {0}', site.site), { icon: sw.checked ? 'shieldCheck' : 'shield' });
       emit('shields');
       reload(tab.id);
     });
-    rows.push(
-      h('div', { class: 'site-row' }, h('span', { text: t('Đã chặn trên trang này') }), h('b', { text: String(site.on ? tab.blocked || 0 : 0) })),
-      h('label', { class: 'site-row' }, h('span', { text: t('Chặn quảng cáo trên {0}', site.site) }), h('span', { class: 'switch' }, sw, h('span')))
-    );
-  } else if (!global) {
+    if (global) rows.push(h('div', { class: 'site-row' }, h('span', { text: t('Đã chặn trên trang này') }), h('b', { text: String(site.on ? tab.blocked || 0 : 0) })));
+    rows.push(h('label', { class: 'site-row' }, h('span', { text: t('Bảo vệ trên {0}', site.site) }), h('span', { class: 'switch' }, sw, h('span'))));
+  }
+  if (!global) {
     const sw = h('input', { type: 'checkbox' });
     sw.addEventListener('change', async () => {
       await api.invoke('settings:set', { privacy: { adblock: sw.checked } });
