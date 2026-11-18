@@ -1,0 +1,295 @@
+/* Kết quả kiểm tra (tyran://scan): green nothing found, yellow a few vendors or suspicious only, red a threat */
+.scan {
+  max-width: 1080px;
+}
+.scan .card {
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  backdrop-filter: blur(var(--blur));
+}
+.scan .stitle {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 22px 2px 10px;
+  font-size: 1.05em;
+  font-weight: 600;
+}
+.lv-ok {
+  --lv: #2f9a6a;
+  --lv-bg: rgba(63, 178, 127, 0.14);
+}
+.lv-bad {
+  --lv: #d64545;
+  --lv-bg: rgba(214, 69, 69, 0.13);
+}
+.lv-warn {
+  --lv: #b7860b;
+  --lv-bg: rgba(230, 170, 30, 0.17);
+}
+.lv-na,
+.lv-busy {
+  --lv: var(--text-3);
+  --lv-bg: var(--hover);
+}
+
+/* ---- summary */
+.scan-sum {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 12px;
+}
+.ring-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 124px;
+  height: 124px;
+  color: var(--lv);
+}
+.ring > svg {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+.ring > svg circle {
+  fill: none;
+  stroke-width: 9;
+}
+.ring .track {
+  stroke: var(--lv-bg);
+}
+.ring .arc {
+  stroke: var(--lv);
+  stroke-linecap: round;
+}
+.ring-num {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+.ring-num b {
+  font-size: 38px;
+  font-weight: 600;
+}
+.ring-num span {
+  color: var(--text-3);
+}
+.ring-ico {
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  background: var(--lv-bg);
+}
+.ring-sub {
+  position: absolute;
+  bottom: -6px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sum-main {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--lv-bg);
+  color: var(--lv);
+  font-weight: 600;
+}
+.sum-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+.sum-id {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.sha {
+  color: var(--text-2);
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 0.92em;
+  word-break: break-all;
+  user-select: text;
+}
+.fname {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.facts {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.facts > div:not(.typebox) {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  white-space: nowrap;
+}
+/* the file's kind: a dark round badge, its icon (a program's own) over its kind in letters */
+.typebox {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 1px;
+  flex: none;
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  background: #1f1a24;
+  color: #fff;
+  box-shadow: 0 2px 8px var(--shadow-color);
+}
+.typebox b {
+  font-size: 0.86em;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  line-height: 1.1;
+}
+.typebox.has-icon img {
+  width: 28px;
+  height: 28px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+/* ---- chips: counts, tags, threat names */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--lv-bg, var(--hover));
+  color: var(--lv, var(--text-2));
+  font-size: 0.92em;
+}
+.chip b {
+  margin-left: 3px;
+}
+.counts .chip {
+  padding: 6px 12px;
+  font-size: 1em;
+}
+
+/* ---- Windows Defender, VirusTotal's state, threats */
+.defender,
+.vt-state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+.defender b {
+  min-width: 170px;
+}
+.vt-state .grow {
+  flex: 1;
+}
+.vt-state.busy > span:first-child {
+  animation: spin 1.2s linear infinite;
+  display: inline-grid;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.threats {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.threat-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #d64545;
+}
+.threat-line {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ---- the vendors */
+.vendors {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 34px;
+}
+.vrow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  align-items: center;
+  gap: 10px;
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--line);
+}
+.vname {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vres {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: var(--lv);
+}
+.vres span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vres.lv-bad span,
+.vres.lv-warn span {
+  font-weight: 600;
+}
+.vres.lv-ok span,
+.vres.lv-na span {
+  color: var(--text-2);
+}
+
+@media (max-width: 780px) {
+  .scan-sum,
+  .vendors {
+    grid-template-columns: 1fr;
+  }
+  .sum-row {
+    flex-direction: column;
+  }
+}

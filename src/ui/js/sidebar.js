@@ -330,10 +330,11 @@ function downloadsPanel(body, head) {
     for (const d of items.slice(0, 100)) {
       const pct = d.totalBytes ? Math.round((d.receivedBytes / d.totalBytes) * 100) : 0;
       // (none while downloading, yellow paused, green done, red cancelled, failed or with a threat in it)
-      const flagged = ['threat', 'removed'].includes(d.scan?.state);
+      const vtBad = (d.scan?.vt?.stats?.malicious || 0) >= 3; // (as main/filescan.js counts it)
+      const flagged = ['threat', 'removed'].includes(d.scan?.state) || vtBad;
       const tone = d.state === 'progressing' ? (d.paused ? 'dl-paused' : '') : d.state === 'completed' && !flagged ? 'dl-done' : 'dl-bad';
       const ic = d.state === 'progressing' ? (d.paused ? 'pause' : 'download') : d.state !== 'completed' ? 'x' : flagged ? 'warn' : 'check';
-      const scan = flagged ? (d.scan.state === 'threat' ? t('Có mã độc: {0}', d.scan.threat || '?') : t('Đã chặn: {0}', d.scan.threat || '?')) : '';
+      const scan = !flagged ? '' : d.scan.state === 'threat' ? t('Có mã độc: {0}', d.scan.threat || '?') : d.scan.state === 'removed' ? t('Đã chặn: {0}', d.scan.threat || '?') : `VirusTotal ${d.scan.vt.stats.malicious}`;
       const row = h('div', { class: `panel-item ${tone}`, title: d.path || d.filename });
       row.innerHTML = `<span class="pi-ico">${icon(ic, 16)}</span><span class="pi-text"><span class="pi-title">${esc(d.filename)}</span><span class="pi-sub">${esc(
         d.state === 'progressing' ? `${d.paused ? t('Tạm dừng · ') : ''}${pct}% · ${fmtBytes(d.receivedBytes)}` : d.state === 'completed' ? scan || `${fmtBytes(d.totalBytes)} · ${timeAgo(d.endTime || d.startTime)}` : scan || t('Đã hủy / lỗi')

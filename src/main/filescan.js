@@ -9,6 +9,8 @@
 // Defender's history), or it was quarantined from Tải xuống. A file with a threat is not opened from
 // TyranWeb; a program still being scanned is opened once it is found clean. Its SHA-256 is kept
 // for VirusTotal's page about it, opened only when asked (the address carries the hash, not the file).
+// Then VirusTotal's vendors (virustotal.js, with the user's own key), and the window in front opens
+// the result page (tyran://scan/?id=<download id>) as soon as the download is done.
 // Every download is also marked as coming from the internet (Zone.Identifier, as Chrome does), so
 // Windows' SmartScreen checks a program when it is run and Office opens documents in Protected View.
 const fs = require('fs');
@@ -140,6 +142,7 @@ async function next() {
       }
       setScan(job.id, { ...verdict, sha256: hash });
       if (verdict.state === 'threat' || verdict.state === 'removed') broadcast('downloads:threat', { ...recordOf(job.id) });
+      if (hash) toVirusTotal({ id: job.id, file: job.file, sha: hash, priority: job.priority });
     }
   } catch (err) {
     console.warn('[scan]', err.message);
@@ -150,6 +153,60 @@ async function next() {
   }
 }
 
+// ---------------------------------------------------------------- VirusTotal
+// After Defender, what VirusTotal's vendors say (virustotal.js), one file at a time, programs first.
+// Many of them calling it malicious counts as a threat too.
+const vtQueue = [];
+let vtBusy = false;
+const VT_BAD = 3; // (one or two vendors alone are often wrong)
+const vtBad = (scan) => (scan?.vt?.stats?.malicious || 0) >= VT_BAD;
+const isThreat = (scan) => ['threat', 'removed'].includes(scan?.state) || vtBad(scan);
+
+function toVirusTotal(job) {
+  const vt = require('./virustotal');
+  if (!vt.hasKey()) return setScan(job.id, { vt: { state: 'nokey' } });
+  setScan(job.id, { vt: { state: 'queued' } });
+  vtQueue.push(job);
+  nextVt();
+}
+async function nextVt() {
+  if (vtBusy || !vtQueue.length) return;
+  vtBusy = true;
+  vtQueue.sort((a, b) => a.priority - b.priority);
+  const job = vtQueue.shift();
+  try {
+    await require('./virustotal').check(job.file, job.sha, job.priority < 2, (vt) => {
+      const was = vtBad(recordOf(job.id)?.scan);
+      setScan(job.id, { vt });
+      if (!was && vtBad(recordOf(job.id)?.scan) && !['threat', 'removed'].includes(recordOf(job.id)?.scan?.state)) broadcast('downloads:threat', { ...recordOf(job.id) });
+    });
+  } catch (err) {
+    console.warn('[virustotal]', err.message);
+    setScan(job.id, { vt: { state: 'error' } });
+  } finally {
+    vtBusy = false;
+    nextVt();
+  }
+}
+// VirusTotal asked again about a download (from its result page: a key just given, a quota renewed)
+function recheck(id) {
+  const rec = recordOf(id);
+  if (!rec?.scan?.sha256 || vtQueue.some((j) => j.id === id) || ['queued', 'looking', 'uploading', 'analyzing'].includes(rec.scan.vt?.state)) return false;
+  toVirusTotal({ id, file: rec.path, sha: rec.scan.sha256, priority: priorityOf(rec.path || '') });
+  return true;
+}
+
+// ---------------------------------------------------------------- the result tab
+// The window in front opens tyran://scan for the download, as general.scanTab says ('all' files,
+// 'risky' ones only, 'off').
+function showResult(rec) {
+  const when = data.settings.data.general.scanTab || 'all';
+  if (when === 'off' || (when === 'risky' && priorityOf(rec.path || rec.filename || '') > 1)) return;
+  const { BrowserWindow } = require('electron');
+  const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows().find((w) => !w.isDestroyed() && w.isVisible());
+  if (win && !win.isDestroyed()) win.webContents.send('scan:open', rec.id);
+}
+
 // a finished download (its record, as just kept or sent): marked, and scanned when that is on
 function add(rec) {
   if (!rec?.id || !rec.path) return;
@@ -158,6 +215,7 @@ function add(rec) {
   if (rec.private || !data.downloadStore.data.items.some((d) => d.id === rec.id)) kept.set(rec.id, { ...rec });
   queue.push({ id: rec.id, file: rec.path, priority: priorityOf(rec.path) });
   setScan(rec.id, { state: 'queued' });
+  showResult(rec);
   next();
 }
 
@@ -178,6 +236,7 @@ async function interrupted(rec) {
     if (threat) {
       setScan(rec.id, { state: 'removed', threat });
       broadcast('downloads:threat', { ...recordOf(rec.id) });
+      showResult(rec);
       return;
     }
   }
@@ -196,15 +255,15 @@ function result(id) {
 async function mayOpen(id, file) {
   const scan = recordOf(id)?.scan;
   if (!scan) return true;
-  if (['queued', 'scanning'].includes(scan.state) && priorityOf(file || '') < 2) return !['threat', 'removed'].includes((await result(id))?.state);
-  return !['threat', 'removed'].includes(scan.state);
+  if (['queued', 'scanning'].includes(scan.state) && priorityOf(file || '') < 2) return !isThreat(await result(id));
+  return !isThreat(scan);
 }
 
 // A threat found in a download handed to Defender to deal with (quarantined: Windows Security can
-// give it back); if it is still there, it goes to the Recycle Bin.
+// give it back); if it is still there (one only VirusTotal's vendors flag), it goes to the Recycle Bin.
 async function quarantine(id) {
   const rec = recordOf(id);
-  if (!rec?.path || rec.scan?.state !== 'threat') return false;
+  if (!rec?.path || !(rec.scan?.state === 'threat' || vtBad(rec.scan))) return false;
   if (fs.existsSync(rec.path)) await defender(rec.path, true);
   for (let i = 0; i < 10 && fs.existsSync(rec.path); i++) await new Promise((ok) => setTimeout(ok, 500));
   if (fs.existsSync(rec.path)) await shell.trashItem(rec.path).catch(() => {});
@@ -215,14 +274,49 @@ async function quarantine(id) {
 
 function init(b) {
   broadcast = b;
-  // (scans TyranWeb was closed in the middle of: done again, once it has settled)
-  setTimeout(() => {
-    for (const d of data.downloadStore.data.items) if (['queued', 'scanning'].includes(d.scan?.state) && d.path) queue.push({ id: d.id, file: d.path, priority: priorityOf(d.path) });
-    next();
-  }, 15000);
+  // (scans TyranWeb was closed in the middle of: done again once it has settled; the list taken
+  // now, before this run's own scans start)
+  const scans = [];
+  const asks = [];
+  for (const d of data.downloadStore.data.items) {
+    if (['queued', 'scanning'].includes(d.scan?.state) && d.path) scans.push({ id: d.id, file: d.path, priority: priorityOf(d.path) });
+    else if (['queued', 'looking', 'uploading', 'analyzing'].includes(d.scan?.vt?.state) && d.scan.sha256) asks.push({ id: d.id, file: d.path, sha: d.scan.sha256, priority: priorityOf(d.path || '') });
+  }
+  if (scans.length || asks.length)
+    setTimeout(() => {
+      queue.push(...scans);
+      vtQueue.push(...asks);
+      next();
+      nextVt();
+    }, 15000);
 }
 
 // what is known of a download's scan (for its record while it is still Chromium's)
 const scanOf = (id) => recordOf(id)?.scan;
 
-module.exports = { init, add, interrupted, scanOf, result, mayOpen, quarantine, priorityOf };
+// For the result page: the download's record and VirusTotal's report on it (null: none yet)
+async function details(id) {
+  const rec = recordOf(String(id || ''));
+  if (!rec) return null;
+  return { rec: { ...rec }, report: rec.scan?.sha256 ? require('./virustotal').report(rec.scan.sha256) : null, hasKey: require('./virustotal').hasKey(), risky: priorityOf(rec.path || rec.filename || '') < 2, icon: await iconOf(rec.path) };
+}
+
+// A program's or a script's own icon, as Windows shows it (a data URL; '' none): the one inside an
+// .exe, the one Windows gives .bat / .cmd files... (only read, never run)
+const ICONIC = /\.(exe|bat|cmd|com|scr|msi)$/i;
+const icons = new Map(); // path -> data URL
+async function iconOf(file) {
+  if (!file || !ICONIC.test(file) || !fs.existsSync(file)) return '';
+  if (icons.has(file)) return icons.get(file);
+  let url = '';
+  try {
+    const img = await require('electron').app.getFileIcon(file, { size: 'large' });
+    url = img.isEmpty() ? '' : img.toDataURL();
+  } catch {
+    url = '';
+  }
+  icons.set(file, url);
+  return url;
+}
+
+module.exports = { init, add, interrupted, scanOf, result, mayOpen, quarantine, recheck, details, priorityOf };

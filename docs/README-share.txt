@@ -1,4 +1,4 @@
-TyranWeb 1.1.80 — trình duyệt anime (Windows 10/11, 64-bit)
+TyranWeb 1.1.81 — trình duyệt anime (Windows 10/11, 64-bit)
 ==========================================================
 
 CÁCH CHẠY
@@ -70,10 +70,14 @@ GHI CHÚ
   dụng Store), ghim cái hay dùng lên thanh bên.
 - Kiểm tra tệp tải về (Cài đặt → Chung → Tải xuống, bật sẵn): mọi tệp tải xong (cả video tải
   từ đường dẫn) được Windows Defender quét, kể cả bên trong file nén zip/rar/7z; .exe, .bat và
-  các tệp chạy được quét trước. Tệp có mã độc bị đánh dấu đỏ, không mở được từ TyranWeb, có nút
-  Cách ly; nút VirusTotal mở trang kết quả của tệp theo mã SHA-256 (chỉ gửi mã, không gửi tệp).
-  Tệp tải về được đánh dấu "từ internet" như Chrome, nên SmartScreen của Windows kiểm tra
-  chương trình khi chạy. Cần Windows Defender đang bật.
+  các tệp chạy được quét trước. Tải xong, một tab "Kết quả kiểm tra" tự mở: kết quả của Windows
+  Defender và, nếu bạn dán API key VirusTotal miễn phí của mình vào Cài đặt, của khoảng 70 hãng
+  bảo mật (đếm theo mức: độc hại, đáng ngờ, không phát hiện...; loại và tên mối nguy). TyranWeb
+  tra VirusTotal bằng mã SHA-256; tệp VirusTotal chưa có chỉ được gửi lên nếu là tệp chạy được
+  hoặc file nén (đổi được trong Cài đặt), vì tệp gửi lên được chia sẻ cho các hãng bảo mật. Key
+  được lưu mã hoá. Tệp có mã độc (Defender, hoặc từ 3 hãng trở lên) bị đánh dấu đỏ, không mở được
+  từ TyranWeb, có nút Cách ly. Tệp tải về được đánh dấu "từ internet" như Chrome, nên SmartScreen
+  của Windows kiểm tra chương trình khi chạy. Cần Windows Defender đang bật.
 - Bảo vệ đăng nhập: cookie lưu trên ổ đĩa được mã hoá bằng khoá của Windows (như Chrome);
   TyranWeb không chạy khi bị mở kèm cổng gỡ lỗi từ xa, không nhận --inspect hay NODE_OPTIONS,
   và từ chối chạy nếu file app.asar bị sửa. Không phần mềm nào chặn được hoàn toàn mã độc đã

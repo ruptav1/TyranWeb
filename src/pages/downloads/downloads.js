@@ -13,10 +13,16 @@ let items = [];
 
 // Kiểm tra tệp tải về (main/filescan.js): what Windows Defender said, and the row's colour (none
 // while downloading, yellow paused, green done, red cancelled, failed or with a threat in it)
-const VT = 'https://www.virustotal.com/gui/file/';
-const flagged = (d) => ['threat', 'removed'].includes(d.scan?.state);
+// (a threat by Defender, or by 3 or more of VirusTotal's vendors, as main/filescan.js counts it)
+const flagged = (d) => ['threat', 'removed'].includes(d.scan?.state) || (d.scan?.vt?.stats?.malicious || 0) >= 3;
 const tone = (d) => (d.state === 'progressing' ? (d.paused ? 'paused' : '') : d.state === 'completed' && !flagged(d) ? 'done' : 'bad');
+// Defender's verdict, then VirusTotal's count (vendors calling it malicious, of those that judged it)
 function scanText(s) {
+  const st = s?.vt?.state === 'done' ? s.vt.stats || {} : null;
+  const judged = st ? ['malicious', 'suspicious', 'undetected', 'harmless'].reduce((n, k) => n + (st[k] || 0), 0) : 0;
+  return [defenderText(s), judged ? `VirusTotal ${st.malicious || 0}/${judged}` : ''].filter(Boolean).join(' · ');
+}
+function defenderText(s) {
   switch (s?.state) {
     case 'queued':
     case 'scanning':
@@ -50,7 +56,7 @@ function render() {
     else if (d.state === 'completed') {
       if (d.scan?.state === 'threat') actions.push(['quarantine', 'trash', t('Cách ly')]);
       else if (!flagged(d)) actions.push(['open', 'external', t('Mở tệp')]);
-      if (d.scan?.sha256) actions.push(['virustotal', 'shield', 'VirusTotal']);
+      if (d.scan) actions.push(['result', 'shield', t('Kết quả kiểm tra')]);
       if (d.scan?.state !== 'removed') actions.push(['show', 'folder', t('Mở thư mục')]);
     } else if (!flagged(d)) actions.push(['retry', 'reload', t('Tải lại')]); // (not one Defender stopped)
     if (d.state !== 'progressing') actions.push(['remove', 'x', t('Xóa khỏi danh sách')]);
@@ -63,7 +69,7 @@ function render() {
       <span class="li-actions" style="opacity:1">${actions.map(([a, ic, t]) => `<button class="icon-btn" data-act="${a}" title="${t}">${icon(ic, 15)}</button>`).join('')}</span>`;
     item.addEventListener('click', async (e) => {
       const act = e.target.closest('[data-act]')?.dataset.act;
-      if (act === 'virustotal') return openUrl(VT + d.scan.sha256, true);
+      if (act === 'result') return openUrl('tyran://scan/?id=' + encodeURIComponent(d.id), true);
       let r = null;
       if (act) r = await api.invoke('downloads:action', d.id, act);
       else if (d.state === 'completed' && !flagged(d)) r = await api.invoke('downloads:action', d.id, 'open');

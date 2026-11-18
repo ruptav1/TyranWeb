@@ -1955,6 +1955,37 @@ function newtab() {
   ];
 }
 
+// The VirusTotal API key (main/virustotal.js): tried, then kept encrypted by main; never shown again
+function vtKeyRow() {
+  const input = h('input', { type: 'password', class: 'input', placeholder: 'API key', autocomplete: 'off', spellcheck: 'false', style: { width: '240px' } });
+  const state = h('span', { class: 'muted' });
+  const paint = (has) => {
+    state.textContent = has ? t('Đã lưu') : '';
+    clear.hidden = !has;
+    input.placeholder = has ? '••••••••' : 'API key';
+  };
+  const clear = button(t('Xóa'), async () => {
+    await api.invoke('vt:clearKey');
+    paint(false);
+  }, { cls: 'small ghost' });
+  const save = button(t('Lưu'), async () => {
+    const v = input.value.trim();
+    if (!v) return;
+    save.disabled = true;
+    const r = await api.invoke('vt:setKey', v).catch(() => 'error');
+    save.disabled = false;
+    if (r === 'ok') {
+      input.value = '';
+      paint(true);
+      toast(t('Đã lưu API key VirusTotal ✿'));
+    } else toast(r === 'badkey' ? t('API key VirusTotal không hợp lệ') : t('Không kết nối được VirusTotal'));
+  }, { cls: 'small primary' });
+  input.addEventListener('keydown', (e) => e.key === 'Enter' && save.click());
+  paint(false);
+  api.invoke('vt:status').then((s) => paint(!!s?.hasKey), () => {});
+  return row(t('API key VirusTotal'), '', state, input, save, clear);
+}
+
 function general() {
   const g = S.general;
   const engineOptions = Object.entries(engines).map(([k, v]) => [k, v.name]);
@@ -1982,7 +2013,10 @@ function general() {
         if (d) set('general.downloadDir', d).then(refresh);
       }, { cls: 'small' })),
       row(t('Hỏi nơi lưu mỗi lần tải'), '', sw('general.askDownloadLocation')),
-      row(t('Kiểm tra tệp tải về'), '', sw('general.scanDownloads'))
+      row(t('Kiểm tra tệp tải về'), '', sw('general.scanDownloads')),
+      row(t('Mở tab kết quả khi tải xong'), '', select('general.scanTab', [['all', t('Mọi tệp')], ['risky', t('Tệp chạy được và file nén')], ['off', t('Không mở')]])),
+      vtKeyRow(),
+      row(t('Gửi tệp VirusTotal chưa có'), '', select('general.vtUpload', [['risky', t('Tệp chạy được và file nén')], ['never', t('Không gửi')], ['all', t('Mọi tệp')]]))
     ),
     stitle(t('Khác')),
     section_(row(t('Cuộn mượt'), '', sw('general.smoothScrolling'))),

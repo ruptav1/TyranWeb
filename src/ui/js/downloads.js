@@ -11,15 +11,20 @@ let pop = null;
 
 // The row's colour: none while downloading, yellow paused, green done, red cancelled, failed or with
 // a threat in it (Kiểm tra tệp tải về: main/filescan.js)
-const VT = 'https://www.virustotal.com/gui/file/';
-const RISKY = /\.(exe|bat|cmd|com|scr|msi|msix|ps1|vbs|js|jar|dll|lnk|hta|zip|rar|7z)$/i;
-const flagged = (d) => ['threat', 'removed'].includes(d.scan?.state);
+// (a threat by Defender, or by 3 or more of VirusTotal's vendors, as main/filescan.js counts it)
+const flagged = (d) => ['threat', 'removed'].includes(d.scan?.state) || (d.scan?.vt?.stats?.malicious || 0) >= 3;
 function tone(d) {
   if (d.state === 'progressing') return d.paused ? 'paused' : '';
   if (d.state === 'completed') return flagged(d) ? 'bad' : 'done';
   return 'bad';
 }
+// Defender's verdict, then VirusTotal's count (vendors calling it malicious, of those that judged it)
 function scanText(s) {
+  const st = s?.vt?.state === 'done' ? s.vt.stats || {} : null;
+  const judged = st ? ['malicious', 'suspicious', 'undetected', 'harmless'].reduce((n, k) => n + (st[k] || 0), 0) : 0;
+  return [defenderText(s), judged ? `VirusTotal ${st.malicious || 0}/${judged}` : ''].filter(Boolean).join(' · ');
+}
+function defenderText(s) {
   switch (s?.state) {
     case 'queued':
     case 'scanning':
@@ -81,7 +86,7 @@ function row(d) {
     actions.push(['cancel', 'x', t('Hủy')]);
   } else if (d.state === 'completed') {
     if (d.scan?.state === 'threat') actions.push(['quarantine', 'trash', t('Cách ly')]);
-    if (d.scan?.sha256 && (flagged(d) || RISKY.test(d.filename || ''))) actions.push(['virustotal', 'shield', 'VirusTotal']);
+    if (d.scan) actions.push(['result', 'shield', t('Kết quả kiểm tra')]);
     if (d.scan?.state !== 'removed') actions.push(['show', 'folder', t('Mở thư mục')]);
   } else if (!flagged(d)) {
     actions.push(['retry', 'reload', t('Thử lại')]); // (not one Defender stopped)
@@ -118,9 +123,9 @@ async function showPopover(anchor) {
     if (!rowEl) return;
     const id = rowEl.dataset.id;
     const d = S.downloads.get(id);
-    if (btn?.dataset.act === 'virustotal') {
+    if (btn?.dataset.act === 'result') {
       closePopover();
-      if (d?.scan?.sha256) createTab({ url: VT + d.scan.sha256 });
+      createTab({ url: 'tyran://scan/?id=' + encodeURIComponent(id) });
     } else if (btn) told(await api.invoke('downloads:action', id, btn.dataset.act));
     else if (d?.state === 'completed') told(await api.invoke('downloads:action', id, 'open'));
   });
@@ -161,6 +166,8 @@ export function initDownloads() {
     if (d.private && !hasIncognito()) return;
     toast(t('Đã tải xong: {0}', d.filename), { icon: 'check', action: { label: t('Mở'), run: () => api.invoke('downloads:action', d.id, 'open').then(told) } });
   });
+  // (a download just done: its result page, from main/filescan.js)
+  api.on('scan:open', (id) => createTab({ url: 'tyran://scan/?id=' + encodeURIComponent(String(id)) }));
   api.on('downloads:threat', (d) => {
     if (d.private && !hasIncognito()) return;
     const name = d.scan?.threat || '?';

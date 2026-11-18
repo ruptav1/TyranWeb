@@ -216,6 +216,12 @@ function register({ onSettings } = {}) {
   handle('downloads:list', () => sessions.downloadsList());
   handle('downloads:action', (e, id, action) => sessions.downloadAction(id, action));
   handle('downloads:clear', () => sessions.clearDownloads());
+  // Kiểm tra tệp tải về: the result page (tyran://scan) and the VirusTotal key (Settings)
+  handle('scan:get', (e, id) => require('./filescan').details(id));
+  handle('scan:recheck', (e, id) => require('./filescan').recheck(String(id || '')));
+  handle('vt:status', () => ({ hasKey: require('./virustotal').hasKey() }));
+  handle('vt:setKey', (e, key) => require('./virustotal').setKey(key));
+  handle('vt:clearKey', () => require('./virustotal').clearKey());
   handle('downloads:pickDir', async (e) => {
     const win = BrowserWindow.fromWebContents(e.sender.hostWebContents || e.sender);
     const r = await dialog.showOpenDialog(win, { title: t('Chọn thư mục tải xuống'), properties: ['openDirectory', 'createDirectory'] });

@@ -44,7 +44,7 @@ const LIVE_WALLPAPERS = fs.existsSync(WALLPAPER_DIRS.live) || !fs.existsSync(OLD
 // Folders linked as wallpapers (used in place, not copied): id -> folder, served as tyran://linked/<id>/...
 const LINKED_FILE = path.join(userDir, 'linked-folders.json');
 const linkedRoot = (id) => (readJson(LINKED_FILE) || []).find((f) => f.id === id)?.path || '';
-const PAGES = ['newtab', 'settings', 'history', 'bookmarks', 'downloads', 'store'];
+const PAGES = ['newtab', 'settings', 'history', 'bookmarks', 'downloads', 'store', 'scan'];
 
 const HOSTS = {
   app: path.join(ROOT, 'src', 'ui'),
