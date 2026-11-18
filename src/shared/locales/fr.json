@@ -1176,5 +1176,6 @@
  "Chưa quét tệp nào": "Aucun fichier analysé pour l'instant",
  "Không đọc được danh sách tệp bên trong": "Impossible de lire la liste des fichiers contenus",
  "Trong file nén có": "L'archive contient",
- "Lịch sử kiểm tra": "Historique des analyses"
+ "Lịch sử kiểm tra": "Historique des analyses",
+ "Cho {0} chạy trên mọi trang web": "Autoriser {0} sur tous les sites web"
 }

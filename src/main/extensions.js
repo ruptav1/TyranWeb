@@ -198,7 +198,11 @@ function permissionsOf(manifest) {
   return out;
 }
 
-const entryOf = (x) => ({ ...x, loaded: !!(ses && api().getExtension(x.id)) });
+const entryOf = (x) => {
+  const m = (ses && api().getExtension(x.id)?.manifest) || {};
+  // (one that asks for activeTab, which Electron does not grant: the user may let it on every site)
+  return { ...x, loaded: !!(ses && api().getExtension(x.id)), askAccess: !!x.siteAccess || (asksActiveTab(m) && !allHosts(m)) };
+};
 
 // entry: { id (as loaded), folder (under DIR), storeId (Chrome Web Store), name, version, enabled, icon }
 const folderOf = (entry) => path.join(DIR, path.basename(entry.folder || entry.id));
@@ -262,6 +266,7 @@ async function confirm(token) {
   fs.rmSync(final, { recursive: true, force: true });
   fs.renameSync(p.dir, final);
   const entry = { id: p.id, folder: p.id, storeId: p.id, name: nameOf(final, p.manifest), version: p.manifest.version, enabled: true, icon: iconOf(final, p.manifest), installed: old?.installed || Date.now() };
+  if (old?.siteAccess) writeAccess(entry, true); // (kept through an update)
   const ext = await load(entry);
   entry.id = ext.id; // (the store's ID, unless its key could not be kept)
   writeIndex([...readIndex().filter((x) => x.storeId !== p.id), entry]);
@@ -284,6 +289,71 @@ async function addFolder(folder) {
   }
   writeIndex([...readIndex().filter((x) => x.id !== entry.id), entry]);
   return entryOf(entry);
+}
+
+// ---- activeTab
+// Chrome lets an extension asking for activeTab into the tab it was used on (its popup opened, its
+// shortcut pressed), for that tab only. Electron grants no such thing, so what such an extension
+// does to the page (Authenticator's Scan QR Code and its filling in of codes) fails. The user may
+// let one in on every site instead (Settings → Tiện ích): '<all_urls>' goes into its manifest
+// (taken out again when turned off); TyranWeb's own stand-in for captureVisibleTab honours the
+// popup's tab as Chrome does.
+const ALL = '<all_urls>';
+const asksActiveTab = (m) => (m.permissions || []).includes('activeTab');
+const allHosts = (m) => [...(m.permissions || []), ...(m.host_permissions || [])].some((p) => p === ALL || p === '*://*/*');
+function writeAccess(entry, on) {
+  const file = path.join(folderOf(entry), 'manifest.json');
+  const m = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''));
+  const hosts = m.manifest_version === 2 ? 'permissions' : 'host_permissions';
+  const list = (m[hosts] || []).filter((p) => p !== ALL);
+  if (on) {
+    entry.addedAll = !allHosts(m) || !!entry.addedAll;
+    if (entry.addedAll) m[hosts] = [...list, ALL];
+  } else if (entry.addedAll) {
+    m[hosts] = list;
+    delete entry.addedAll;
+  }
+  entry.siteAccess = !!on;
+  fs.writeFileSync(file, JSON.stringify(m, null, 2));
+}
+async function setSiteAccess(id, on) {
+  const list = readIndex();
+  const x = list.find((e) => e.id === id);
+  if (!x) return false;
+  writeAccess(x, !!on);
+  writeIndex(list);
+  // (loaded again: Chromium reads permissions at load)
+  if (api().getExtension(id)) {
+    api().removeExtension(id);
+    if (x.enabled !== false) await load(x);
+    changed(); // (loaded again: its toolbar entry back)
+  }
+  return true;
+}
+
+const grants = new Map(); // extension id -> { tabId, origin } of the tab its popup was opened on
+const originOf = (url) => {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return '';
+  }
+};
+// the visible tab of a window as a picture (chrome.tabs.captureVisibleTab), for one allowed on it
+async function capture(extId, sender, windowId, options = {}) {
+  const ext = api().getExtension(extId);
+  if (!ext) throw new Error('No extension');
+  const { tabs, focused } = allTabs();
+  const win = windowById(windowId)?.id ?? windowOf(sender) ?? focused;
+  const tab = tabs.find((t) => t.windowId === win && t.active) || tabs.find((t) => t.active);
+  if (!tab) throw new Error('No active tab');
+  const m = ext.manifest || {};
+  const g = grants.get(extId);
+  const ok = allHosts(m) || (m.host_permissions || []).some((p) => matches(p, tab.url)) || (g && g.tabId === tab.id && g.origin === originOf(tab.url));
+  if (!ok) throw new Error("Either the '<all_urls>' or 'activeTab' permission is required.");
+  const img = await contentsById(tab.id).capturePage();
+  if (options?.format === 'jpeg') return 'data:image/jpeg;base64,' + img.toJPEG(Math.max(0, Math.min(100, Number(options.quality ?? 92)))).toString('base64');
+  return img.toDataURL();
 }
 
 async function setEnabled(id, on) {
@@ -540,8 +610,10 @@ const CRX = {
 };
 
 // extension pages ask through ipcMain; their service workers through their own channel
+const extIdOf = (url) => /^chrome-extension:\/\/([a-p]{32})\//.exec(String(url || ''))?.[1] || '';
 function registerBridge(ipcMain) {
   for (const [ch, fn] of Object.entries(CRX)) ipcMain.handle(ch, (e, ...a) => (String(e.sender?.getURL?.() || '').startsWith('chrome-extension://') ? fn(e.sender, ...a) : null));
+  ipcMain.handle('crx:capture', (e, ...a) => (extIdOf(e.sender?.getURL?.()) ? capture(extIdOf(e.sender.getURL()), e.sender, ...a) : null));
   const hooked = new Set();
   const hook = (versionId) => {
     if (hooked.has(versionId)) return;
@@ -563,6 +635,11 @@ function registerBridge(ipcMain) {
         /* already there */
       }
     }
+    try {
+      sw.ipc.handle('crx:capture', (e, ...a) => capture(extIdOf(sw.scope), null, ...a));
+    } catch {
+      /* already there */
+    }
   };
   // (one that stopped is a new worker when it starts again: hooked again then)
   ses.serviceWorkers.on('running-status-changed', ({ versionId, runningStatus }) => (runningStatus === 'stopped' ? hooked.delete(versionId) : hook(versionId)));
@@ -570,9 +647,13 @@ function registerBridge(ipcMain) {
 }
 
 // the extension's pages: its toolbar popup and its options page
-function pages(id) {
+function pages(id, windowId) {
   const ext = ses && api().getExtension(id);
   if (!ext) return null;
+  if (windowId != null) {
+    const tab = allTabs().tabs.find((t) => t.windowId === windowId && t.active);
+    if (tab) grants.set(id, { tabId: tab.id, origin: originOf(tab.url) });
+  }
   const m = ext.manifest || {};
   const popup = m.action?.default_popup || m.browser_action?.default_popup || m.page_action?.default_popup || '';
   const options = m.options_ui?.page || m.options_page || '';
@@ -580,4 +661,4 @@ function pages(id) {
   return { popup: url(popup), options: url(options) };
 }
 
-module.exports = { setTabs, registerBridge, init, list, prepare, cancel, confirm, addFolder, setEnabled, remove, checkUpdates, update, pages, DIR };
+module.exports = { setTabs, registerBridge, init, list, prepare, cancel, confirm, addFolder, setEnabled, setSiteAccess, remove, checkUpdates, update, pages, DIR };

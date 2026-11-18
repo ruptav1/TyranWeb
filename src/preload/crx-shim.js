@@ -271,6 +271,8 @@ function shim(bridge) {
       return (await q({})).find((x) => x.id === id);
     }));
     put(t, 'remove', api((ids) => bridge.remove(ids)));
+    // (a picture of the shown tab, for an extension allowed on it: src/main/extensions.js capture)
+    put(t, 'captureVisibleTab', api((a, b) => (a !== null && typeof a === 'object' ? bridge.capture(null, a) : bridge.capture(a ?? null, b || {}))));
     const win = async (pick, opts) => {
       const s = await bridge.windows();
       const id = pick(s);
@@ -325,6 +327,7 @@ if (worker || (typeof location !== 'undefined' && location.protocol === 'chrome-
       create: (p) => ipcRenderer.invoke('crx:tab-create', p),
       update: (id, p) => ipcRenderer.invoke('crx:tab-update', id, p),
       remove: (ids) => ipcRenderer.invoke('crx:tab-remove', ids),
+      capture: (windowId, options) => ipcRenderer.invoke('crx:capture', windowId, options),
       onTabEvent: (fn) => ipcRenderer.on('crx:tab-event', (e, name, ...args) => fn(name, ...args)),
     };
     contextBridge.executeInMainWorld({ func: shim, args: [bridge] });

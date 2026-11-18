@@ -1176,5 +1176,6 @@
  "Chưa quét tệp nào": "아직 검사한 파일이 없습니다",
  "Không đọc được danh sách tệp bên trong": "안에 있는 파일 목록을 읽을 수 없습니다",
  "Trong file nén có": "압축 파일 안의 파일",
- "Lịch sử kiểm tra": "검사 기록"
+ "Lịch sử kiểm tra": "검사 기록",
+ "Cho {0} chạy trên mọi trang web": "{0}이(가) 모든 웹사이트에서 실행되도록 허용"
 }

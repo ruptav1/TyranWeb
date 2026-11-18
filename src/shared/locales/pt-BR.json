@@ -1176,5 +1176,6 @@
  "Chưa quét tệp nào": "Nenhum arquivo verificado ainda",
  "Không đọc được danh sách tệp bên trong": "Não foi possível ler a lista de arquivos internos",
  "Trong file nén có": "O arquivo compactado contém",
- "Lịch sử kiểm tra": "Histórico de verificações"
+ "Lịch sử kiểm tra": "Histórico de verificações",
+ "Cho {0} chạy trên mọi trang web": "Permitir que {0} funcione em todos os sites"
 }

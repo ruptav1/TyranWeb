@@ -395,10 +395,12 @@ function register({ onSettings } = {}) {
   handle('ext:cancel', (e, token) => ext.cancel(String(token || '')));
   handle('ext:confirm', (e, token) => ext.confirm(String(token || '')));
   handle('ext:setEnabled', (e, id, on) => ext.setEnabled(String(id || ''), !!on));
+  handle('ext:siteAccess', (e, id, on) => ext.setSiteAccess(String(id || ''), !!on));
   handle('ext:remove', (e, id) => ext.remove(String(id || '')));
   handle('ext:checkUpdates', () => ext.checkUpdates());
   handle('ext:update', (e, id) => ext.update(String(id || '')));
-  handle('ext:pages', (e, id) => ext.pages(String(id || '')));
+  // (from a window's toolbar: its popup opened on that window's tab, Chrome's activeTab for it)
+  handle('ext:pages', (e, id) => ext.pages(String(id || ''), e.sender.hostWebContents ? null : (BrowserWindow.fromWebContents(e.sender)?.id ?? null)));
   handle('crx:tabs-state', (e, list) => ext.setTabs(BrowserWindow.fromWebContents(e.sender), list), { uiOnly: true });
   ext.registerBridge(ipcMain);
   handle('ext:addFolder', async (e) => {

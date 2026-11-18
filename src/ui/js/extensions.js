@@ -61,6 +61,9 @@ async function openExtension(x, anchor) {
     const wv = document.createElement('webview');
     wv.setAttribute('partition', 'persist:tyran');
     wv.setAttribute('src', p.popup);
+    // (its links and window.open become tabs: main.js lets it open its own pages; without this the
+    // webview drops them, as Authenticator's Import pages were)
+    wv.setAttribute('allowpopups', '');
     wv.className = 'ext-popup';
     // (on a plain, solid card: the popup's own frosted panes cannot blur through a frosted card)
     const pop = openPopover(h('div', { class: 'ext-popup-wrap' }, wv), anchor, { align: 'end', className: 'ext-popover ext-popup-pop', focus: false });
@@ -72,6 +75,17 @@ async function openExtension(x, anchor) {
       pop.reposition();
     };
     let told = false;
+    // (a tab it opens takes the focus, so it closes, as Chrome's popups do)
+    const offTab = api.on('tab:open', ({ openerWcId }) => {
+      if (!wv.isConnected) return offTab();
+      let mine = false;
+      try {
+        mine = openerWcId === wv.getWebContentsId();
+      } catch {
+        /* not attached */
+      }
+      if (mine) closePopover();
+    });
     const off = api.on('ext:popup-size', (id, s) => {
       if (!wv.isConnected) return off();
       let mine = false;

@@ -1176,5 +1176,6 @@
  "Chưa quét tệp nào": "Noch keine Dateien geprüft",
  "Không đọc được danh sách tệp bên trong": "Die Liste der enthaltenen Dateien ist nicht lesbar",
  "Trong file nén có": "Das Archiv enthält",
- "Lịch sử kiểm tra": "Prüfverlauf"
+ "Lịch sử kiểm tra": "Prüfverlauf",
+ "Cho {0} chạy trên mọi trang web": "{0} auf allen Websites erlauben"
 }

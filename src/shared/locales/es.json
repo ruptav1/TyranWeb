@@ -1176,5 +1176,6 @@
  "Chưa quét tệp nào": "Aún no se ha analizado ningún archivo",
  "Không đọc được danh sách tệp bên trong": "No se pudo leer la lista de archivos de dentro",
  "Trong file nén có": "El archivo comprimido contiene",
- "Lịch sử kiểm tra": "Historial de análisis"
+ "Lịch sử kiểm tra": "Historial de análisis",
+ "Cho {0} chạy trên mọi trang web": "Permitir que {0} funcione en todos los sitios web"
 }

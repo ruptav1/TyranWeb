@@ -1176,5 +1176,6 @@
  "Chưa quét tệp nào": "まだスキャンしたファイルはありません",
  "Không đọc được danh sách tệp bên trong": "中のファイル一覧を読み取れませんでした",
  "Trong file nén có": "圧縮ファイルの中身",
- "Lịch sử kiểm tra": "スキャン履歴"
+ "Lịch sử kiểm tra": "スキャン履歴",
+ "Cho {0} chạy trên mọi trang web": "{0} をすべてのサイトで実行する"
 }

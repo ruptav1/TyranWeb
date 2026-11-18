@@ -1176,5 +1176,6 @@
  "Chưa quét tệp nào": "No files scanned yet",
  "Không đọc được danh sách tệp bên trong": "The list of files inside could not be read",
  "Trong file nén có": "The archive holds",
- "Lịch sử kiểm tra": "Scan history"
+ "Lịch sử kiểm tra": "Scan history",
+ "Cho {0} chạy trên mọi trang web": "Let {0} run on all websites"
 }

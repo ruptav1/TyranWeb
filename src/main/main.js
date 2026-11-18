@@ -78,9 +78,11 @@ function setupGuest(contents) {
         },
       };
     }
-    // only internal pages may open other internal pages
+    // only internal pages may open other internal pages; an extension's page (its popup), only its own
+    // (Authenticator's "Import QR Images" / "Import OTP URLs" open its import.html so)
     const fromInternal = contents.getURL().startsWith('tyran:');
-    if (/^https?:/i.test(url) || (fromInternal && /^tyran:/i.test(url))) openInTab(contents, url, disposition === 'background-tab');
+    const ext = /^chrome-extension:\/\/[a-p]{32}\//.exec(contents.getURL())?.[0];
+    if (/^https?:/i.test(url) || (fromInternal && /^tyran:/i.test(url)) || (ext && url.startsWith(ext))) openInTab(contents, url, disposition === 'background-tab');
     return { action: 'deny' };
   });
 

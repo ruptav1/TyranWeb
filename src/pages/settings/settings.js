@@ -661,7 +661,7 @@ function extensionsSection() {
     if (!items.length) return list.append(h('p', { class: 'muted small', text: t('Chưa có tiện ích nào.') }));
     list.append(
       section_(
-        ...items.map((x) => {
+        ...items.flatMap((x) => {
           const on = h('input', { type: 'checkbox', checked: x.enabled !== false });
           on.addEventListener('change', () => api.invoke('ext:setEnabled', x.id, on.checked).catch((err) => toast(errText(err) || t('Không bật được tiện ích này'))));
           const state = t('Phiên bản {0}{1}{2}', x.version || '?', x.storeId ? '' : t(' · từ thư mục trên máy'), x.enabled !== false && !x.loaded ? t(' · không nạp được') : '');
@@ -680,7 +680,11 @@ function extensionsSection() {
             h('label', { class: 'switch', title: t('Bật / tắt') }, on, h('span'))
           );
           if (x.icon) r.querySelector('.row-text b').prepend(h('img', { class: 'ext-icon', src: x.icon, width: 18, height: 18, alt: '' }));
-          return r;
+          if (!x.askAccess) return r;
+          // (one asking for activeTab, which TyranWeb's engine does not grant: let in on every site)
+          const all = h('input', { type: 'checkbox', checked: !!x.siteAccess });
+          all.addEventListener('change', () => api.invoke('ext:siteAccess', x.id, all.checked).catch((err) => toast(errText(err))));
+          return [r, row(t('Cho {0} chạy trên mọi trang web', x.name), '', h('label', { class: 'switch' }, all, h('span')))];
         })
       )
     );

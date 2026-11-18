@@ -1176,5 +1176,6 @@
  "Chưa quét tệp nào": "尚未扫描任何文件",
  "Không đọc được danh sách tệp bên trong": "无法读取其中的文件列表",
  "Trong file nén có": "压缩包内包含",
- "Lịch sử kiểm tra": "扫描历史"
+ "Lịch sử kiểm tra": "扫描历史",
+ "Cho {0} chạy trên mọi trang web": "允许 {0} 在所有网站上运行"
 }
