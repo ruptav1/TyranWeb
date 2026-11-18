@@ -2014,9 +2014,9 @@ function general() {
       }, { cls: 'small' })),
       row(t('Hỏi nơi lưu mỗi lần tải'), '', sw('general.askDownloadLocation')),
       row(t('Kiểm tra tệp tải về'), '', sw('general.scanDownloads')),
-      row(t('Mở tab kết quả khi tải xong'), '', select('general.scanTab', [['all', t('Mọi tệp')], ['risky', t('Tệp chạy được và file nén')], ['off', t('Không mở')]])),
+      row(t('Mở tab kết quả khi tải xong'), '', select('general.scanTab', [['risky', t('Có')], ['off', t('Không')]])),
       vtKeyRow(),
-      row(t('Gửi tệp VirusTotal chưa có'), '', select('general.vtUpload', [['risky', t('Tệp chạy được và file nén')], ['never', t('Không gửi')], ['all', t('Mọi tệp')]]))
+      row(t('Gửi tệp VirusTotal chưa có'), '', select('general.vtUpload', [['risky', t('Có')], ['never', t('Không')]]))
     ),
     stitle(t('Khác')),
     section_(row(t('Cuộn mượt'), '', sw('general.smoothScrolling'))),

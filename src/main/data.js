@@ -53,6 +53,10 @@ if ('showBookmarksBar' in settings.data.layout) {
   delete settings.data.layout.showBookmarksBar;
   settings.save();
 }
+// (Kiểm tra tệp: only programs, scripts and archives with them inside are scanned now, so "all files"
+// means those, as "programs and archives" does)
+if (settings.data.general.scanTab === 'all') settings.data.general.scanTab = 'risky';
+if (settings.data.general.vtUpload === 'all') settings.data.general.vtUpload = 'risky';
 const historyStore = new JsonStore(path.join(dir, 'history.json'), { visits: [] }, { delay: 1500 });
 const bookmarkStore = new JsonStore(path.join(dir, 'bookmarks.json'), BOOKMARKS);
 const downloadStore = new JsonStore(path.join(dir, 'downloads.json'), { items: [] });
@@ -61,6 +65,8 @@ const notesStore = new JsonStore(path.join(dir, 'notes.json'), { text: '', updat
 const windowStore = new JsonStore(path.join(dir, 'window-state.json'), { bounds: null, maximized: false });
 // windows closed (and those open when TyranWeb quit), each with its tabs: Lịch sử → Nhóm tab (windows.js)
 const windowHistoryStore = new JsonStore(path.join(dir, 'window-history.json'), { items: [] }, { delay: 800 });
+// files scanned, each with Defender's and VirusTotal's verdicts: Lịch sử → Đã quét (filescan.js)
+const scanHistoryStore = new JsonStore(path.join(dir, 'scan-history.json'), { items: [] }, { delay: 800 });
 
 const MAX_VISITS = 40000;
 const MERGE_WINDOW = 10 * 60 * 1000;
@@ -259,7 +265,7 @@ function updateSettings(patch) {
 }
 
 function flushAll() {
-  for (const s of [settings, historyStore, bookmarkStore, downloadStore, sessionStore, notesStore, windowStore, windowHistoryStore]) {
+  for (const s of [settings, historyStore, bookmarkStore, downloadStore, sessionStore, notesStore, windowStore, windowHistoryStore, scanHistoryStore]) {
     if (s.timer) s.flush();
   }
 }
@@ -280,5 +286,6 @@ module.exports = {
   notes,
   windowStore,
   windowHistoryStore,
+  scanHistoryStore,
   flushAll,
 };

@@ -1166,5 +1166,15 @@
  "Gửi tệp VirusTotal chưa có": "上传 VirusTotal 未收录的文件",
  "Không gửi": "不上传",
  "API key VirusTotal": "VirusTotal API 密钥",
- "Đã lưu API key VirusTotal ✿": "已保存 VirusTotal API 密钥 ✿"
+ "Đã lưu API key VirusTotal ✿": "已保存 VirusTotal API 密钥 ✿",
+ "Có": "是",
+ "Không": "否",
+ "Đã quét": "已扫描",
+ "Tìm trong tệp đã quét…": "搜索已扫描的文件…",
+ "Không phát hiện mối nguy": "未发现威胁",
+ "Trong file nén: {0}": "压缩包内：{0}",
+ "Chưa quét tệp nào": "尚未扫描任何文件",
+ "Không đọc được danh sách tệp bên trong": "无法读取其中的文件列表",
+ "Trong file nén có": "压缩包内包含",
+ "Lịch sử kiểm tra": "扫描历史"
 }

@@ -1166,5 +1166,15 @@
  "Gửi tệp VirusTotal chưa có": "Upload files VirusTotal doesn't know",
  "Không gửi": "Never",
  "API key VirusTotal": "VirusTotal API key",
- "Đã lưu API key VirusTotal ✿": "VirusTotal API key saved ✿"
+ "Đã lưu API key VirusTotal ✿": "VirusTotal API key saved ✿",
+ "Có": "Yes",
+ "Không": "No",
+ "Đã quét": "Scanned",
+ "Tìm trong tệp đã quét…": "Search scanned files…",
+ "Không phát hiện mối nguy": "No threats found",
+ "Trong file nén: {0}": "In the archive: {0}",
+ "Chưa quét tệp nào": "No files scanned yet",
+ "Không đọc được danh sách tệp bên trong": "The list of files inside could not be read",
+ "Trong file nén có": "The archive holds",
+ "Lịch sử kiểm tra": "Scan history"
 }

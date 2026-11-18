@@ -1166,5 +1166,15 @@
  "Gửi tệp VirusTotal chưa có": "VirusTotal에 없는 파일 업로드",
  "Không gửi": "보내지 않음",
  "API key VirusTotal": "VirusTotal API 키",
- "Đã lưu API key VirusTotal ✿": "VirusTotal API 키를 저장했습니다 ✿"
+ "Đã lưu API key VirusTotal ✿": "VirusTotal API 키를 저장했습니다 ✿",
+ "Có": "예",
+ "Không": "아니요",
+ "Đã quét": "검사함",
+ "Tìm trong tệp đã quét…": "검사한 파일 검색…",
+ "Không phát hiện mối nguy": "위협이 발견되지 않음",
+ "Trong file nén: {0}": "압축 파일 안: {0}",
+ "Chưa quét tệp nào": "아직 검사한 파일이 없습니다",
+ "Không đọc được danh sách tệp bên trong": "안에 있는 파일 목록을 읽을 수 없습니다",
+ "Trong file nén có": "압축 파일 안의 파일",
+ "Lịch sử kiểm tra": "검사 기록"
 }

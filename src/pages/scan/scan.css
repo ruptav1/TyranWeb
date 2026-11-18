@@ -175,6 +175,12 @@
   width: 28px;
   height: 28px;
 }
+.inside {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 4px;
+}
 .actions {
   display: flex;
   flex-wrap: wrap;

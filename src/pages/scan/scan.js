@@ -99,6 +99,14 @@ function vtState(rec) {
   return row;
 }
 
+// an archive's programs (why it was scanned), or that its names could not be read
+function inside(s) {
+  if (s.unread) return h('div', { class: 'inside muted', text: t('Không đọc được danh sách tệp bên trong') });
+  if (!s.inside?.length) return null;
+  const more = (s.insideCount || s.inside.length) - s.inside.length;
+  return h('div', { class: 'inside' }, h('span', { class: 'muted', text: t('Trong file nén có') }), h('div', { class: 'chips' }, ...s.inside.map((n) => chip(n.split('/').pop(), 'warn')), more > 0 ? chip(`+${more}`) : null));
+}
+
 function button(label, ic, run, cls = '') {
   const b = h('button', { type: 'button', class: `btn ${cls}`, html: `${icon(ic, 15)}<span>${esc(label)}</span>` });
   b.addEventListener('click', run);
@@ -136,7 +144,7 @@ function render(d) {
     'div',
     { class: 'card sum-main' },
     banner(rec, stats, lv, judged),
-    h('div', { class: 'sum-row' }, h('div', { class: 'sum-id' }, s.sha256 ? h('div', { class: 'sha', text: s.sha256 }) : null, h('div', { class: 'fname', text: rec.filename }), tags.length ? h('div', { class: 'chips' }, ...tags.map((x) => chip(x))) : null), facts)
+    h('div', { class: 'sum-row' }, h('div', { class: 'sum-id' }, s.sha256 ? h('div', { class: 'sha', text: s.sha256 }) : null, h('div', { class: 'fname', text: rec.filename }), tags.length ? h('div', { class: 'chips' }, ...tags.map((x) => chip(x))) : null, inside(s)), facts)
   );
   const actions = h('div', { class: 'actions' });
   const bad = lv === 'bad';
@@ -144,6 +152,7 @@ function render(d) {
   if (rec.state === 'completed' && s.state !== 'removed') actions.append(button(t('Mở thư mục'), 'folder', () => act('show')));
   if (bad && s.state !== 'removed' && rec.state === 'completed') actions.append(button(t('Cách ly'), 'trash', () => act('quarantine'), 'danger'));
   if (s.sha256) actions.append(button(t('Xem trên VirusTotal'), 'external', () => openUrl(VT_WEB + s.sha256, true)));
+  actions.append(button(t('Lịch sử kiểm tra'), 'history', () => openUrl('tyran://history/#scans', true)));
   root.append(h('div', { class: 'scan-sum' }, h('div', { class: 'card ring-card' }, ring(rec, stats, lv, judged), h('span', { class: 'muted small', text: judged ? 'VirusTotal' : 'Windows Defender' })), info), actions);
 
   // ---- Windows Defender, on this computer

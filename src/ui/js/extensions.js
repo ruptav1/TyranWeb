@@ -64,12 +64,30 @@ async function openExtension(x, anchor) {
     wv.className = 'ext-popup';
     // (on a plain, solid card: the popup's own frosted panes cannot blur through a frosted card)
     const pop = openPopover(h('div', { class: 'ext-popup-wrap' }, wv), anchor, { align: 'end', className: 'ext-popover ext-popup-pop', focus: false });
-    // as big as the popup's page wants (Chrome's limits: 800 × 600)
-    const fit = async () => {
-      const [w, hgt] = await wv.executeJavaScript('[document.documentElement.scrollWidth, document.documentElement.scrollHeight]').catch(() => [360, 480]);
+    // as big as the popup's page wants (Chrome's limits: 800 × 600): its preferred size, told by main
+    // as it changes (a page built late, as PreMiD's, grows after it loaded); measured once at first
+    const size = (w, hgt) => {
       wv.style.width = clamp(w, 200, Math.min(800, innerWidth - 40)) + 'px';
       wv.style.height = clamp(hgt, 80, Math.min(600, innerHeight - 110)) + 'px';
       pop.reposition();
+    };
+    let told = false;
+    const off = api.on('ext:popup-size', (id, s) => {
+      if (!wv.isConnected) return off();
+      let mine = false;
+      try {
+        mine = id === wv.getWebContentsId();
+      } catch {
+        /* not attached yet */
+      }
+      if (!mine || !s?.width || !s?.height) return;
+      told = true;
+      size(s.width, s.height);
+    });
+    const fit = async () => {
+      if (told) return;
+      const [w, hgt] = await wv.executeJavaScript('[document.documentElement.scrollWidth, document.documentElement.scrollHeight]').catch(() => [360, 480]);
+      if (!told) size(w, hgt);
     };
     wv.addEventListener('dom-ready', () => {
       fit();

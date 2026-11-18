@@ -15,8 +15,8 @@ const SETTINGS = {
     askDownloadLocation: false,
     downloadDir: '',
     scanDownloads: true, // finished downloads scanned by Windows Defender (main/filescan.js)
-    scanTab: 'all', // the result page opened when a download is done: 'all' | 'risky' (programs, archives) | 'off'
-    vtUpload: 'risky', // files VirusTotal has not seen sent to it: 'risky' (programs, archives) | 'never' | 'all'
+    scanTab: 'risky', // the result page opened when a scanned download is done: 'risky' | 'off'
+    vtUpload: 'risky', // files VirusTotal has not seen sent to it: 'risky' (the files scanned) | 'never'
     checkUpdates: true, // look for a newer TyranWeb on GitHub (main/updates.js)
     backupMedia: false, // backups (Settings → Giới thiệu) hold the wallpapers, videos and music added too
     tabSleepMinutes: 0, // a tab not looked at for this long sleeps (0: never); pinned, playing and shown tabs never

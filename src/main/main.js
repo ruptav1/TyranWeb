@@ -171,8 +171,16 @@ app.on('web-contents-created', (event, contents) => {
     const extPage = /^chrome-extension:\/\/([a-p]{32})\//.exec(params.src || '');
     const extOk = extPage && contents.getURL().startsWith('tyran://app/') && sessions.browsing().extensions.getExtension(extPage[1]);
     if (!/^(https?|tyran|about|data|view-source):/i.test(params.src || 'about:blank') && !extOk) e.preventDefault();
+    // (its popup told how big its page wants to be as it changes, as Chrome sizes popups)
+    // ...and opaque: in a see-through page Chromium draws no backdrop blur, so the frosted panes of a
+    // popup (PreMiD's notices over its own page) let the text under them show through
+    if (extOk) Object.assign(prefs, { enablePreferredSizeMode: true, transparent: false });
   });
-  contents.on('did-attach-webview', (e, guest) => tabHistory.attached(guest));
+  contents.on('did-attach-webview', (e, guest) => {
+    tabHistory.attached(guest);
+    // (only pages with the mode on tell it: an extension's popup)
+    guest.on('preferred-size-changed', (ev, size) => !contents.isDestroyed() && contents.send('ext:popup-size', guest.id, size));
+  });
   // tabs, and popup windows opened by web pages (they share the browsing session)
   const type = contents.getType();
   if (type === 'webview' && contents.session === sessions.wallpaper()) setupWallpaperGuest(contents);

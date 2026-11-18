@@ -1,10 +1,15 @@
 'use strict';
-// Kiểm tra tệp tải về (general.scanDownloads): every finished download, Chromium's or TyranWeb's own
-// (dljobs.js), is scanned by Windows Defender (MpCmdRun: a custom scan of that one file, which looks
-// into archives too: zip, rar, 7z...), programs and scripts (.exe, .bat, .cmd, .msi, .ps1...) first,
-// then archives, then the rest. The result goes on the download's record (`scan`):
+// Kiểm tra tệp tải về (general.scanDownloads): a finished download, Chromium's or TyranWeb's own
+// (dljobs.js), is scanned when it is a program or a script Windows runs on a double click (.exe,
+// .bat, .cmd, .msi, .ps1, .vbs, .lnk...), or an archive (zip, rar, 7z, tar, cab, iso) with one of
+// those, or another archive, inside: its names are read by Windows' own tar (libarchive; nothing is
+// unpacked), one that cannot be read is scanned too. Other files are left alone (the user's choice:
+// no result tab for every picture or video). Scanned by Windows Defender (MpCmdRun: a custom scan of
+// that one file, which looks into the archive too), programs first. The result goes on the
+// download's record (`scan`):
 //   { state: 'queued' | 'scanning' | 'clean' | 'threat' | 'removed' | 'unavailable' | 'error',
-//     threat (Defender's name for it), sha256 }
+//     threat (Defender's name for it), sha256, inside (the programs an archive holds) }
+// and in Lịch sử → Đã quét (data.scanHistoryStore), which keeps it after the download list is cleared.
 // 'removed': Defender's own real-time protection took the file away first (its name read from
 // Defender's history), or it was quarantined from Tải xuống. A file with a threat is not opened from
 // TyranWeb; a program still being scanned is opened once it is found clean. Its SHA-256 is kept
@@ -20,10 +25,24 @@ const { execFile } = require('child_process');
 const { shell } = require('electron');
 const data = require('./data');
 
-const RISKY = /\.(exe|bat|cmd|com|scr|pif|msi|msix|msp|appx|appxbundle|ps1|psm1|vbs|vbe|js|jse|wsf|wsh|hta|lnk|url|dll|cpl|ocx|sys|jar|reg|inf|application|gadget|chm)$/i;
-const ARCHIVE = /\.(zip|rar|7z|tar|gz|tgz|bz2|xz|zst|cab|iso|img|vhd|vhdx|arj|lzh|lha|z)$/i;
+// what Windows runs on a double click (not .js / .dll: every source folder and game mod has them)
+const RISKY = /\.(exe|bat|cmd|com|scr|pif|msi|msix|msp|appx|appxbundle|ps1|psm1|vbs|vbe|wsf|wsh|hta|lnk|jar|cpl|reg|application|gadget)$/i;
+const ARCHIVE = /\.(zip|rar|7z|tar|tgz|tar\.gz|tar\.bz2|tar\.xz|cab|iso)$/i;
 const priorityOf = (file) => (RISKY.test(file) ? 0 : ARCHIVE.test(file) ? 1 : 2);
 const SCAN_TIMEOUT = 20 * 60e3;
+const TAR = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
+
+// Is it to be scanned? { inside: [programs and archives an archive holds] } | null (left alone)
+async function worthScanning(file) {
+  if (RISKY.test(file)) return { inside: [] };
+  if (!ARCHIVE.test(file)) return null;
+  const r = fs.existsSync(TAR) ? await run(TAR, ['-tf', file], 60e3) : { code: -1, out: '' };
+  // (one whose names cannot be read: a password on them, a kind tar does not know: scanned)
+  if (r.code !== 0) return { inside: [], unread: true };
+  const names = r.out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+  const inside = names.filter((n) => RISKY.test(n) || ARCHIVE.test(n));
+  return inside.length ? { inside: inside.slice(0, 20), count: inside.length } : null;
+}
 
 let broadcast = () => {};
 const queue = []; // { id, file, priority }
@@ -116,10 +135,54 @@ function setScan(id, scan) {
   rec.scan = { ...(rec.scan || {}), ...scan };
   if (!kept.has(id)) data.downloadStore.save();
   broadcast('downloads:update', { ...rec });
+  if (!rec.private) remember(rec);
   if (scan.state && !['queued', 'scanning'].includes(scan.state)) {
     for (const ok of waiting.get(id) || []) ok(rec.scan);
     waiting.delete(id);
   }
+}
+
+// ---------------------------------------------------------------- Lịch sử → Đã quét
+// Every scanned file with its verdicts (not a private tab's), newest first, kept apart from the
+// downloads list so that clearing that one keeps it.
+const HISTORY_MAX = 500;
+let told = null;
+function remember(rec) {
+  const store = data.scanHistoryStore;
+  const items = (store.data.items ||= []);
+  let e = items.find((x) => x.id === rec.id);
+  if (!e) {
+    e = { id: rec.id, at: Date.now() };
+    items.unshift(e);
+    items.splice(HISTORY_MAX);
+  }
+  Object.assign(e, { filename: rec.filename, path: rec.path, url: rec.url, size: rec.totalBytes || rec.receivedBytes || 0, state: rec.state, scan: rec.scan });
+  store.save();
+  told ??= setTimeout(() => {
+    told = null;
+    broadcast('scanhistory:changed');
+  }, 300);
+}
+const historyOf = (id) => (data.scanHistoryStore.data.items || []).find((x) => x.id === id) || null;
+async function historyList(text) {
+  const q = String(text || '').toLowerCase();
+  const items = (data.scanHistoryStore.data.items || []).filter((x) => !q || `${x.filename} ${x.scan?.threat || ''} ${x.url || ''}`.toLowerCase().includes(q));
+  return Promise.all(items.map(async (x, i) => ({ ...x, icon: i < 200 ? await iconOf(x.path) : '' })));
+}
+function historyRemove(id) {
+  const store = data.scanHistoryStore;
+  store.data.items = (store.data.items || []).filter((x) => x.id !== id);
+  store.save();
+  broadcast('scanhistory:changed');
+  return true;
+}
+function historyClear(since) {
+  const store = data.scanHistoryStore;
+  const from = Number(since) || 0;
+  store.data.items = from ? (store.data.items || []).filter((x) => x.at < from) : [];
+  store.save();
+  broadcast('scanhistory:changed');
+  return true;
 }
 
 // ---------------------------------------------------------------- the queue
@@ -175,7 +238,7 @@ async function nextVt() {
   vtQueue.sort((a, b) => a.priority - b.priority);
   const job = vtQueue.shift();
   try {
-    await require('./virustotal').check(job.file, job.sha, job.priority < 2, (vt) => {
+    await require('./virustotal').check(job.file, job.sha, true, (vt) => {
       const was = vtBad(recordOf(job.id)?.scan);
       setScan(job.id, { vt });
       if (!was && vtBad(recordOf(job.id)?.scan) && !['threat', 'removed'].includes(recordOf(job.id)?.scan?.state)) broadcast('downloads:threat', { ...recordOf(job.id) });
@@ -197,24 +260,29 @@ function recheck(id) {
 }
 
 // ---------------------------------------------------------------- the result tab
-// The window in front opens tyran://scan for the download, as general.scanTab says ('all' files,
-// 'risky' ones only, 'off').
+// The window in front opens tyran://scan for a download being scanned, unless general.scanTab is 'off'.
 function showResult(rec) {
-  const when = data.settings.data.general.scanTab || 'all';
-  if (when === 'off' || (when === 'risky' && priorityOf(rec.path || rec.filename || '') > 1)) return;
+  if (data.settings.data.general.scanTab === 'off') return;
   const { BrowserWindow } = require('electron');
   const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows().find((w) => !w.isDestroyed() && w.isVisible());
   if (win && !win.isDestroyed()) win.webContents.send('scan:open', rec.id);
 }
 
-// a finished download (its record, as just kept or sent): marked, and scanned when that is on
-function add(rec) {
+// A finished download (its record, as just kept or sent): marked, and scanned when that is on and it
+// is worth it (worthScanning: a program, or an archive with one inside).
+const deciding = new Map(); // id -> the answer for an archive still being looked into
+async function add(rec) {
   if (!rec?.id || !rec.path) return;
   markOfTheWeb(rec.path, rec.url, rec.private);
-  if (data.settings.data.general.scanDownloads === false) return;
+  if (data.settings.data.general.scanDownloads === false || priorityOf(rec.path) > 1) return;
+  const answer = worthScanning(rec.path).catch(() => ({ inside: [], unread: true }));
+  deciding.set(rec.id, answer);
+  const worth = await answer;
+  deciding.delete(rec.id);
+  if (!worth) return;
   if (rec.private || !data.downloadStore.data.items.some((d) => d.id === rec.id)) kept.set(rec.id, { ...rec });
   queue.push({ id: rec.id, file: rec.path, priority: priorityOf(rec.path) });
-  setScan(rec.id, { state: 'queued' });
+  setScan(rec.id, { state: 'queued', inside: worth.inside, insideCount: worth.count || worth.inside.length, unread: !!worth.unread });
   showResult(rec);
   next();
 }
@@ -253,6 +321,7 @@ function result(id) {
 
 // May it be opened? A threat never; a program or an archive still being scanned once found clean.
 async function mayOpen(id, file) {
+  if (deciding.has(id)) await deciding.get(id); // (an archive still being looked into)
   const scan = recordOf(id)?.scan;
   if (!scan) return true;
   if (['queued', 'scanning'].includes(scan.state) && priorityOf(file || '') < 2) return !isThreat(await result(id));
@@ -274,6 +343,16 @@ async function quarantine(id) {
 
 function init(b) {
   broadcast = b;
+  // (the first time: the files scanned before there was this history, from the downloads list)
+  const hist = data.scanHistoryStore;
+  if (!hist.data.items?.length && !hist.data.filled) {
+    hist.data.items = data.downloadStore.data.items
+      .filter((d) => d.scan && !d.private && priorityOf(d.path || d.filename || '') < 2)
+      .slice(0, HISTORY_MAX)
+      .map((d) => ({ id: d.id, at: d.endTime || d.startTime || Date.now(), filename: d.filename, path: d.path, url: d.url, size: d.totalBytes || d.receivedBytes || 0, state: d.state, scan: d.scan }));
+    hist.data.filled = true;
+    hist.save();
+  }
   // (scans TyranWeb was closed in the middle of: done again once it has settled; the list taken
   // now, before this run's own scans start)
   const scans = [];
@@ -296,7 +375,8 @@ const scanOf = (id) => recordOf(id)?.scan;
 
 // For the result page: the download's record and VirusTotal's report on it (null: none yet)
 async function details(id) {
-  const rec = recordOf(String(id || ''));
+  // (from the downloads list, or from Đã quét once it was cleared from that list)
+  const rec = recordOf(String(id || '')) || historyOf(String(id || ''));
   if (!rec) return null;
   return { rec: { ...rec }, report: rec.scan?.sha256 ? require('./virustotal').report(rec.scan.sha256) : null, hasKey: require('./virustotal').hasKey(), risky: priorityOf(rec.path || rec.filename || '') < 2, icon: await iconOf(rec.path) };
 }
@@ -319,4 +399,4 @@ async function iconOf(file) {
   return url;
 }
 
-module.exports = { init, add, interrupted, scanOf, result, mayOpen, quarantine, recheck, details, priorityOf };
+module.exports = { init, add, interrupted, scanOf, result, mayOpen, quarantine, recheck, details, historyList, historyRemove, historyClear, priorityOf };

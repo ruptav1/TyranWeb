@@ -1166,5 +1166,15 @@
  "Gửi tệp VirusTotal chưa có": "VirusTotal にないファイルを送信",
  "Không gửi": "送信しない",
  "API key VirusTotal": "VirusTotal API キー",
- "Đã lưu API key VirusTotal ✿": "VirusTotal API キーを保存しました ✿"
+ "Đã lưu API key VirusTotal ✿": "VirusTotal API キーを保存しました ✿",
+ "Có": "はい",
+ "Không": "いいえ",
+ "Đã quét": "スキャン済み",
+ "Tìm trong tệp đã quét…": "スキャン済みファイルを検索…",
+ "Không phát hiện mối nguy": "脅威は見つかりませんでした",
+ "Trong file nén: {0}": "圧縮ファイル内: {0}",
+ "Chưa quét tệp nào": "まだスキャンしたファイルはありません",
+ "Không đọc được danh sách tệp bên trong": "中のファイル一覧を読み取れませんでした",
+ "Trong file nén có": "圧縮ファイルの中身",
+ "Lịch sử kiểm tra": "スキャン履歴"
 }

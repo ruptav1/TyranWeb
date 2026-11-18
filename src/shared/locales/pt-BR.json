@@ -1166,5 +1166,15 @@
  "Gửi tệp VirusTotal chưa có": "Enviar arquivos que o VirusTotal não conhece",
  "Không gửi": "Nunca",
  "API key VirusTotal": "Chave de API do VirusTotal",
- "Đã lưu API key VirusTotal ✿": "Chave de API do VirusTotal salva ✿"
+ "Đã lưu API key VirusTotal ✿": "Chave de API do VirusTotal salva ✿",
+ "Có": "Sim",
+ "Không": "Não",
+ "Đã quét": "Verificados",
+ "Tìm trong tệp đã quét…": "Pesquisar arquivos verificados…",
+ "Không phát hiện mối nguy": "Nenhuma ameaça encontrada",
+ "Trong file nén: {0}": "No arquivo compactado: {0}",
+ "Chưa quét tệp nào": "Nenhum arquivo verificado ainda",
+ "Không đọc được danh sách tệp bên trong": "Não foi possível ler a lista de arquivos internos",
+ "Trong file nén có": "O arquivo compactado contém",
+ "Lịch sử kiểm tra": "Histórico de verificações"
 }

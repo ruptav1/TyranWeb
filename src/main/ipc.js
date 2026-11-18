@@ -219,6 +219,10 @@ function register({ onSettings } = {}) {
   // Kiểm tra tệp tải về: the result page (tyran://scan) and the VirusTotal key (Settings)
   handle('scan:get', (e, id) => require('./filescan').details(id));
   handle('scan:recheck', (e, id) => require('./filescan').recheck(String(id || '')));
+  // Lịch sử → Đã quét
+  handle('scanhistory:list', (e, text) => require('./filescan').historyList(text));
+  handle('scanhistory:remove', (e, id) => require('./filescan').historyRemove(String(id || '')));
+  handle('scanhistory:clear', (e, since) => require('./filescan').historyClear(since));
   handle('vt:status', () => ({ hasKey: require('./virustotal').hasKey() }));
   handle('vt:setKey', (e, key) => require('./virustotal').setKey(key));
   handle('vt:clearKey', () => require('./virustotal').clearKey());

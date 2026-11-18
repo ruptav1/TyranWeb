@@ -1,4 +1,4 @@
-TyranWeb 1.1.81 — trình duyệt anime (Windows 10/11, 64-bit)
+TyranWeb 1.1.82 — trình duyệt anime (Windows 10/11, 64-bit)
 ==========================================================
 
 CÁCH CHẠY
@@ -68,16 +68,19 @@ GHI CHÚ
   động lại).
 - Thanh bên → Ứng dụng trên máy: mở các ứng dụng có chữ ký số hợp lệ trong Start menu (cả ứng
   dụng Store), ghim cái hay dùng lên thanh bên.
-- Kiểm tra tệp tải về (Cài đặt → Chung → Tải xuống, bật sẵn): mọi tệp tải xong (cả video tải
-  từ đường dẫn) được Windows Defender quét, kể cả bên trong file nén zip/rar/7z; .exe, .bat và
-  các tệp chạy được quét trước. Tải xong, một tab "Kết quả kiểm tra" tự mở: kết quả của Windows
-  Defender và, nếu bạn dán API key VirusTotal miễn phí của mình vào Cài đặt, của khoảng 70 hãng
-  bảo mật (đếm theo mức: độc hại, đáng ngờ, không phát hiện...; loại và tên mối nguy). TyranWeb
-  tra VirusTotal bằng mã SHA-256; tệp VirusTotal chưa có chỉ được gửi lên nếu là tệp chạy được
-  hoặc file nén (đổi được trong Cài đặt), vì tệp gửi lên được chia sẻ cho các hãng bảo mật. Key
-  được lưu mã hoá. Tệp có mã độc (Defender, hoặc từ 3 hãng trở lên) bị đánh dấu đỏ, không mở được
-  từ TyranWeb, có nút Cách ly. Tệp tải về được đánh dấu "từ internet" như Chrome, nên SmartScreen
-  của Windows kiểm tra chương trình khi chạy. Cần Windows Defender đang bật.
+- Kiểm tra tệp tải về (Cài đặt → Chung → Tải xuống, bật sẵn): chỉ quét tệp chạy được (.exe,
+  .bat, .cmd, .msi, .ps1, .vbs, .lnk...) và file nén (zip, rar, 7z, tar, cab, iso) có tệp chạy
+  được hoặc file nén khác bên trong (TyranWeb đọc danh sách tên bằng tar có sẵn của Windows,
+  không giải nén). Ảnh, video, tài liệu và file nén không có chương trình thì để yên. Tệp được
+  quét bằng Windows Defender, rồi một tab "Kết quả kiểm tra" tự mở: kết quả của Defender và, nếu
+  bạn dán API key VirusTotal miễn phí của mình vào Cài đặt, của khoảng 70 hãng bảo mật (đếm theo
+  mức; loại và tên mối nguy; các tệp chạy được trong file nén). TyranWeb tra VirusTotal bằng mã
+  SHA-256; tệp VirusTotal chưa có được gửi lên (tắt được trong Cài đặt), vì tệp gửi lên được chia
+  sẻ cho các hãng bảo mật. Key được lưu mã hoá. Lịch sử → Đã quét giữ mọi tệp đã quét: có virus
+  thì đỏ, có nguy cơ thì vàng, không có dấu hiệu gì thì bình thường. Tệp có mã độc (Defender, hoặc
+  từ 3 hãng trở lên) không mở được từ TyranWeb, có nút Cách ly. Tệp tải về được đánh dấu "từ
+  internet" như Chrome, nên SmartScreen của Windows kiểm tra chương trình khi chạy. Cần Windows
+  Defender đang bật.
 - Bảo vệ đăng nhập: cookie lưu trên ổ đĩa được mã hoá bằng khoá của Windows (như Chrome);
   TyranWeb không chạy khi bị mở kèm cổng gỡ lỗi từ xa, không nhận --inspect hay NODE_OPTIONS,
   và từ chối chạy nếu file app.asar bị sửa. Không phần mềm nào chặn được hoàn toàn mã độc đã

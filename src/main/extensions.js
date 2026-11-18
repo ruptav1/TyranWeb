@@ -360,15 +360,46 @@ function tell(name, ...args) {
   for (const wc of webContents.getAllWebContents()) {
     if (!wc.isDestroyed() && wc.session === ses && wc.getURL().startsWith('chrome-extension://')) wc.send('crx:tab-event', name, ...args);
   }
+  const running = new Set();
   for (const v of Object.keys(ses.serviceWorkers.getAllRunning?.() || {})) {
     const sw = ses.serviceWorkers.getWorkerFromVersionID(Number(v));
     if (!sw || sw.isDestroyed?.() || !sw.scope.startsWith('chrome-extension://')) continue;
+    running.add(sw.scope);
     try {
       sw.send('crx:tab-event', name, ...args);
     } catch {
       /* stopping */
     }
   }
+  // (an extension whose background worker is not running: started, the event given to it then, as
+  // Chrome wakes it for its events; else PreMiD never sees Discord send the browser back to it)
+  for (const x of api().getAllExtensions?.() || []) {
+    const scope = String(x.url || `chrome-extension://${x.id}/`);
+    if (x.manifest?.background?.service_worker && !running.has(scope)) wake(scope, name, args);
+  }
+}
+const waking = new Map(); // a worker's scope -> the events waiting for it to start
+function wake(scope, name, args) {
+  const waiting = waking.get(scope);
+  if (waiting) return void waiting.push([name, args]);
+  const queue = [[name, args]];
+  waking.set(scope, queue);
+  ses.serviceWorkers
+    .startWorkerForScope(scope)
+    // (its own listeners are added as its script starts: a moment for that first)
+    .then((sw) =>
+      setTimeout(() => {
+        waking.delete(scope);
+        for (const [n, a] of queue) {
+          try {
+            sw.send('crx:tab-event', n, ...a);
+          } catch {
+            /* stopped again */
+          }
+        }
+      }, 1500)
+    )
+    .catch(() => waking.delete(scope));
 }
 const tabOf = (id) => allTabs().tabs.find((t) => t.id === id);
 const watched = new Set(); // tabs whose pages are listened to
@@ -393,12 +424,17 @@ function tabEvents(windowId, before, now) {
   const had = new Map(before.map((t) => [Number(t.wcId), t]));
   const has = new Map(now.map((t) => [Number(t.wcId), t]));
   for (const [id] of has) {
-    const wc = webContents.fromId(id);
+    const wc = contentsById(id);
     if (!wc || wc.isDestroyed()) continue;
     watchTab(wc);
     if (!had.has(id)) {
       const tab = tabOf(id);
-      if (tab) tell('onCreated', tab);
+      // (and where it is and how far its page got: it may have loaded before the window listed it,
+      // when its own loading events went by unseen)
+      if (tab) {
+        tell('onCreated', tab);
+        tell('onUpdated', id, { status: tab.status, url: tab.url }, tab);
+      }
     }
   }
   for (const [id] of had) if (!has.has(id)) tell('onRemoved', id, { windowId, isWindowClosing: false });
@@ -425,7 +461,7 @@ function allTabs() {
   const out = [];
   for (const [windowId, list] of TABS) {
     list.forEach((t, index) => {
-      const wc = webContents.fromId(Number(t.wcId));
+      const wc = contentsById(t.wcId);
       if (!wc || wc.isDestroyed()) return;
       out.push({
         id: wc.id,
@@ -450,6 +486,11 @@ function allTabs() {
   }
   return { tabs: out, focused };
 }
+
+// (Electron 44 throws on an ID that is not a whole number, as an extension's missing windowId: none)
+const idOk = (v) => Number.isInteger(Number(v)) && Number(v) > 0;
+const windowById = (v) => (idOk(v) ? BrowserWindow.fromId(Number(v)) : null);
+const contentsById = (v) => (idOk(v) ? webContents.fromId(Number(v)) : null);
 
 // the window an extension page belongs to (its popup's), else the focused one
 const windowOf = (sender) => (sender && BrowserWindow.fromWebContents(sender.hostWebContents || sender)?.id) ?? null;
@@ -477,12 +518,12 @@ const CRX = {
     return { current: windowOf(sender) ?? focused, focused, all: [...TABS.keys()] };
   },
   'crx:tab-create': (sender, p = {}) => {
-    const win = BrowserWindow.fromId(Number(p.windowId)) || BrowserWindow.getFocusedWindow() || BrowserWindow.fromId([...TABS.keys()][0] ?? -1);
+    const win = windowById(p.windowId) || BrowserWindow.getFocusedWindow() || windowById([...TABS.keys()][0]);
     if (win && /^(https?|chrome-extension):/.test(String(p.url || ''))) win.webContents.send('tab:open', { url: p.url, background: p.active === false });
     return true;
   },
   'crx:tab-update': (sender, id, p = {}) => {
-    const wc = webContents.fromId(Number(id));
+    const wc = contentsById(id);
     if (!wc || !allTabs().tabs.some((t) => t.id === wc.id)) return false;
     if (p.url && /^(https?|chrome-extension):/.test(p.url)) wc.loadURL(p.url).catch(() => {});
     if (typeof p.muted === 'boolean') wc.setAudioMuted(p.muted);
@@ -491,7 +532,7 @@ const CRX = {
   },
   'crx:tab-remove': (sender, ids) => {
     for (const id of [].concat(ids)) {
-      const wc = webContents.fromId(Number(id));
+      const wc = contentsById(id);
       if (wc && allTabs().tabs.some((t) => t.id === wc.id)) wc.hostWebContents?.send('crx:close', wc.id);
     }
     return true;
@@ -507,6 +548,14 @@ function registerBridge(ipcMain) {
     const sw = ses.serviceWorkers.getWorkerFromVersionID(versionId);
     if (!sw || !sw.scope.startsWith('chrome-extension://')) return;
     hooked.add(versionId);
+    // Kept running while TyranWeb is (Chrome lets a Manifest V3 worker stop after 30 s idle and
+    // wakes it for its events; Electron cannot wake it for the tab events TyranWeb makes up, so a
+    // stopped one would miss them: PreMiD missed Discord's answer while the user signed in).
+    try {
+      sw.startTask();
+    } catch {
+      /* (an Electron without it: wake() starts it for each event instead) */
+    }
     for (const [ch, fn] of Object.entries(CRX)) {
       try {
         sw.ipc.handle(ch, (e, ...a) => fn(null, ...a));
@@ -515,7 +564,8 @@ function registerBridge(ipcMain) {
       }
     }
   };
-  ses.serviceWorkers.on('running-status-changed', ({ versionId }) => hook(versionId));
+  // (one that stopped is a new worker when it starts again: hooked again then)
+  ses.serviceWorkers.on('running-status-changed', ({ versionId, runningStatus }) => (runningStatus === 'stopped' ? hooked.delete(versionId) : hook(versionId)));
   for (const id of Object.keys(ses.serviceWorkers.getAllRunning?.() || {})) hook(Number(id)); // (started already)
 }
 

@@ -8,8 +8,12 @@ let text = '';
 let lastDay = '';
 let loading = false;
 let done = false;
-// what is listed: the pages visited, or the tab groups (windows closed, each with its tabs)
-let mode = location.hash === '#groups' ? 'groups' : 'pages';
+// what is listed: the pages visited, the tab groups (windows closed, each with its tabs), or the
+// files scanned (Đã quét)
+const MODES = ['pages', 'groups', 'scans'];
+let mode = MODES.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'pages';
+const PLACEHOLDER = { pages: () => t('Tìm trong lịch sử…'), groups: () => t('Tìm trong nhóm tab…'), scans: () => t('Tìm trong tệp đã quét…') };
+const CLEAR = { pages: 'history:clear', groups: 'winhistory:clear', scans: 'scanhistory:clear' };
 
 function dayLabel(ms) {
   const d = new Date(ms);
@@ -22,6 +26,7 @@ function dayLabel(ms) {
 
 async function load(reset) {
   if (mode === 'groups') return reset && loadGroups();
+  if (mode === 'scans') return reset && loadScans();
   if (loading || (done && !reset)) return;
   loading = true;
   if (reset) {
@@ -98,9 +103,56 @@ async function loadGroups() {
   $('#more').textContent = '';
 }
 
+// ---- Đã quét: every file Kiểm tra tệp tải về scanned (main/filescan.js), newest first. Red: a virus
+// found (Windows Defender, or 3 or more of VirusTotal's vendors); yellow: a risk (one or two
+// vendors, or "suspicious"); nothing found: as any row. Pressed: its result page.
+const judgedOf = (st) => ['malicious', 'suspicious', 'undetected', 'harmless'].reduce((n, k) => n + (st[k] || 0), 0);
+function verdict(x) {
+  const s = x.scan || {};
+  const st = s.vt?.state === 'done' ? s.vt.stats || {} : {};
+  const mal = st.malicious || 0;
+  const sus = st.suspicious || 0;
+  const judged = judgedOf(st);
+  if (s.state === 'threat') return ['bad', t('Có mã độc: {0}', s.threat || '?')];
+  if (s.state === 'removed') return ['bad', t('Đã chặn: {0}', s.threat || '?')];
+  if (mal >= 3) return ['bad', t('{0}/{1} hãng bảo mật đánh dấu tệp này là độc hại', mal, judged)];
+  if (mal) return ['warn', t('{0}/{1} hãng bảo mật đánh dấu tệp này là độc hại', mal, judged)];
+  if (sus) return ['warn', t('{0} hãng bảo mật cho rằng tệp này đáng ngờ', sus)];
+  if (['queued', 'scanning'].includes(s.state)) return ['', t('Đang kiểm tra…')];
+  if (s.state === 'clean') return ['', [t('Không phát hiện mối nguy'), judged ? `VirusTotal 0/${judged}` : ''].filter(Boolean).join(' · ')];
+  return ['', t('Không kiểm tra được')];
+}
+
+async function loadScans() {
+  const items = await api.invoke('scanhistory:list', text).catch(() => []);
+  list.innerHTML = '';
+  lastDay = '';
+  for (const x of items) {
+    const day = dayLabel(x.at);
+    if (day !== lastDay) {
+      lastDay = day;
+      list.append(h('div', { class: 'list-group', text: day }));
+    }
+    const [lv, words] = verdict(x);
+    const inside = x.scan?.inside?.length ? t('Trong file nén: {0}', x.scan.inside.slice(0, 3).map((n) => n.split('/').pop()).join(', ') + (x.scan.insideCount > 3 ? ' …' : '')) : '';
+    const row = h('div', { class: `list-item scan-row${lv ? ' lv-' + lv : ''}`, title: x.path || x.filename });
+    row.innerHTML = `<span class="time">${new Date(x.at).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' })}</span>
+      <span class="scan-ico">${x.icon ? `<img src="${esc(x.icon)}" alt="">` : icon(lv ? 'warn' : 'shieldCheck', 18)}</span>
+      <span class="li-text"><span class="li-title">${esc(x.filename)}</span><span class="li-sub">${esc([words, inside, hostOf(x.url || '')].filter(Boolean).join(' · '))}</span></span>
+      <span class="li-actions"><button class="icon-btn" data-act="del" title="${t('Xóa khỏi lịch sử')}">${icon('trash', 15)}</button></span>`;
+    row.addEventListener('click', async (e) => {
+      if (e.target.closest('[data-act]')?.dataset.act === 'del') await api.invoke('scanhistory:remove', x.id);
+      else openUrl('tyran://scan/?id=' + encodeURIComponent(x.id), true, e.ctrlKey);
+    });
+    list.append(row);
+  }
+  if (!list.children.length) list.innerHTML = `<div class="empty"><span class="kao">(｡•́︿•̀｡)</span>${text ? t('Không tìm thấy gì') : t('Chưa quét tệp nào')}</div>`;
+  $('#more').textContent = '';
+}
+
 function showMode() {
   document.querySelectorAll('#mode button').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
-  $('#q').placeholder = mode === 'groups' ? t('Tìm trong nhóm tab…') : t('Tìm trong lịch sử…');
+  $('#q').placeholder = PLACEHOLDER[mode]();
 }
 
 await boot();
@@ -109,12 +161,13 @@ document.querySelectorAll('#mode button').forEach((b) =>
   b.addEventListener('click', () => {
     if (mode === b.dataset.mode) return;
     mode = b.dataset.mode;
-    history.replaceState(null, '', mode === 'groups' ? '#groups' : '#');
+    history.replaceState(null, '', mode === 'pages' ? '#' : '#' + mode);
     showMode();
     load(true);
   })
 );
 api.on('winhistory:changed', () => mode === 'groups' && loadGroups());
+api.on('scanhistory:changed', debounce(() => mode === 'scans' && loadScans(), 200));
 $('#q').addEventListener('input', debounce(() => {
   text = $('#q').value.trim();
   load(true);
@@ -137,7 +190,7 @@ $('#clear').addEventListener('click', async () => {
   armed = false;
   btn.lastElementChild.textContent = t('Xóa lịch sử');
   const span = Number($('#range').value);
-  await api.invoke(mode === 'groups' ? 'winhistory:clear' : 'history:clear', span ? Date.now() - span : 0);
+  await api.invoke(CLEAR[mode], span ? Date.now() - span : 0);
   load(true);
 });
 api.on('history:changed', () => mode === 'pages' && load(true));
