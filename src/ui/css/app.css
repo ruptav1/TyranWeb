@@ -1890,6 +1890,73 @@ span.app-ico {
 .site-row > .ico {
   color: var(--text-2);
 }
+/* the shield's list: what protects the page now, a tick in an accent box, or a dimmed dash and why */
+.shield-pop {
+  width: 340px;
+}
+.shield-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.shield-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  padding: 3px 2px;
+}
+.shield-box {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 0.95em;
+}
+.shield-box b {
+  font-weight: 700;
+}
+.shield-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.shield-text span {
+  color: var(--text-3);
+  font-size: 0.86em;
+}
+.shield-item.off .shield-box {
+  background: var(--hover);
+  color: var(--text-3);
+}
+.shield-item.off .shield-text b {
+  color: var(--text-3);
+  font-weight: 500;
+}
+.shield-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  color: var(--text-3);
+  font-size: 0.88em;
+}
+.shield-foot span {
+  flex: 1;
+}
+.shield-foot .btn {
+  flex: none;
+}
 .zoom-ctl {
   display: flex;
   align-items: center;

@@ -34,7 +34,8 @@ function thirdParty(d) {
   } catch {
     /* gone */
   }
-  if (!/^https?:/i.test(top)) return false;
+  // (nor on a site the address bar's shield is off for: all of the protections are off there)
+  if (!/^https?:/i.test(top) || require('./adblock').isOff(top)) return false;
   const site = siteOf(top);
   return !!site && site !== siteOf(d.url);
 }

@@ -1177,5 +1177,17 @@
  "Không đọc được danh sách tệp bên trong": "안에 있는 파일 목록을 읽을 수 없습니다",
  "Trong file nén có": "압축 파일 안의 파일",
  "Lịch sử kiểm tra": "검사 기록",
- "Cho {0} chạy trên mọi trang web": "{0}이(가) 모든 웹사이트에서 실행되도록 허용"
+ "Cho {0} chạy trên mọi trang web": "{0}이(가) 모든 웹사이트에서 실행되도록 허용",
+ "Quảng cáo và trình theo dõi đã chặn": "차단한 광고와 추적기",
+ "Kết nối an toàn (HTTPS)": "보안 연결 (HTTPS)",
+ "Trang này không dùng HTTPS": "이 페이지는 HTTPS를 사용하지 않습니다",
+ "Chống lấy dấu vân tay": "핑거프린팅 방지",
+ "Canvas, WebGL, âm thanh và số nhân CPU bị làm nhiễu": "Canvas, WebGL, 오디오, CPU 코어 수에 노이즈 추가",
+ "Đang tắt trong Cài đặt": "설정에서 꺼짐",
+ "Đang tắt cho trang này": "이 사이트에서 꺼짐",
+ "Bỏ tham số theo dõi trong link": "링크의 추적 매개변수 제거",
+ "fbclid, gclid… và trang chuyển hướng theo dõi": "fbclid, gclid… 및 추적용 리디렉션 페이지",
+ "Ẩn bảng hỏi cookie": "쿠키 알림 숨김",
+ "Trang hiển thị lỗi? Tắt Shields cho riêng trang này.": "페이지가 깨져 보이나요? 이 사이트에서만 Shields를 끄세요.",
+ "Cài đặt Shields": "Shields 설정"
 }

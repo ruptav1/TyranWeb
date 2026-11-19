@@ -1177,5 +1177,17 @@
  "Không đọc được danh sách tệp bên trong": "中のファイル一覧を読み取れませんでした",
  "Trong file nén có": "圧縮ファイルの中身",
  "Lịch sử kiểm tra": "スキャン履歴",
- "Cho {0} chạy trên mọi trang web": "{0} をすべてのサイトで実行する"
+ "Cho {0} chạy trên mọi trang web": "{0} をすべてのサイトで実行する",
+ "Quảng cáo và trình theo dõi đã chặn": "ブロックした広告とトラッカー",
+ "Kết nối an toàn (HTTPS)": "安全な接続 (HTTPS)",
+ "Trang này không dùng HTTPS": "このページは HTTPS を使っていません",
+ "Chống lấy dấu vân tay": "フィンガープリント対策",
+ "Canvas, WebGL, âm thanh và số nhân CPU bị làm nhiễu": "Canvas・WebGL・音声・CPU コア数にノイズを加えています",
+ "Đang tắt trong Cài đặt": "設定でオフ",
+ "Đang tắt cho trang này": "このサイトではオフ",
+ "Bỏ tham số theo dõi trong link": "リンクから追跡パラメータを削除",
+ "fbclid, gclid… và trang chuyển hướng theo dõi": "fbclid、gclid… と追跡用リダイレクトページ",
+ "Ẩn bảng hỏi cookie": "Cookie の通知を非表示",
+ "Trang hiển thị lỗi? Tắt Shields cho riêng trang này.": "ページの表示がおかしい？このサイトだけ Shields をオフにしてください。",
+ "Cài đặt Shields": "Shields の設定"
 }

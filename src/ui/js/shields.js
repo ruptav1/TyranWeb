@@ -8,7 +8,7 @@
 import { api, h, emit } from './util.js';
 import { S } from './state.js';
 import { T, active, byWc, reload, createTab } from './tabs.js';
-import { openPopover, toast } from './menus.js';
+import { openPopover, closePopover, toast } from './menus.js';
 import { icon } from 'tyran://shared/icons.js';
 import { t } from 'tyran://shared/i18n.js';
 
@@ -60,7 +60,6 @@ export async function shieldPopover(anchor) {
       emit('shields');
       reload(tab.id);
     });
-    if (global) rows.push(h('div', { class: 'site-row' }, h('span', { text: t('Đã chặn trên trang này') }), h('b', { text: String(site.on ? tab.blocked || 0 : 0) })));
     rows.push(h('label', { class: 'site-row' }, h('span', { text: t('Bảo vệ trên {0}', site.site) }), h('span', { class: 'switch' }, sw, h('span'))));
   }
   if (!global) {
@@ -72,11 +71,45 @@ export async function shieldPopover(anchor) {
     rows.push(h('label', { class: 'site-row' }, h('span', { text: t('Chặn quảng cáo đang tắt') }), h('span', { class: 'switch' }, sw, h('span'))));
   }
   const on = global && site?.on !== false;
+  // What protects this page now, one row each: on (a tick), or off (a dash, dimmed, and why)
+  const p = S.settings.privacy;
+  const siteOn = site?.on !== false;
+  const offWhy = (setting) => (!setting ? t('Đang tắt trong Cài đặt') : !siteOn ? t('Đang tắt cho trang này') : '');
+  const item = (title, sub, why, box) =>
+    h(
+      'div',
+      { class: `shield-item${why ? ' off' : ''}` },
+      h('span', { class: 'shield-box', html: box ?? (why ? '—' : icon('check', 14)) }),
+      h('span', { class: 'shield-text' }, h('b', { text: title }), why || sub ? h('span', { text: why || sub }) : null)
+    );
+  let secure = false;
+  try {
+    secure = new URL(tab.url).protocol === 'https:';
+  } catch {
+    /* (no page) */
+  }
+  const list = h(
+    'div',
+    { class: 'shield-list' },
+    item(t('Quảng cáo và trình theo dõi đã chặn'), '', offWhy(global), global && siteOn ? `<b>${tab.blocked || 0}</b>` : null),
+    item(t('Kết nối an toàn (HTTPS)'), '', secure ? '' : t('Trang này không dùng HTTPS')),
+    item(t('Chống lấy dấu vân tay'), t('Canvas, WebGL, âm thanh và số nhân CPU bị làm nhiễu'), offWhy(p.fingerprint)),
+    item(t('Chặn cookie bên thứ ba'), '', offWhy(p.blockThirdPartyCookies)),
+    item(t('Bỏ tham số theo dõi trong link'), t('fbclid, gclid… và trang chuyển hướng theo dõi'), offWhy(p.stripParams || p.debounce)),
+    item(t('Ẩn bảng hỏi cookie'), '', offWhy(p.cookieNotices))
+  );
+  const settingsBtn = h('button', { class: 'btn small', text: t('Cài đặt Shields') });
+  settingsBtn.addEventListener('click', () => {
+    closePopover();
+    createTab({ url: 'tyran://settings/#privacy' });
+  });
   const body = h(
     'div',
-    { class: 'site-pop' },
+    { class: 'site-pop shield-pop' },
     h('div', { class: 'pop-head' }, h('span', { class: `pop-head-ico ${on ? 'ok' : 'bad'}`, html: icon(on ? 'shieldCheck' : 'shield', 18) }), h('div', {}, h('b', { text: t('Chặn quảng cáo & theo dõi') }), h('div', { class: 'muted small', text: t(ENGINE_DESC[using] || ENGINE_DESC.ghostery) }))),
-    ...rows
+    ...rows,
+    list,
+    h('div', { class: 'shield-foot' }, h('span', { text: t('Trang hiển thị lỗi? Tắt Shields cho riêng trang này.') }), settingsBtn)
   );
   openPopover(body, anchor, { align: 'end', focus: false });
 }

@@ -1177,5 +1177,17 @@
  "Không đọc được danh sách tệp bên trong": "Não foi possível ler a lista de arquivos internos",
  "Trong file nén có": "O arquivo compactado contém",
  "Lịch sử kiểm tra": "Histórico de verificações",
- "Cho {0} chạy trên mọi trang web": "Permitir que {0} funcione em todos os sites"
+ "Cho {0} chạy trên mọi trang web": "Permitir que {0} funcione em todos os sites",
+ "Quảng cáo và trình theo dõi đã chặn": "Anúncios e rastreadores bloqueados",
+ "Kết nối an toàn (HTTPS)": "Conexão segura (HTTPS)",
+ "Trang này không dùng HTTPS": "Esta página não usa HTTPS",
+ "Chống lấy dấu vân tay": "Proteção contra impressão digital",
+ "Canvas, WebGL, âm thanh và số nhân CPU bị làm nhiễu": "Canvas, WebGL, áudio e núcleos de CPU com ruído",
+ "Đang tắt trong Cài đặt": "Desativado nas Configurações",
+ "Đang tắt cho trang này": "Desativado neste site",
+ "Bỏ tham số theo dõi trong link": "Parâmetros de rastreamento removidos dos links",
+ "fbclid, gclid… và trang chuyển hướng theo dõi": "fbclid, gclid… e páginas de redirecionamento de rastreamento",
+ "Ẩn bảng hỏi cookie": "Avisos de cookies ocultos",
+ "Trang hiển thị lỗi? Tắt Shields cho riêng trang này.": "A página está com erro? Desative o Shields só neste site.",
+ "Cài đặt Shields": "Configurações do Shields"
 }

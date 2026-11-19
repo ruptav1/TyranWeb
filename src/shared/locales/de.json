@@ -1177,5 +1177,17 @@
  "Không đọc được danh sách tệp bên trong": "Die Liste der enthaltenen Dateien ist nicht lesbar",
  "Trong file nén có": "Das Archiv enthält",
  "Lịch sử kiểm tra": "Prüfverlauf",
- "Cho {0} chạy trên mọi trang web": "{0} auf allen Websites erlauben"
+ "Cho {0} chạy trên mọi trang web": "{0} auf allen Websites erlauben",
+ "Quảng cáo và trình theo dõi đã chặn": "Blockierte Werbung und Tracker",
+ "Kết nối an toàn (HTTPS)": "Sichere Verbindung (HTTPS)",
+ "Trang này không dùng HTTPS": "Diese Seite nutzt kein HTTPS",
+ "Chống lấy dấu vân tay": "Schutz vor Fingerprinting",
+ "Canvas, WebGL, âm thanh và số nhân CPU bị làm nhiễu": "Canvas, WebGL, Audio und CPU-Kerne werden verrauscht",
+ "Đang tắt trong Cài đặt": "In den Einstellungen aus",
+ "Đang tắt cho trang này": "Für diese Website aus",
+ "Bỏ tham số theo dõi trong link": "Tracking-Parameter aus Links entfernt",
+ "fbclid, gclid… và trang chuyển hướng theo dõi": "fbclid, gclid… und Tracking-Weiterleitungen",
+ "Ẩn bảng hỏi cookie": "Cookie-Hinweise ausgeblendet",
+ "Trang hiển thị lỗi? Tắt Shields cho riêng trang này.": "Seite fehlerhaft? Schalte Shields nur für diese Website aus.",
+ "Cài đặt Shields": "Shields-Einstellungen"
 }

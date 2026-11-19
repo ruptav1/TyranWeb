@@ -1177,5 +1177,17 @@
  "Không đọc được danh sách tệp bên trong": "The list of files inside could not be read",
  "Trong file nén có": "The archive holds",
  "Lịch sử kiểm tra": "Scan history",
- "Cho {0} chạy trên mọi trang web": "Let {0} run on all websites"
+ "Cho {0} chạy trên mọi trang web": "Let {0} run on all websites",
+ "Quảng cáo và trình theo dõi đã chặn": "Ads and trackers blocked",
+ "Kết nối an toàn (HTTPS)": "Secure connection (HTTPS)",
+ "Trang này không dùng HTTPS": "This page does not use HTTPS",
+ "Chống lấy dấu vân tay": "Fingerprinting protection",
+ "Canvas, WebGL, âm thanh và số nhân CPU bị làm nhiễu": "Canvas, WebGL, audio and CPU core count are randomized",
+ "Đang tắt trong Cài đặt": "Off in Settings",
+ "Đang tắt cho trang này": "Off for this site",
+ "Bỏ tham số theo dõi trong link": "Tracking parameters removed from links",
+ "fbclid, gclid… và trang chuyển hướng theo dõi": "fbclid, gclid… and tracking redirect pages",
+ "Ẩn bảng hỏi cookie": "Cookie notices hidden",
+ "Trang hiển thị lỗi? Tắt Shields cho riêng trang này.": "Page looks broken? Turn Shields off for this site only.",
+ "Cài đặt Shields": "Shields settings"
 }

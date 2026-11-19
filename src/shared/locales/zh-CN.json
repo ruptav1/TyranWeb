@@ -1177,5 +1177,17 @@
  "Không đọc được danh sách tệp bên trong": "无法读取其中的文件列表",
  "Trong file nén có": "压缩包内包含",
  "Lịch sử kiểm tra": "扫描历史",
- "Cho {0} chạy trên mọi trang web": "允许 {0} 在所有网站上运行"
+ "Cho {0} chạy trên mọi trang web": "允许 {0} 在所有网站上运行",
+ "Quảng cáo và trình theo dõi đã chặn": "已拦截的广告和跟踪器",
+ "Kết nối an toàn (HTTPS)": "安全连接 (HTTPS)",
+ "Trang này không dùng HTTPS": "此页面未使用 HTTPS",
+ "Chống lấy dấu vân tay": "防指纹识别",
+ "Canvas, WebGL, âm thanh và số nhân CPU bị làm nhiễu": "Canvas、WebGL、音频和 CPU 核心数已加入扰动",
+ "Đang tắt trong Cài đặt": "已在设置中关闭",
+ "Đang tắt cho trang này": "已对此网站关闭",
+ "Bỏ tham số theo dõi trong link": "移除链接中的跟踪参数",
+ "fbclid, gclid… và trang chuyển hướng theo dõi": "fbclid、gclid… 以及跟踪重定向页面",
+ "Ẩn bảng hỏi cookie": "隐藏 Cookie 通知",
+ "Trang hiển thị lỗi? Tắt Shields cho riêng trang này.": "页面显示异常？请仅为此网站关闭 Shields。",
+ "Cài đặt Shields": "Shields 设置"
 }

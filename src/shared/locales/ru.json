@@ -1177,5 +1177,17 @@
  "Không đọc được danh sách tệp bên trong": "Не удалось прочитать список файлов внутри",
  "Trong file nén có": "В архиве есть",
  "Lịch sử kiểm tra": "История проверок",
- "Cho {0} chạy trên mọi trang web": "Разрешить {0} работать на всех сайтах"
+ "Cho {0} chạy trên mọi trang web": "Разрешить {0} работать на всех сайтах",
+ "Quảng cáo và trình theo dõi đã chặn": "Заблокировано рекламы и трекеров",
+ "Kết nối an toàn (HTTPS)": "Защищённое соединение (HTTPS)",
+ "Trang này không dùng HTTPS": "Эта страница не использует HTTPS",
+ "Chống lấy dấu vân tay": "Защита от снятия отпечатков",
+ "Canvas, WebGL, âm thanh và số nhân CPU bị làm nhiễu": "Canvas, WebGL, звук и число ядер CPU искажаются",
+ "Đang tắt trong Cài đặt": "Выключено в настройках",
+ "Đang tắt cho trang này": "Выключено для этого сайта",
+ "Bỏ tham số theo dõi trong link": "Параметры слежки удаляются из ссылок",
+ "fbclid, gclid… và trang chuyển hướng theo dõi": "fbclid, gclid… и страницы-перенаправления",
+ "Ẩn bảng hỏi cookie": "Уведомления о cookie скрыты",
+ "Trang hiển thị lỗi? Tắt Shields cho riêng trang này.": "Страница отображается с ошибками? Отключите Shields только для этого сайта.",
+ "Cài đặt Shields": "Настройки Shields"
 }
