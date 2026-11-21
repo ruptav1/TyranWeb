@@ -1,9 +1,9 @@
 'use strict';
 // Downloads TyranWeb makes itself rather than Chromium's own downloader: a stream joined piece by
-// piece (Truy tìm video), a post through yt-dlp, a Pixiv animation (Tải từ đường dẫn). Where their
-// files go and how they are named, and their records in Tải xuống: sent to the downloads panel as
-// Electron's own downloads are, kept in its list when done (unless they come from a private tab),
-// cancelled from it.
+// piece (Truy tìm video), a post through yt-dlp, a Pixiv animation (Tải từ đường dẫn), a comic chapter
+// (Tải truyện tranh). Where their files go and how they are named, and their records in Tải xuống: sent
+// to the downloads panel as Electron's own downloads are, kept in its list when done (unless they come
+// from a private tab), cancelled from it.
 const fs = require('fs');
 const path = require('path');
 const { app } = require('electron');
@@ -33,7 +33,7 @@ function unique(file) {
   return out;
 }
 
-// start({ url, filename, path, mime, totalBytes, private, cancel }) → { rec, update(fields), finish(state, fields) }
+// start({ url, filename, path, mime, totalBytes, private, cancel, extra }) → { rec, update(fields), finish(state, fields) }
 function start(o) {
   const rec = {
     id: data.uid('d'),
@@ -48,6 +48,7 @@ function start(o) {
     canResume: false,
     startTime: Date.now(),
     private: !!o.private,
+    ...(o.extra || {}), // (a comic chapter's: unit 'pages', its label, pictures done / in all / failed - main/manga.js)
   };
   let told = 0;
   if (o.cancel) jobs.set(rec.id, o.cancel);

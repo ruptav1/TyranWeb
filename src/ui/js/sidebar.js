@@ -4,6 +4,7 @@ import { S } from './state.js';
 import { active, createTab } from './tabs.js';
 import { openUrl } from './bookmarks.js';
 import { openMenu, promptText, toast } from './menus.js';
+import { pagesStatus } from './downloads.js';
 import { icon } from 'tyran://shared/icons.js';
 import { musicKey, ownMusic } from 'tyran://shared/theme.js';
 import { spectrumHook, addSpectrumSource } from './visualizer.js';
@@ -328,7 +329,8 @@ function downloadsPanel(body, head) {
     const items = await api.invoke('downloads:list');
     list.innerHTML = '';
     for (const d of items.slice(0, 100)) {
-      const pct = d.totalBytes ? Math.round((d.receivedBytes / d.totalBytes) * 100) : 0;
+      const pages = d.unit === 'pages'; // (a comic chapter: its pictures counted)
+      const pct = pages ? (d.pagesTotal ? Math.round((d.pagesDone / d.pagesTotal) * 100) : 0) : d.totalBytes ? Math.round((d.receivedBytes / d.totalBytes) * 100) : 0;
       // (none while downloading, yellow paused, green done, red cancelled, failed or with a threat in it)
       const vtBad = (d.scan?.vt?.stats?.malicious || 0) >= 3; // (as main/filescan.js counts it)
       const flagged = ['threat', 'removed'].includes(d.scan?.state) || vtBad;
@@ -336,8 +338,8 @@ function downloadsPanel(body, head) {
       const ic = d.state === 'progressing' ? (d.paused ? 'pause' : 'download') : d.state !== 'completed' ? 'x' : flagged ? 'warn' : 'check';
       const scan = !flagged ? '' : d.scan.state === 'threat' ? t('Có mã độc: {0}', d.scan.threat || '?') : d.scan.state === 'removed' ? t('Đã chặn: {0}', d.scan.threat || '?') : `VirusTotal ${d.scan.vt.stats.malicious}`;
       const row = h('div', { class: `panel-item ${tone}`, title: d.path || d.filename });
-      row.innerHTML = `<span class="pi-ico">${icon(ic, 16)}</span><span class="pi-text"><span class="pi-title">${esc(d.filename)}</span><span class="pi-sub">${esc(
-        d.state === 'progressing' ? `${d.paused ? t('Tạm dừng · ') : ''}${pct}% · ${fmtBytes(d.receivedBytes)}` : d.state === 'completed' ? scan || `${fmtBytes(d.totalBytes)} · ${timeAgo(d.endTime || d.startTime)}` : scan || t('Đã hủy / lỗi')
+      row.innerHTML = `<span class="pi-ico">${icon(ic, 16)}</span><span class="pi-text"><span class="pi-title">${esc(d.label || d.filename)}</span><span class="pi-sub">${esc(
+        pages && !scan ? pagesStatus(d) : d.state === 'progressing' ? `${d.paused ? t('Tạm dừng · ') : ''}${pct}% · ${fmtBytes(d.receivedBytes)}` : d.state === 'completed' ? scan || `${fmtBytes(d.totalBytes)} · ${timeAgo(d.endTime || d.startTime)}` : scan || t('Đã hủy / lỗi')
       )}</span></span>`;
       row.addEventListener('click', async () => {
         const r = await api.invoke('downloads:action', d.id, d.state === 'completed' && !flagged ? 'open' : 'show');

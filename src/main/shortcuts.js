@@ -44,6 +44,7 @@ const DEFAULT_SHORTCUTS = {
   'page.devtools': { label: 'Công cụ nhà phát triển', keys: ['F12', 'Ctrl+Shift+I'], reserved: true },
   'page.screenshot': { label: 'Chụp màn hình trang', keys: ['Ctrl+Shift+S'], reserved: false },
   'page.pip': { label: 'Hình trong hình (video)', keys: ['Alt+P'], reserved: false },
+  'manga.open': { label: 'Tải truyện tranh trên trang', keys: ['Ctrl+Shift+M'], reserved: false },
   'bookmark.toggle': { label: 'Thêm / sửa dấu trang', keys: ['Ctrl+D'], reserved: false },
   'bookmark.bar': { label: 'Ẩn / hiện thanh dấu trang', keys: ['Ctrl+Shift+B'], reserved: false },
   'open.history': { label: 'Lịch sử', keys: ['Ctrl+H'], reserved: false },

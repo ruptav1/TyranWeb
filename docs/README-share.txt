@@ -1,4 +1,4 @@
-TyranWeb 1.1.84 — trình duyệt anime (Windows 10/11, 64-bit)
+TyranWeb 1.1.85 — trình duyệt anime (Windows 10/11, 64-bit)
 ==========================================================
 
 CÁCH CHẠY
@@ -123,6 +123,17 @@ GHI CHÚ
     phân giải, fps, thời lượng, dung lượng; luồng HLS được ghép thành một file .mp4.
   + Không tải được video có DRM (Netflix, Spotify...) và phát trực tiếp. Chỉ tải video bạn có
     quyền tải.
+- Tải truyện tranh (trang đang đọc một chương truyện: nút "N ảnh" màu hồng trong thanh địa chỉ,
+  Ctrl+Shift+M, menu ⋯, hoặc chuột phải vào trang / ảnh): tìm ảnh của chương ngay trên trang,
+  đúng thứ tự đọc, cả ảnh tải chậm (lazy) và truyện dọc cắt thành nhiều dải, bỏ quảng cáo, logo,
+  ảnh đại diện. Tự đọc tên truyện, tên chương và link chương sau; bấm vào ảnh để bỏ / chọn lại.
+  Mỗi chương lưu vào Tải xuống › Truyện tranh › <tên truyện> thành một file zip (mặc định), file
+  CBZ cho các app đọc truyện (kèm ComicInfo.xml) hoặc một thư mục ảnh 001.jpg, 002.jpg... Tải
+  bằng phiên đăng nhập của trang đó (cookie, trang làm referrer), mỗi ảnh được kiểm tra đúng là
+  ảnh, lỗi thì thử lại cả ở server dự phòng của trang. "Tải tiếp N chương sau": tab tự mở lần
+  lượt từng chương sau và tải giống vậy. Trang đọc từng trang (mỗi trang một địa chỉ) cũng tải
+  được. Tên các khung đọc truyện quen thuộc lấy theo mẫu trang của HaruNeko
+  (github.com/manga-download/haruneko, Unlicense). Chỉ tải nội dung bạn được phép tải.
 - Dọn rác (Cài đặt → Quyền riêng tư → Dọn rác): bộ nhớ đệm và file tải dở của TyranWeb, file tạm
   của Windows cũ hơn 7 ngày; dọn ngay hoặc tự dọn mỗi tuần. File đang được dùng thì giữ lại.
 - Đổi IP / VPN (nút VPN trong thanh địa chỉ, hoặc Cài đặt → Quyền riêng tư → Cloudflare WARP; nút
@@ -130,6 +141,9 @@ GHI CHÚ
   (miễn phí, 1.1.1.1) và để nó ở chế độ proxy (có nút chuyển). Bật "Đi qua Cloudflare WARP" thì
   chỉ TyranWeb đi qua WARP; "Đổi IP" kết nối lại để lấy IP khác. IP do Cloudflare cấp, không
   chọn được quốc gia.
+- Giao diện "Trong suốt": mỗi nút trên thanh công cụ (và cụm 3 nút của cửa sổ) nằm trên một miếng
+  kính mờ nhỏ, nên vẫn dễ nhìn trên mọi hình nền; nút đang không bấm được chỉ mờ biểu tượng. Menu
+  dài hơn cửa sổ thì cuộn được.
 - Mẹo: Ctrl+Shift+L để vào chế độ Lobby; ở trang tab mới, bấm nút con mắt để ẩn thanh tìm
   kiếm rồi bấm vào nền để trò chuyện với học sinh. Ctrl+Alt+N mở tab ẩn danh.
 

@@ -12,6 +12,7 @@ let input;
 let display;
 let siteBtn;
 let zoomBadge;
+let mangaChip;
 let starBtn;
 let shieldBtn;
 let vpnBtn;
@@ -26,11 +27,13 @@ export function buildOmnibox() {
   input = h('input', { class: 'omni-input', type: 'text', spellcheck: 'false', autocomplete: 'off', placeholder: t('Tìm kiếm hoặc nhập địa chỉ web') });
   display = h('div', { class: 'omni-display' });
   zoomBadge = h('button', { class: 'omni-chip zoom-chip', hidden: true, title: t('Mức thu phóng — bấm để đặt lại') });
+  // (a page showing a comic chapter: its pictures can be downloaded - manga.js)
+  mangaChip = h('button', { class: 'omni-chip manga-chip', hidden: true, title: t('Tải truyện tranh (Ctrl+Shift+M)') });
   starBtn = h('button', { class: 'omni-star icon-btn', title: t('Thêm dấu trang (Ctrl+D)'), html: icon('star', 16) });
   // (the ad blocker on this site, and the VPN: shields.js)
   shieldBtn = h('button', { class: 'omni-shield icon-btn' });
   vpnBtn = h('button', { class: 'omni-vpn', text: 'VPN', title: 'VPN · Cloudflare WARP' });
-  box = h('div', { class: 'omnibox' }, siteBtn, h('div', { class: 'omni-field' }, input, display), zoomBadge, shieldBtn, vpnBtn, starBtn);
+  box = h('div', { class: 'omnibox' }, siteBtn, h('div', { class: 'omni-field' }, input, display), mangaChip, zoomBadge, shieldBtn, vpnBtn, starBtn);
 
   input.addEventListener('focus', () => {
     box.classList.add('focused');
@@ -60,6 +63,7 @@ export function buildOmnibox() {
   });
   input.addEventListener('keydown', onKey);
   zoomBadge.addEventListener('click', () => emit('command', { id: 'page.zoomReset' }));
+  mangaChip.addEventListener('click', () => emit('command', { id: 'manga.open' }));
   starBtn.addEventListener('click', () => emit('bookmark-popover', starBtn));
   siteBtn.addEventListener('click', () => emit('site-info', siteBtn));
   shieldBtn.addEventListener('click', () => shieldPopover(shieldBtn));
@@ -117,6 +121,10 @@ export function sync() {
   const z = tab?.zoom || 1;
   zoomBadge.hidden = Math.abs(z - 1) < 0.001;
   zoomBadge.textContent = `${Math.round(z * 100)}%`;
+
+  const pics = /^https?:/i.test(url) ? tab?.manga || 0 : 0;
+  mangaChip.hidden = pics < 4;
+  if (pics >= 4) mangaChip.innerHTML = `${icon('download', 13)}<span>${esc(t('{0} ảnh', pics))}</span>`;
 
   const marked = !!S.bookmarks.items.find((b) => b.url === url);
   starBtn.innerHTML = icon('star', 16, marked ? 'filled' : '');

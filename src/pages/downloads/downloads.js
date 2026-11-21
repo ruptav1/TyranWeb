@@ -40,19 +40,30 @@ function defenderText(s) {
   return '';
 }
 
+// a comic chapter (Tải truyện tranh: main/manga.js): its pictures, done of all, and those that failed
+function pagesStatus(d) {
+  const failed = d.pagesFailed ? t('{0} ảnh lỗi', d.pagesFailed) : '';
+  if (d.state === 'progressing') return [`${d.pagesTotal ? Math.round((d.pagesDone / d.pagesTotal) * 100) : 0}%`, t('{0}/{1} ảnh', d.pagesDone || 0, d.pagesTotal || 0), failed].filter(Boolean).join(' · ');
+  if (d.state === 'completed') return [t('Hoàn tất · {0} ảnh', d.pagesDone || 0), d.totalBytes ? fmtBytes(d.totalBytes) : '', failed, new Date(d.endTime || d.startTime).toLocaleString(LOCALE)].filter(Boolean).join(' · ');
+  if (d.state === 'cancelled') return t('Đã hủy');
+  return [t('Thất bại'), failed].filter(Boolean).join(' · ');
+}
+
 function render() {
   const list = $('#list');
   const q = $('#q').value.trim().toLowerCase();
-  const shown = items.filter((d) => !q || (d.filename + ' ' + d.url).toLowerCase().includes(q));
+  const shown = items.filter((d) => !q || (d.filename + ' ' + (d.label || '') + ' ' + d.url).toLowerCase().includes(q));
   list.innerHTML = '';
   for (const d of shown) {
-    const pct = d.totalBytes ? Math.round((d.receivedBytes / d.totalBytes) * 100) : 0;
+    const pages = d.unit === 'pages';
+    const pct = pages ? (d.pagesTotal ? Math.round((d.pagesDone / d.pagesTotal) * 100) : 0) : d.totalBytes ? Math.round((d.receivedBytes / d.totalBytes) * 100) : 0;
     const status =
+      pages ? [pagesStatus(d), d.state === 'completed' ? scanText(d.scan) : ''].filter(Boolean).join(' · ') :
       d.state === 'progressing' ? `${d.paused ? t('Tạm dừng · ') : ''}${pct}% · ${fmtBytes(d.receivedBytes)} / ${fmtBytes(d.totalBytes)}` :
       d.state === 'completed' ? [fmtBytes(d.totalBytes || d.receivedBytes), scanText(d.scan), new Date(d.endTime || d.startTime).toLocaleString(LOCALE)].filter(Boolean).join(' · ') :
       d.state === 'cancelled' ? t('Đã hủy') : [t('Thất bại'), scanText(d.scan)].filter(Boolean).join(' · ');
     const actions = [];
-    if (d.state === 'progressing') actions.push(d.paused ? ['resume', 'play', t('Tiếp tục')] : ['pause', 'pause', t('Tạm dừng')], ['cancel', 'x', t('Hủy')]);
+    if (d.state === 'progressing') actions.push(...(pages ? [] : [d.paused ? ['resume', 'play', t('Tiếp tục')] : ['pause', 'pause', t('Tạm dừng')]]), ['cancel', 'x', t('Hủy')]);
     else if (d.state === 'completed') {
       if (d.scan?.state === 'threat') actions.push(['quarantine', 'trash', t('Cách ly')]);
       else if (!flagged(d)) actions.push(['open', 'external', t('Mở tệp')]);
@@ -64,12 +75,13 @@ function render() {
     const item = h('div', { class: `list-item${mood ? ' dl-' + mood : ''}`, title: d.path || d.url });
     const ic = d.state === 'progressing' ? (d.paused ? 'pause' : 'download') : d.state !== 'completed' ? 'x' : flagged(d) ? 'warn' : 'check';
     item.innerHTML = `<span class="state-ico ${{ done: 'ok', bad: 'bad', paused: 'warn' }[mood] || ''}">${icon(ic, 18)}</span>
-      <span class="li-col"><span class="li-title">${esc(d.filename)}</span><span class="li-sub">${esc(status)} · ${esc(hostOf(d.url))}</span>
+      <span class="li-col"><span class="li-title">${esc(d.label || d.filename)}</span><span class="li-sub">${esc(status)} · ${esc(hostOf(d.url))}</span>
       ${d.state === 'progressing' ? `<span class="dl-progress"><i style="width:${pct}%"></i></span>` : ''}</span>
       <span class="li-actions" style="opacity:1">${actions.map(([a, ic, t]) => `<button class="icon-btn" data-act="${a}" title="${t}">${icon(ic, 15)}</button>`).join('')}</span>`;
     item.addEventListener('click', async (e) => {
       const act = e.target.closest('[data-act]')?.dataset.act;
       if (act === 'result') return openUrl('tyran://scan/?id=' + encodeURIComponent(d.id), true);
+      if (act === 'retry' && pages) return openUrl(d.url, true); // (a comic chapter: its page opened again, to download it from there)
       let r = null;
       if (act) r = await api.invoke('downloads:action', d.id, act);
       else if (d.state === 'completed' && !flagged(d)) r = await api.invoke('downloads:action', d.id, 'open');

@@ -208,6 +208,17 @@ body.lobby #app {
   text-shadow: 0 1px 2px var(--liquid-shade), 0 0 10px var(--liquid-shade);
   transition: background 220ms var(--ease), box-shadow 220ms var(--ease), color 220ms var(--ease), text-shadow 220ms var(--ease), transform 160ms var(--ease);
 }
+/* the bars' buttons over a busy wallpaper: each on a small piece of liquid glass (the picture blurred
+   and tinted with the theme's surface behind it, a bright rim along its top) instead of a glow around
+   the icon, so they read on any picture; the window's own three buttons share one piece */
+#app[data-chrome='clear'] #toolbar > .icon-btn,
+#app[data-chrome='clear'] .newtab-btn,
+#app[data-chrome='clear'] .vtabs-head .icon-btn {
+  background: linear-gradient(180deg, var(--liquid-hi), transparent 62%), var(--island);
+  backdrop-filter: blur(var(--island-blur)) saturate(1.3);
+  box-shadow: inset 0 1px 0 var(--liquid-rim), inset 0 0 0 1px var(--line), 0 2px 8px rgba(0, 0, 0, 0.1);
+  text-shadow: none;
+}
 #app[data-chrome='clear'] .tab .ico,
 #app[data-chrome='clear'] #toolbar > .icon-btn .ico,
 #app[data-chrome='clear'] .newtab-btn .ico,
@@ -261,9 +272,12 @@ body.lobby #app {
 #app[data-chrome='clear'] #toolbar > .icon-btn {
   border-radius: 999px;
 }
+/* (a button that can do nothing now keeps its glass; only its icon fades) */
 #app[data-chrome='clear'] #toolbar > .icon-btn:disabled {
-  opacity: 0.55;
-  color: var(--text-3);
+  opacity: 1;
+}
+#app[data-chrome='clear'] #toolbar > .icon-btn:disabled .ico {
+  opacity: 0.4;
 }
 #app[data-chrome='clear'] #bookmarks-bar {
   gap: 5px;
@@ -305,9 +319,9 @@ body.lobby #app {
   width: var(--caption-w, 140px);
   height: calc(var(--topbar-real-h, var(--topbar-h)) - 8px);
   border-radius: 12px 0 0 12px;
-  background: linear-gradient(180deg, var(--liquid-hi), transparent 62%), var(--liquid-fill);
-  backdrop-filter: blur(var(--island-blur)) saturate(1.2) brightness(1.03);
-  box-shadow: inset 0 1px 0 var(--liquid-rim);
+  background: linear-gradient(180deg, var(--liquid-hi), transparent 62%), var(--island);
+  backdrop-filter: blur(var(--island-blur)) saturate(1.3);
+  box-shadow: inset 0 1px 0 var(--liquid-rim), inset 0 0 0 1px var(--line);
   pointer-events: none;
 }
 
@@ -959,6 +973,22 @@ body.lobby #app {
 .omni-star[hidden] {
   display: none;
 }
+/* a page showing a comic chapter: its pictures, one click from downloading (manga.js) */
+.omni-chip.manga-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px 0 6px;
+  background: var(--accent);
+  color: var(--on-accent);
+  animation: pop-in 250ms var(--ease);
+}
+.omni-chip.manga-chip[hidden] {
+  display: none;
+}
+.omni-chip.manga-chip:hover {
+  filter: brightness(1.08);
+}
 .omni-star {
   width: calc(var(--control-h) - 4px) !important;
   height: calc(var(--control-h) - 4px) !important;
@@ -1541,6 +1571,10 @@ span.app-ico {
 .popover:not(.menu-pop) {
   min-width: 300px;
   max-width: 400px;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
@@ -1625,6 +1659,191 @@ span.app-ico {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 6px;
+}
+/* Tải truyện tranh (manga.js): the chapter's names, its pictures (a click leaves one out), the chapters after it */
+.popover.manga-popover {
+  max-width: none;
+}
+.manga-pop {
+  width: min(640px, 94vw);
+}
+.manga-status {
+  min-height: 18px;
+  margin: 0 2px 10px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.manga-status.busy::before {
+  content: '';
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  margin-right: 8px;
+  vertical-align: -1px;
+  border: 2px solid var(--accent-soft);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+.manga-status.bad {
+  color: #d64545;
+}
+.manga-names {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.manga-names label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.manga-names input {
+  width: 100%;
+  height: 34px;
+}
+.manga-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.manga-bar .grow,
+.manga-actions .grow {
+  flex: 1;
+}
+.manga-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 6px;
+  max-height: 236px;
+  margin-bottom: 10px;
+  padding: 2px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.manga-grid:empty {
+  display: none;
+}
+.manga-cell {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 6px;
+  background: var(--hover);
+  cursor: pointer;
+  transition: opacity 150ms, transform 150ms var(--ease);
+}
+.manga-cell img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.manga-cell span {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.62);
+  color: #fff;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.manga-cell.off {
+  opacity: 0.28;
+  transform: scale(0.94);
+}
+.manga-cell:hover {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.manga-paged {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--hover);
+  font-size: 12px;
+  color: var(--text-2);
+}
+.manga-opts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--hover);
+  font-size: 13px;
+}
+.manga-next {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.manga-next input {
+  width: 64px;
+  height: 30px;
+  text-align: center;
+}
+.manga-next small {
+  flex-basis: 100%;
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.manga-check,
+.manga-fmt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.manga-check input {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+.manga-check span {
+  flex: 1;
+}
+.manga-fmt select {
+  height: 30px;
+  padding: 0 8px;
+}
+.manga-dest {
+  margin: 10px 2px 0;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--text-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.manga-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.manga-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.manga-note {
+  display: block;
+  margin-top: 10px;
+  color: var(--text-3);
+  font-size: 11px;
 }
 /* Tải video (grab.js): a link's videos, and the videos a page plays, each with its picture and facts */
 .popover.media-popover {

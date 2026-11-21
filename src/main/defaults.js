@@ -21,6 +21,7 @@ const SETTINGS = {
     backupMedia: false, // backups (Settings → Giới thiệu) hold the wallpapers, videos and music added too
     tabSleepMinutes: 0, // a tab not looked at for this long sleeps (0: never); pinned, playing and shown tabs never
     smoothScrolling: true,
+    mangaFormat: 'zip', // Tải truyện tranh: each chapter saved as 'zip' | 'cbz' (for comic reader apps) | 'folder' of pictures
   },
   appearance: {
     preset: 'clannad',

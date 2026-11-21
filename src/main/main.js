@@ -98,6 +98,8 @@ function setupGuest(contents) {
     contents.on('zoom-changed', (e, direction) => {
       contents.hostWebContents?.send('command', { id: direction === 'in' ? 'page.zoomIn' : 'page.zoomOut', wcId: contents.id });
     });
+    // (a page showing a comic chapter: the address bar offers to download it - main/manga.js)
+    require('./manga').watch(contents);
   }
 
   // Web pages may not navigate to internal tyran:// pages (the address bar still can:

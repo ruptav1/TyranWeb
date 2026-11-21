@@ -260,6 +260,11 @@ function register({ onSettings } = {}) {
   handle('grab:analyze', (e, url, wcId) => require('./grab').analyze(String(url || ''), wcId ? guestOf(e, wcId).session : require('electron').session.fromPartition(require('./sessions').PARTITION)), { uiOnly: true });
   handle('grab:download', (e, token, index, key) => require('./grab').download(String(token || ''), Number(index), String(key || '')), { uiOnly: true });
   handle('grab:ready', () => require('./tools').haveYtdlp(), { uiOnly: true });
+  // Tải truyện tranh (main/manga.js): the comic chapter shown in a tab, its pages' small pictures, and
+  // downloading it (and the chapters after it)
+  handle('manga:scan', (e, wcId, opts) => require('./manga').scan(guestOf(e, wcId), opts || {}), { uiOnly: true });
+  handle('manga:thumbs', (e, wcId, urls) => require('./manga').thumbs(guestOf(e, wcId), urls), { uiOnly: true });
+  handle('manga:download', (e, wcId, opts) => require('./manga').start(guestOf(e, wcId), opts || {}), { uiOnly: true });
   handle('cleaner:measure', () => require('./cleaner').measure());
   handle('cleaner:clean', (e, what) => require('./cleaner').clean({ app: !!what?.app, temp: !!what?.temp }));
   // Cloudflare WARP (main/warp.js): its state, where the pages come from, and the user's presses

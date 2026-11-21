@@ -375,6 +375,11 @@ kbd {
   background: var(--surface-3);
   backdrop-filter: blur(24px) saturate(1.5);
   box-shadow: 0 12px 40px var(--shadow-color), 0 2px 8px var(--shadow-color);
+  /* (never taller than the window: the rest scrolls) */
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 .menu-item {
   display: flex;

@@ -56,9 +56,14 @@ function activeDownloads() {
 function renderButton() {
   if (!button) return;
   const act = activeDownloads();
-  const total = act.reduce((a, d) => a + (d.totalBytes || 0), 0);
-  const got = act.reduce((a, d) => a + (d.receivedBytes || 0), 0);
-  const p = total ? got / total : act.length ? 0.15 : 0;
+  // (a comic chapter counts its pictures, not its bytes)
+  const files = act.filter((d) => d.unit !== 'pages');
+  const total = files.reduce((a, d) => a + (d.totalBytes || 0), 0);
+  const got = files.reduce((a, d) => a + (d.receivedBytes || 0), 0);
+  let p = total ? got / total : 0;
+  const chapters = act.filter((d) => d.unit === 'pages');
+  if (chapters.length) p = (p * files.length + chapters.reduce((a, d) => a + (d.pagesTotal ? d.pagesDone / d.pagesTotal : 0), 0)) / act.length;
+  if (!p && act.length) p = 0.15;
   const C = 2 * Math.PI * 10;
   button.classList.toggle('busy', act.length > 0);
   button.innerHTML =
@@ -68,7 +73,17 @@ function renderButton() {
       : '');
 }
 
+// a comic chapter (Tải truyện tranh: main/manga.js): its pictures, done of all, and those that failed
+export function pagesStatus(d) {
+  const failed = d.pagesFailed ? t('{0} ảnh lỗi', d.pagesFailed) : '';
+  if (d.state === 'progressing') return [`${d.pagesTotal ? Math.round((d.pagesDone / d.pagesTotal) * 100) : 0}%`, t('{0}/{1} ảnh', d.pagesDone || 0, d.pagesTotal || 0), failed].filter(Boolean).join(' · ');
+  if (d.state === 'completed') return [t('Hoàn tất · {0} ảnh', d.pagesDone || 0), d.totalBytes ? fmtBytes(d.totalBytes) : '', failed].filter(Boolean).join(' · ');
+  if (d.state === 'cancelled') return t('Đã hủy');
+  return [t('Thất bại'), failed].filter(Boolean).join(' · ');
+}
+
 function statusText(d) {
+  if (d.unit === 'pages') return pagesStatus(d);
   if (d.state === 'progressing') {
     const pct = d.totalBytes ? Math.round((d.receivedBytes / d.totalBytes) * 100) + '% · ' : '';
     return `${d.paused ? t('Tạm dừng · ') : ''}${pct}${fmtBytes(d.receivedBytes)}${d.totalBytes ? ' / ' + fmtBytes(d.totalBytes) : ''}`;
@@ -79,10 +94,11 @@ function statusText(d) {
 }
 
 function row(d) {
-  const pct = d.totalBytes ? (d.receivedBytes / d.totalBytes) * 100 : 0;
+  const pages = d.unit === 'pages';
+  const pct = pages ? (d.pagesTotal ? (d.pagesDone / d.pagesTotal) * 100 : 0) : d.totalBytes ? (d.receivedBytes / d.totalBytes) * 100 : 0;
   const actions = [];
   if (d.state === 'progressing') {
-    actions.push(d.paused ? ['resume', 'play', t('Tiếp tục')] : ['pause', 'pause', t('Tạm dừng')]);
+    if (!pages) actions.push(d.paused ? ['resume', 'play', t('Tiếp tục')] : ['pause', 'pause', t('Tạm dừng')]);
     actions.push(['cancel', 'x', t('Hủy')]);
   } else if (d.state === 'completed') {
     if (d.scan?.state === 'threat') actions.push(['quarantine', 'trash', t('Cách ly')]);
@@ -94,7 +110,7 @@ function row(d) {
   const ic = d.state === 'progressing' ? (d.paused ? 'pause' : 'download') : d.state !== 'completed' ? 'x' : flagged(d) ? 'warn' : 'check';
   return `<div class="dl-row ${d.state} ${tone(d)}" data-id="${esc(d.id)}">
     <span class="dl-file">${icon(ic, 16)}</span>
-    <span class="dl-info"><span class="dl-name" title="${esc(d.path || d.filename)}">${esc(d.filename)}</span>
+    <span class="dl-info"><span class="dl-name" title="${esc(d.path || d.filename)}">${esc(d.label || d.filename)}</span>
       <span class="dl-status">${esc(statusText(d))}</span>
       ${d.state === 'progressing' ? `<span class="dl-bar"><i style="width:${pct.toFixed(1)}%"></i></span>` : ''}</span>
     <span class="dl-actions">${actions.map(([a, ic, t]) => `<button class="icon-btn" data-act="${a}" title="${t}">${icon(ic, 15)}</button>`).join('')}</span>
@@ -126,6 +142,10 @@ async function showPopover(anchor) {
     if (btn?.dataset.act === 'result') {
       closePopover();
       createTab({ url: 'tyran://scan/?id=' + encodeURIComponent(id) });
+    } else if (btn?.dataset.act === 'retry' && d?.unit === 'pages') {
+      // (a comic chapter: its page opened again, to download it from there)
+      closePopover();
+      createTab({ url: d.url });
     } else if (btn) told(await api.invoke('downloads:action', id, btn.dataset.act));
     else if (d?.state === 'completed') told(await api.invoke('downloads:action', id, 'open'));
   });
@@ -156,7 +176,7 @@ export function initDownloads() {
     S.downloads.set(d.id, d);
     renderButton();
     if (pop && isPopoverOpen()) pop.render();
-    if (isNew && d.state === 'progressing') {
+    if (isNew && d.state === 'progressing' && d.unit !== 'pages') {
       toast(t('Đang tải xuống: {0}', d.filename), { icon: 'download' });
       button?.classList.add('bump');
       setTimeout(() => button?.classList.remove('bump'), 600);
@@ -164,7 +184,7 @@ export function initDownloads() {
   });
   api.on('downloads:done', (d) => {
     if (d.private && !hasIncognito()) return;
-    toast(t('Đã tải xong: {0}', d.filename), { icon: 'check', action: { label: t('Mở'), run: () => api.invoke('downloads:action', d.id, 'open').then(told) } });
+    toast(t('Đã tải xong: {0}', d.label || d.filename), { icon: 'check', action: { label: t('Mở'), run: () => api.invoke('downloads:action', d.id, 'open').then(told) } });
   });
   // (a download just done: its result page, from main/filescan.js)
   api.on('scan:open', (id) => createTab({ url: 'tyran://scan/?id=' + encodeURIComponent(String(id)) }));

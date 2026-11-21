@@ -11,6 +11,7 @@ import { bookmarkPopover } from './bookmarks.js';
 import { toggleSidebar, openSidebar } from './sidebar.js';
 import { spectrumAt } from './visualizer.js';
 import { openDownloadsPopover } from './downloads.js';
+import { openManga } from './manga.js';
 import { nextWallpaper, toggleLobby, lobbyTouch, nextNikkeOutfit, nextNikkeExpression } from './wallpaper.js';
 import { focus as focusOmnibox } from './omnibox.js';
 import { icon } from 'tyran://shared/icons.js';
@@ -85,6 +86,8 @@ export const COMMANDS = {
     const r = active()?.wcId && (await api.invoke('wc:action', active().wcId, 'pip'));
     if (r === 'none') toast(t('Không có video nào trên trang'), { icon: 'pip' });
   } },
+  // Tải truyện tranh (manga.js): the comic chapter shown in the tab
+  'manga.open': { icon: 'image', run: () => openManga(document.querySelector('.manga-chip:not([hidden])')) },
   'bookmark.toggle': { icon: 'star', run: () => bookmarkPopover(document.querySelector('.omni-star:not([hidden])')) },
   // (as in Chrome: shown on every page, or on the new tab page only)
   'bookmark.bar': { icon: 'bookmark', run: () => api.invoke('settings:set', { layout: { bookmarksBar: S.settings.layout.bookmarksBar === 'always' ? 'newtab' : 'always' } }) },
@@ -231,6 +234,8 @@ on('context-menu', ({ tab, params: p }) => {
           } }
         : null,
       /^https?:/.test(p.srcURL) ? { label: t('Tìm ảnh này với Google Lens'), icon: 'search', run: () => createTab({ url: 'https://lens.google.com/uploadbyurl?url=' + encodeURIComponent(p.srcURL) }) } : null,
+      // (a picture of a comic chapter: all of the chapter's, at once)
+      /^https?:/.test(tab.url || '') ? { label: tab.manga >= 4 ? t('Tải cả chương truyện ({0} ảnh)…', tab.manga) : t('Tải tất cả ảnh truyện trên trang…'), icon: 'download', run: () => run('manga.open') } : null,
       { sep: true }
     );
   }
@@ -276,6 +281,7 @@ on('context-menu', ({ tab, params: p }) => {
       { label: t('Chụp màn hình trang'), icon: 'camera', hint: 'Ctrl+Shift+S', run: screenshot },
       { label: t('Lưu trang thành…'), icon: 'save', hint: 'Ctrl+S', run: () => run('page.save') },
       { label: t('In…'), icon: 'printer', hint: 'Ctrl+P', run: () => view.print() },
+      /^https?:/.test(tab.url || '') ? { label: tab.manga >= 4 ? t('Tải cả chương truyện ({0} ảnh)…', tab.manga) : t('Tải tất cả ảnh truyện trên trang…'), icon: 'image', hint: S.shortcuts?.['manga.open']?.keys?.[0] || '', run: () => run('manga.open') } : null,
       !isInternal(tab.url) ? { label: t('Dịch trang sang tiếng Việt'), icon: 'globe', run: () => createTab({ url: `https://translate.google.com/translate?sl=auto&tl=${TL}&u=${encodeURIComponent(tab.url)}` }) } : null,
       !isInternal(tab.url) ? { label: t('Xem mã nguồn trang'), icon: 'code', hint: 'Ctrl+U', run: () => createTab({ url: 'view-source:' + tab.url }) } : null,
       { sep: true }
@@ -352,6 +358,7 @@ export function openMainMenu(anchor) {
     { label: t('Tìm trong trang'), icon: 'search', hint: k('page.find'), run: () => run('page.find') },
     { label: t('Chụp màn hình trang'), icon: 'camera', hint: k('page.screenshot'), run: () => run('page.screenshot') },
     { label: t('Hình trong hình (video)'), icon: 'pip', hint: k('page.pip'), run: () => run('page.pip') },
+    { label: t('Tải truyện tranh trên trang…'), icon: 'image', hint: k('manga.open'), disabled: !/^https?:/.test(active()?.url || ''), run: () => run('manga.open') },
     { label: t('In…'), icon: 'printer', hint: k('page.print'), run: () => run('page.print') },
     { label: t('Lưu thành PDF…'), icon: 'save', run: () => run('page.pdf') },
     { sep: true },
