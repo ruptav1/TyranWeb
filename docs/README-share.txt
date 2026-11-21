@@ -1,4 +1,4 @@
-TyranWeb 1.1.85 — trình duyệt anime (Windows 10/11, 64-bit)
+TyranWeb 1.1.86 — trình duyệt anime (Windows 10/11, 64-bit)
 ==========================================================
 
 CÁCH CHẠY
@@ -127,8 +127,10 @@ GHI CHÚ
   Ctrl+Shift+M, menu ⋯, hoặc chuột phải vào trang / ảnh): tìm ảnh của chương ngay trên trang,
   đúng thứ tự đọc, cả ảnh tải chậm (lazy) và truyện dọc cắt thành nhiều dải, bỏ quảng cáo, logo,
   ảnh đại diện. Tự đọc tên truyện, tên chương và link chương sau; bấm vào ảnh để bỏ / chọn lại.
-  Mỗi chương lưu vào Tải xuống › Truyện tranh › <tên truyện> thành một file zip (mặc định), file
-  CBZ cho các app đọc truyện (kèm ComicInfo.xml) hoặc một thư mục ảnh 001.jpg, 002.jpg... Tải
+  Mỗi chương lưu thẳng vào thư mục Tải xuống, đặt theo tên truyện và chương ("One Piece - Chap 1"):
+  một file zip (mặc định), file CBZ cho các app đọc truyện (kèm ComicInfo.xml) hoặc một thư mục
+  ảnh; không tạo thêm thư mục nào khác. Mọi ảnh đều lưu dạng PNG (001.png, 002.png...), ảnh
+  JPEG, WebP, AVIF, GIF của trang được chuyển sang PNG khi tải. Tải
   bằng phiên đăng nhập của trang đó (cookie, trang làm referrer), mỗi ảnh được kiểm tra đúng là
   ảnh, lỗi thì thử lại cả ở server dự phòng của trang. "Tải tiếp N chương sau": tab tự mở lần
   lượt từng chương sau và tải giống vậy. Trang đọc từng trang (mỗi trang một địa chỉ) cũng tải

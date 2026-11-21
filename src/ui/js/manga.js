@@ -1,6 +1,6 @@
 // Tải truyện tranh: the comic chapter shown in the tab - its pictures found in the page (in reading order,
 // lazy ones too, without ads), its series and chapter names - downloaded at once into
-// Tải xuống\Truyện tranh\<series>\<chapter>.zip (or .cbz, or a folder of pictures), and on request the
+// Tải xuống\<series> - <chapter>.zip (or .cbz, or a folder of pictures), every picture a PNG, and on request the
 // chapters after it (the tab goes on to each). Reading the page and downloading: main/manga.js.
 import { api, h, esc, $, emit } from './util.js';
 import { S } from './state.js';
@@ -149,7 +149,8 @@ export function openManga(anchor) {
       dest,
       h('div', { class: 'manga-actions' }, h('button', { class: 'btn', html: `${icon('reload', 15)}<span>${esc(t('Tìm lại'))}</span>`, title: t('Cuộn hết trang rồi tìm lại ảnh'), onclick: () => read(true) }), h('span', { class: 'grow' }), go)
     );
-    const syncDest = () => (dest.textContent = t('Lưu vào: Tải xuống › Truyện tranh › {0} › {1}', series.value || '…', (chapter.value || '…') + ext()));
+    // (named after the series and the chapter, right in the download folder, as main/manga.js names it)
+    const syncDest = () => (dest.textContent = t('Lưu vào: Tải xuống › {0}', `${series.value.trim() || '…'} - ${chapter.value.trim() || '…'}${ext()}`));
     series.addEventListener('input', syncDest);
     chapter.addEventListener('input', syncDest);
     // (the choice is kept for next time)
