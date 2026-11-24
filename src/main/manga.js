@@ -2,10 +2,13 @@
 // Tải truyện tranh: the comic chapter shown in a tab - its page pictures found in the page as it is (lazily
 // loaded ones by their real addresses), in reading order, without the site's ads, logos and thumbnails; the
 // series' and the chapter's names; the link to the next chapter - downloaded with the tab's own session (its
-// cookies, the page as referrer) into the download folder as "<series> - <chapter>.zip" (the default), a
-// .cbz for comic reader apps (with a ComicInfo.xml), or a folder "<series> - <chapter>" of pictures.
+// cookies, the page as referrer) right into the download folder. By default one zip per download: one
+// chapter "<series> - <chapter>.zip", with the chapters after it "<series>.zip"; inside, the pictures under
+// <series>/<chapter>/. A .cbz for comic reader apps (with a ComicInfo.xml) or a folder of pictures
+// "<series> - <chapter>" per chapter.
 // Each file is checked to be a picture (an error page saved instead is tried again, from the site's other
-// servers too) and saved as a PNG: 001.png, 002.png… One row in Tải xuống per chapter, counting pictures.
+// servers too) and saved as a PNG: 001.png, 002.png… One row in Tải xuống per zip (or per chapter),
+// counting pictures.
 // Optionally the chapters after it: the tab goes on to each next chapter, which is read the same way (the
 // reader frame found in the first).
 // The page side runs in a script world of its own in the tab (the page's own scripts never see it). Known
@@ -503,17 +506,24 @@ function release() {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const safeName = (s, fallback) =>
-  String(s || '')
-    .replace(/[\\/:*?"<>|\u0000-\u001f]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .replace(/[. ]+$/, '')
-    .trim()
-    .slice(0, 100) || fallback;
+// a name Windows takes for a file (no reserved characters, no device name such as CON or NUL, no
+// half of a character left at the end where it is cut)
+function safeName(s, fallback, limit = 160) {
+  const name =
+    String(s || '')
+      .normalize('NFC')
+      .replace(/[\\/:*?"<>|\u0000-\u001f]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, limit)
+      .replace(/[\uD800-\uDBFF]$/, '')
+      .replace(/[. ]+$/, '') || fallback;
+  return /^(?:con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³])(?:\.|$)/i.test(name) ? '_' + name : name;
+}
 
 // what the file really is, by its first bytes (null: not a picture - an error page, most likely)
 function pictureKind(b) {
-  if (b.length < 12) return null;
+  if (!b || b.length < 12) return null;
   if (b[0] === 0xff && b[1] === 0xd8) return '.jpg';
   if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e) return '.png';
   if (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) return '.gif';
@@ -583,15 +593,14 @@ async function asPng(buf, kind) {
   }
 }
 
-// ---------------------------------------------------------------- the chapter's zip
+// ---------------------------------------------------------------- the zip
 // A zip written as its pictures come (in any order; listed by name at the end), each stored as it is (a
-// PNG is squeezed already), names in UTF-8. Written as <file>.part, so a chapter downloaded again replaces
-// its file only once the new one is whole; no folder is made for it.
+// PNG is squeezed already), names in UTF-8. Written into a file of its own in the download folder
+// (manga-<row>.part) and given its name only once it is whole.
 class ZipOut {
-  constructor(file) {
-    this.file = file;
-    this.tmp = `${file}.part`;
-    this.fd = fs.openSync(this.tmp, 'w');
+  constructor(tmp) {
+    this.tmp = tmp;
+    this.fd = fs.openSync(tmp, 'w');
     this.at = 0;
     this.list = [];
     const d = new Date();
@@ -618,8 +627,10 @@ class ZipOut {
     this.list.push({ n, crc, size: data.length, at: this.at });
     this.at += 30 + n.length + data.length;
   }
-  // the zip finished; returns where it is (beside it, under a new name, when the old one cannot be replaced)
-  close() {
+  // The zip finished and named `file`; returns where it went. `replace`: a file of that name is replaced
+  // (a .cbz downloaded again); otherwise, as one that cannot be replaced, it goes beside it as
+  // "<name> (1).zip", "(2)"… (zips of the same series may hold different chapters).
+  close(file, replace) {
     const parts = [];
     for (const e of [...this.list].sort((a, b) => Buffer.compare(a.n, b.n))) {
       const c = Buffer.alloc(46);
@@ -645,17 +656,22 @@ class ZipOut {
     end.writeUInt32LE(this.at, 16);
     fs.writeSync(this.fd, Buffer.concat([dir, end]));
     fs.closeSync(this.fd);
-    try {
-      fs.renameSync(this.tmp, this.file);
-    } catch {
-      this.file = dljobs.unique(this.file);
-      fs.renameSync(this.tmp, this.file);
+    this.fd = null;
+    for (let i = 0; i < 1000; i++) {
+      const target = i ? file.replace(/(\.[a-z]+)$/i, ` (${i})$1`) : file;
+      if (fs.existsSync(target) && !(replace && i === 0)) continue;
+      try {
+        fs.renameSync(this.tmp, target);
+        return target;
+      } catch (e) {
+        if (!fs.existsSync(target)) throw e;
+      }
     }
-    return this.file;
+    throw new Error('no free name');
   }
   abort() {
     try {
-      fs.closeSync(this.fd);
+      if (this.fd !== null) fs.closeSync(this.fd);
     } catch {}
     fs.rmSync(this.tmp, { force: true });
   }
@@ -687,9 +703,9 @@ function report(job, now = false) {
 
 // One picture, checked to be a picture: from its own address, then the other servers the site named for
 // it (Vietnamese readers keep backups in data-cdn, data-sv1…), then its own once more - up to five tries.
-// Saved as <number>.png, into the chapter's zip or folder.
-async function fetchOne(job, item, index) {
-  const name = String(index + 1).padStart(Math.max(3, String(job.total).length), '0');
+// Saved as <number>.png: in the zip under `prefix` (<series>/<chapter>/), or into the chapter's .cbz or folder.
+async function fetchOne(job, item, index, width, page, prefix) {
+  const name = String(index + 1).padStart(width, '0');
   const order = [item.url, ...(Array.isArray(item.alts) ? item.alts : [])].filter((u) => typeof u === 'string' && /^(?:https?|data|blob):/i.test(u));
   if (!order.length) return false;
   const tries = Math.min(5, Math.max(3, order.length + 1));
@@ -707,7 +723,7 @@ async function fetchOne(job, item, index) {
         const ctrl = new AbortController();
         run.live.add(ctrl);
         try {
-          const res = await fetchFrom(run.ses, url, job.page, { signal: ctrl.signal });
+          const res = await fetchFrom(run.ses, url, page, { signal: ctrl.signal });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           buf = Buffer.from(await res.arrayBuffer());
         } finally {
@@ -719,9 +735,10 @@ async function fetchOne(job, item, index) {
       // (as it came only when it cannot be turned into a PNG: better than losing the page)
       const png = await asPng(buf, kind);
       const data = png || buf;
+      const file = name + (png ? '.png' : kind);
       if (run.cancelled) break;
-      if (job.zip) job.zip.add(name + (png ? '.png' : kind), data);
-      else await fs.promises.writeFile(path.join(job.dir, name + (png ? '.png' : kind)), data);
+      if (job.zip) job.zip.add(prefix + file, data);
+      else await fs.promises.writeFile(path.join(job.dir, file), data);
       job.bytes += data.length;
       return true;
     } catch {
@@ -733,97 +750,110 @@ async function fetchOne(job, item, index) {
   return false;
 }
 
-async function runChapter(job) {
+// One chapter's pictures into its job: in a zip, under <series>/<chapter>/ (a chapter of a name already
+// in it: "<chapter> (2)"); a reader with one picture per address has its pages read first.
+async function downloadChapter(job, ch, chapter) {
   const run = job.run;
-  try {
-    if (job.ext) job.zip = new ZipOut(job.out);
-    else await fs.promises.mkdir(job.dir, { recursive: true });
-    // (a reader with one picture per address: its pages are read first)
-    if (job.pageUrls.length && !job.items.length) {
-      job.items = ((await inPage(run.wc, `pages(${JSON.stringify(job.pageUrls)}, ${JSON.stringify(job.selector)})`).catch(() => null)) || []).filter((x) => x && typeof x.url === 'string');
-      job.total = job.items.length;
-      report(job, true);
-    }
-    let next = 0;
-    const worker = async () => {
-      while (!run.cancelled && next < job.items.length) {
-        const i = next++;
-        await slot();
-        try {
-          if (run.cancelled) return;
-          (await fetchOne(job, job.items[i], i)) ? job.done++ : job.failed++;
-        } finally {
-          release();
-        }
-        report(job);
-      }
-    };
-    await Promise.all([worker(), worker(), worker(), worker()]);
-  } catch (e) {
-    console.error('manga: chapter', e);
+  let prefix = '';
+  if (job.ext === '.zip') {
+    let dir = chapter;
+    for (let n = 2; job.chapterDirs.has(dir.toUpperCase()); n++) dir = `${chapter} (${n})`;
+    job.chapterDirs.add(dir.toUpperCase());
+    prefix = `${run.series}/${dir}/`;
   }
+  let items = (Array.isArray(ch.items) ? ch.items : []).filter((x) => x && typeof x.url === 'string').slice(0, 2000);
+  const pageUrls = ch.paged && Array.isArray(ch.pageUrls) ? ch.pageUrls.filter((u) => typeof u === 'string').slice(0, 500) : [];
+  if (pageUrls.length && !items.length) {
+    items = ((await inPage(run.wc, `pages(${JSON.stringify(pageUrls)}, ${JSON.stringify(String(ch.selector || ''))})`).catch(() => null)) || []).filter((x) => x && typeof x.url === 'string');
+  }
+  job.total += items.length;
+  report(job, true);
+  const width = Math.max(3, String(items.length).length);
+  let next = 0;
+  const worker = async () => {
+    while (!run.cancelled && next < items.length) {
+      const i = next++;
+      await slot();
+      try {
+        if (run.cancelled) return;
+        (await fetchOne(job, items[i], i, width, ch.page, prefix)) ? job.done++ : job.failed++;
+      } finally {
+        release();
+      }
+      report(job);
+    }
+  };
+  await Promise.all([worker(), worker(), worker(), worker()]);
+}
+
+// the job's zip (or .cbz) closed and named, or its folder left as it is; its row told
+async function finishJob(job) {
+  const run = job.run;
+  let kept = job.done > 0 && !run.cancelled;
   let out = job.ext ? job.out : job.dir;
-  if (job.zip) {
+  if (job.ext) {
     try {
-      if (run.cancelled || !job.done) throw new Error('nothing to keep');
+      if (!kept || !job.zip) throw new Error('nothing to keep');
       if (job.ext === '.cbz') job.zip.add('ComicInfo.xml', comicInfo(job));
-      out = job.zip.close();
+      out = job.zip.close(job.out, job.ext === '.cbz');
     } catch (e) {
-      if (!run.cancelled && job.done) console.error('manga: packing', e);
-      job.zip.abort();
+      if (kept) console.error('manga: packing', e);
+      kept = false;
+      job.zip?.abort();
       out = '';
     }
+    job.zip = null;
   } else if (!job.done) {
     // (a folder that got nothing)
     await fs.promises.rmdir(job.dir).catch(() => {});
     out = '';
   }
-  const state = run.cancelled ? 'cancelled' : job.done && out ? 'completed' : 'interrupted';
+  const state = run.cancelled ? 'cancelled' : kept ? 'completed' : 'interrupted';
   let size = job.bytes;
   try {
     if (out && fs.statSync(out).isFile()) size = fs.statSync(out).size;
   } catch {}
-  job.row.finish(state, { path: out || job.out || job.dir, pagesDone: job.done, pagesTotal: job.total, pagesFailed: job.failed, receivedBytes: size, totalBytes: state === 'completed' ? size : 0 });
+  const where = out || job.out || job.dir;
+  job.row.finish(state, { path: where, label: path.basename(where), pagesDone: job.done, pagesTotal: job.total, pagesFailed: job.failed, receivedBytes: size, totalBytes: state === 'completed' ? size : 0 });
 }
 
-function addChapter(run, ch) {
-  const chapter = safeName(ch.chapter, `${t('Chương')} ${run.jobs.length + 1}`);
+// A row in Tải xuống and where it goes, right in the download folder: a zip "<series> - <chapter>.zip", or
+// "<series>.zip" holding all the chapters when the chapters after it come too; a .cbz or a folder
+// "<series> - <chapter>" per chapter.
+function newJob(run, chapter, page) {
   const ext = run.format === 'folder' ? '' : `.${run.format}`;
-  // (named after the series and the chapter, right in the download folder: "One Piece - Chap 1.zip")
-  const base = safeName(`${run.series.slice(0, 90)} - ${chapter.slice(0, 60)}`, chapter);
-  const items = (Array.isArray(ch.items) ? ch.items : []).filter((x) => x && typeof x.url === 'string').slice(0, 2000);
-  const pageUrls = ch.paged && Array.isArray(ch.pageUrls) ? ch.pageUrls.filter((u) => typeof u === 'string').slice(0, 500) : [];
+  const base = run.format === 'zip' && run.more ? run.series : safeName(`${safeName(run.series, t('Truyện tranh'), 100)} - ${safeName(chapter, t('Chương'), 60)}`, chapter);
   const job = {
     run,
     chapter,
-    page: String(ch.page || ''),
-    selector: String(ch.selector || ''),
-    items,
-    pageUrls,
+    page,
     ext,
+    chapterDirs: new Set(),
     dir: ext ? '' : path.join(run.root, base),
     out: ext ? path.join(run.root, base + ext) : '',
+    part: '',
     zip: null,
-    total: items.length || pageUrls.length,
+    total: 0,
     done: 0,
     failed: 0,
     bytes: 0,
   };
   job.row = dljobs.start({
-    url: job.page,
+    url: page,
     path: job.out || job.dir,
     mime: { '.zip': 'application/zip', '.cbz': 'application/vnd.comicbook+zip' }[ext] || 'inode/directory',
     private: run.private,
     cancel: () => cancel(run),
-    extra: { unit: 'pages', label: base + ext, pagesDone: 0, pagesTotal: job.total, pagesFailed: 0 },
+    extra: { unit: 'pages', label: base + ext, pagesDone: 0, pagesTotal: 0, pagesFailed: 0 },
   });
-  run.jobs.push(job);
-  runChapter(job);
+  if (ext) job.part = path.join(run.root, `manga-${job.row.rec.id}.part`);
   return job;
 }
 
-// sends the tab to `url` and waits until its page has loaded (and a moment for its scripts)
-function goTo(wc, url) {
+// sends the tab to `url` and waits until its page has loaded (and a moment for its scripts); false when it
+// does not, or the run is cancelled meanwhile
+function goTo(run, url) {
+  const wc = run.wc;
   return new Promise((done) => {
     if (wc.isDestroyed()) return done(false);
     let over = false;
@@ -831,12 +861,14 @@ function goTo(wc, url) {
       if (over) return;
       over = true;
       clearTimeout(timer);
+      clearInterval(watch);
       if (!wc.isDestroyed()) wc.off('did-stop-loading', stopped);
-      if (v) setTimeout(() => done(!wc.isDestroyed()), 1500);
+      if (v) setTimeout(() => done(!wc.isDestroyed() && !run.cancelled), 1500);
       else done(false);
     };
     const stopped = () => !wc.isLoadingMainFrame() && wc.getURL() !== 'about:blank' && end(true);
-    const timer = setTimeout(() => end(true), 45000);
+    const timer = setTimeout(() => end(false), 45000);
+    const watch = setInterval(() => run.cancelled && end(false), 300);
     wc.on('did-stop-loading', stopped);
     wc.once('destroyed', () => end(false));
     wc.loadURL(url).catch(() => {});
@@ -879,10 +911,11 @@ async function thumbs(wc, urls) {
 const isPrivate = (wc) => wc.session === session.fromPartition(require('./sessions').PRIVATE_PARTITION);
 
 // Starts downloading the chapter the panel showed (the user's names and choice of pictures), then, `next`
-// times, the chapter after it. Returns the first chapter's row id.
+// times, the chapter after it. Returns the first row's id.
 function start(wc, a = {}) {
   referers(wc.session);
   const g = require('./data').settings.data.general;
+  const FORMATS = ['zip', 'cbz', 'folder'];
   const run = {
     wc,
     ses: wc.session,
@@ -890,30 +923,41 @@ function start(wc, a = {}) {
     series: safeName(a.series, t('Truyện tranh')),
     root: dljobs.dir(),
     scroll: !!a.scroll,
-    format: ['zip', 'cbz', 'folder'].includes(a.format) ? a.format : ['zip', 'cbz', 'folder'].includes(g.mangaFormat) ? g.mangaFormat : 'zip',
+    format: FORMATS.includes(a.format) ? a.format : FORMATS.includes(g.mangaFormat) ? g.mangaFormat : 'zip',
+    more: Math.max(0, Math.min(200, Math.trunc(Number(a.next) || 0))),
     cancelled: false,
-    jobs: [],
     live: new Set(),
   };
-  const first = addChapter(run, { chapter: a.chapter, items: a.items, page: a.page || wc.getURL(), selector: a.selector, paged: a.paged, pageUrls: a.pageUrls });
-  let left = Math.max(0, Math.min(200, Number(a.next) || 0));
+  let chapter = safeName(a.chapter, `${t('Chương')} 1`, 80);
+  const page = String(a.page || wc.getURL());
+  const first = newJob(run, chapter, page);
   (async () => {
-    let next = typeof a.nextUrl === 'string' && /^https?:/i.test(a.nextUrl) ? a.nextUrl : '';
-    let hint = String(a.selector || '');
-    const seen = new Set([first.page]);
-    while (left-- > 0 && next && !seen.has(next) && !run.cancelled) {
-      seen.add(next);
-      if (!(await goTo(wc, next)) || run.cancelled) break;
-      let s;
-      try {
-        s = await scan(wc, { scroll: run.scroll, hint });
-      } catch {
-        break;
+    let job = first;
+    let ch = { items: a.items, paged: !!a.paged, pageUrls: a.pageUrls, selector: String(a.selector || ''), page, next: typeof a.nextUrl === 'string' && /^https?:/i.test(a.nextUrl) ? a.nextUrl : '' };
+    const seen = new Set([page]);
+    try {
+      for (let i = 0; ; i++) {
+        if (!job) job = newJob(run, chapter, ch.page);
+        if (job.ext && !job.zip) job.zip = new ZipOut(job.part);
+        else if (!job.ext) await fs.promises.mkdir(job.dir, { recursive: true });
+        await downloadChapter(job, ch, chapter);
+        // (a .cbz or a folder per chapter; the zip holds them all)
+        if (run.format !== 'zip') {
+          await finishJob(job);
+          job = null;
+        }
+        if (i >= run.more || !ch.next || seen.has(ch.next) || run.cancelled) break;
+        seen.add(ch.next);
+        if (!(await goTo(run, ch.next)) || run.cancelled) break;
+        const s = await scan(wc, { scroll: run.scroll, hint: ch.selector });
+        if (run.cancelled || !s || (!s.items.length && !s.paged)) break;
+        ch = { ...s, page: s.url, selector: s.selector || ch.selector, next: s.next };
+        chapter = safeName(s.chapter, `${t('Chương')} ${i + 2}`, 80);
       }
-      if (!s || (!s.items.length && !s.paged)) break;
-      addChapter(run, { chapter: s.chapter, items: s.items, page: s.url, selector: s.selector || hint, paged: s.paged, pageUrls: s.pageUrls });
-      next = s.next;
-      hint = s.selector || hint;
+    } catch (e) {
+      console.error('manga: download', e);
+    } finally {
+      if (job) await finishJob(job);
     }
   })();
   return first.row.rec.id;

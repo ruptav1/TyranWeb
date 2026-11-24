@@ -1,7 +1,8 @@
 // Tải truyện tranh: the comic chapter shown in the tab - its pictures found in the page (in reading order,
 // lazy ones too, without ads), its series and chapter names - downloaded at once into
-// Tải xuống\<series> - <chapter>.zip (or .cbz, or a folder of pictures), every picture a PNG, and on request the
-// chapters after it (the tab goes on to each). Reading the page and downloading: main/manga.js.
+// Tải xuống as one zip ("<series> - <chapter>.zip", or "<series>.zip" with the chapters after it, which the
+// tab goes on to), or a .cbz or a folder per chapter; every picture a PNG. Reading the page and
+// downloading: main/manga.js.
 import { api, h, esc, $, emit } from './util.js';
 import { S } from './state.js';
 import { active, byWc } from './tabs.js';
@@ -149,10 +150,20 @@ export function openManga(anchor) {
       dest,
       h('div', { class: 'manga-actions' }, h('button', { class: 'btn', html: `${icon('reload', 15)}<span>${esc(t('Tìm lại'))}</span>`, title: t('Cuộn hết trang rồi tìm lại ảnh'), onclick: () => read(true) }), h('span', { class: 'grow' }), go)
     );
-    // (named after the series and the chapter, right in the download folder, as main/manga.js names it)
-    const syncDest = () => (dest.textContent = t('Lưu vào: Tải xuống › {0}', `${series.value.trim() || '…'} - ${chapter.value.trim() || '…'}${ext()}`));
+    // (right in the download folder, as main/manga.js names it: a zip of one chapter "<series> -
+    // <chapter>.zip", of the chapters after it too "<series>.zip", its pictures under <series>/<chapter>/;
+    // a .cbz or a folder per chapter)
+    const syncDest = () => {
+      const title = series.value.trim() || '…';
+      const chap = chapter.value.trim() || '…';
+      const grouped = format.value === 'zip' && Number(nextN.value) >= 1;
+      const filename = (grouped ? title : `${title} - ${chap}`) + ext();
+      dest.textContent = t('Lưu vào: Tải xuống › {0}', format.value === 'zip' ? `${filename} › ${title} › ${chap} › 001.png` : filename);
+      dest.title = dest.textContent;
+    };
     series.addEventListener('input', syncDest);
     chapter.addEventListener('input', syncDest);
+    nextN.addEventListener('input', syncDest);
     // (the choice is kept for next time)
     format.addEventListener('change', () => {
       syncDest();

@@ -1,6 +1,9 @@
 halo halo 👋 👋, this is my web browser with cool UI and some features, feel free to share with everyone
 
-[Download TyranWeb](https://github.com/ruptav1/TyranWeb/releases/download/v1.1.86/TyranWeb-1.1.86-win-x64.zip)
+[Download TyranWeb](https://github.com/ruptav1/TyranWeb/releases/download/v1.1.87/TyranWeb-1.1.87-win-x64.zip)
+
+New in 1.1.87:
+- **Comic downloader**: one zip per download. One chapter: "One Piece - Chap 1.zip"; with the next chapters: all of them in "One Piece.zip". Inside, the pictures are in a folder per chapter ("One Piece/Chap 1/001.png"). A zip of a name already there is saved as "One Piece (1).zip". CBZ and folders are still one per chapter.
 
 New in 1.1.86:
 - **Comic downloader**: each chapter is saved right into Downloads, named after the series and the chapter ("One Piece - Chap 1.zip", or a folder "One Piece - Chap 1"), with no extra folder. Every picture is saved as a PNG (001.png, 002.png…); JPEG, WebP, AVIF and GIF pages are turned into PNG as they download.
