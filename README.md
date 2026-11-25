@@ -1,5 +1,7 @@
 halo halo 👋 👋, this is my web browser with cool UI and some features, feel free to share with everyone
 
+Dont like chromium? Try Wings: https://github.com/ruptav1/Wings
+
 [Download TyranWeb](https://github.com/ruptav1/TyranWeb/releases/download/v1.1.87/TyranWeb-1.1.87-win-x64.zip)
 
 New in 1.1.87:
