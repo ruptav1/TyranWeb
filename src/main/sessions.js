@@ -2,7 +2,7 @@
 // Browsing sessions (normal + private): user agent, permissions, downloads, privacy headers.
 const fs = require('fs');
 const path = require('path');
-const { app, session, BrowserWindow, webContents, shell, dialog, desktopCapturer } = require('electron');
+const { app, session, BrowserWindow, webContents, shell, dialog, desktopCapturer, nativeImage } = require('electron');
 const data = require('./data');
 const protocol = require('./protocol');
 const adblock = require('./adblock');
@@ -206,7 +206,18 @@ function serializeDownload(id, item, extra = {}) {
 }
 
 function setupDownloads(ses, isPrivate) {
-  ses.on('will-download', (event, item) => {
+  ses.on('will-download', (event, item, wc) => {
+    // (a file asked for through Đổi vị trí's Tor: asked for again on this computer's own network,
+    // at its full speed, the user's choice; its host goes straight out for a while: main/vpn.js)
+    const vpn = require('./vpn');
+    const from = item.getURL();
+    if (vpn.routed() && /^https?:/i.test(from) && !vpn.goesDirect(from)) {
+      event.preventDefault();
+      vpn.direct(from);
+      const ref = wc && !wc.isDestroyed() && /^https?:/i.test(wc.getURL()) ? wc.getURL() : '';
+      Promise.resolve(ses.closeAllConnections?.()).finally(() => (wc && !wc.isDestroyed() ? wc.downloadURL(from, ref ? { headers: { Referer: ref } } : undefined) : ses.downloadURL(from)));
+      return;
+    }
     const g = data.settings.data.general;
     const dir = g.downloadDir && fs.existsSync(g.downloadDir) ? g.downloadDir : app.getPath('downloads');
     if (!g.askDownloadLocation) item.setSavePath(uniquePath(dir, item.getFilename()));
@@ -282,6 +293,28 @@ async function downloadAction(id, action) {
   return true;
 }
 
+// A finished download dragged out of a list (Tải xuống gần đây, the Tải xuống page): the file itself,
+// as File Explorer gives one. A page's upload box takes it; dropped on a page or the tabs it opens
+// there; into a folder or another program it is copied. Not one a threat was found in.
+async function downloadDrag(wc, id) {
+  const record = data.downloadStore.data.items.find((d) => d.id === id);
+  const file = record?.path;
+  let st = null;
+  try {
+    st = file ? fs.statSync(file) : null;
+  } catch {
+    /* gone */
+  }
+  if (!st?.isFile()) return 'missing';
+  // (still being scanned: not waited on for long, the mouse is down)
+  const ok = await Promise.race([require('./filescan').mayOpen(id, file), new Promise((r) => setTimeout(() => r(true), 250))]);
+  if (!ok) return 'threat';
+  let icon = await app.getFileIcon(file, { size: 'normal' }).catch(() => null);
+  if (!icon || icon.isEmpty()) icon = nativeImage.createFromPath(path.join(__dirname, '..', '..', 'assets', 'icon', 'icon.png')).resize({ width: 32 });
+  if (!wc.isDestroyed()) wc.startDrag({ file, icon });
+  return true;
+}
+
 function clearDownloads() {
   data.downloadStore.data.items = [];
   data.downloadStore.save();
@@ -299,6 +332,7 @@ function setupSession(ses, isPrivate) {
     if (!data.settings.data.privacy.doNotTrack) return cb({});
     cb({ requestHeaders: { ...details.requestHeaders, DNT: '1', 'Sec-GPC': '1' } });
   });
+  step(ses, 'onBeforeRequest', 'region', require('./searchregion').step); // (Kết quả tìm kiếm ở)
   privacy.apply(ses, data.settings.data.privacy);
   require('./fingerprint').setup(ses); // (Brave's protections in the pages, WebRTC)
   adblock.attach(ses);
@@ -383,6 +417,7 @@ async function clearPrivate() {
 }
 
 module.exports = {
+  downloadDrag,
   cleanUserAgent,
   PARTITION,
   PRIVATE_PARTITION,

@@ -12,6 +12,7 @@
     <style>
       /* Nhóm tab: a window's tabs when it closed, reopened whole (history.js) */
       .single-head .seg { margin-left: 14px; }
+      .single-head [hidden] { display: none !important; }
       .group-icons { display: flex; flex: none; gap: 3px; max-width: 190px; overflow: hidden; }
       .group-icons img, .group-icons .favicon, .group-icons .fav-letter { flex: none; }
       .group-tabs { display: flex; flex-direction: column; margin: 0 0 8px 64px; border-left: 2px solid var(--line); }
@@ -28,15 +29,46 @@
       .scan-row.lv-warn { background: rgba(230, 170, 30, 0.13); }
       .scan-row.lv-warn:hover { background: rgba(230, 170, 30, 0.2); }
       .scan-row.lv-warn .li-sub, .scan-row.lv-warn .scan-ico { color: #b7860b; }
+      /* Trang web and Ẩn danh: a time span, by time or per site, an order, one site, how many */
+      .hist-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: -6px 0 14px; }
+      .hist-tools[hidden], .hist-tools [hidden] { display: none !important; }
+      .hist-tools input[type='date'] { height: var(--control-h); }
+      .hist-tools .dash { color: var(--text-3); }
+      .site-chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px 0 10px; border-radius: 99px; background: var(--accent-soft); color: var(--accent-strong); font-weight: 600; }
+      .site-chip .icon-btn { width: 22px; height: 22px; }
+      .hist-count { color: var(--text-3); font-size: 0.92em; }
+      .visits { margin-left: 8px; padding: 1px 7px; border-radius: 99px; background: var(--hover); color: var(--text-2); font-size: 0.82em; font-weight: 600; }
+      .list-item .time.dated { width: auto; min-width: 54px; }
+      /* Theo trang web: a site's row, opened: a search in that site and its pages */
+      .site-row { cursor: pointer; }
+      .site-row .chev { display: grid; flex: none; place-items: center; width: 18px; color: var(--text-3); transition: transform 0.15s; }
+      .site-row.open .chev { transform: rotate(90deg); }
+      .site-count { flex: none; min-width: 34px; color: var(--text-2); font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
+      .site-inside { display: flex; flex-direction: column; gap: 4px; margin: 2px 0 10px 30px; padding-left: 12px; border-left: 2px solid var(--line); }
+      .site-inside[hidden] { display: none; }
+      .site-inside .site-q { max-width: 360px; margin: 4px 0; }
+      .site-inside .btn { align-self: flex-start; }
+      .site-empty { padding: 8px 4px; }
+      .icon-btn.armed { color: #d64545; background: rgba(214, 69, 69, 0.13); }
+      /* Ẩn danh, locked: the PIN asked for */
+      main.locked #q, main.locked #tools, main.locked #clear { display: none !important; }
+      .lock-box { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 56px 20px; text-align: center; }
+      .lock-ico { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-strong); }
+      .lock-box b { font-size: 1.15em; }
+      .lock-box .pin { width: 200px; height: 46px; font-size: 1.5em; letter-spacing: 0.5em; text-align: center; }
+      .lock-err { min-height: 1.3em; color: #d64545; }
+      .lock-box.shake .pin { animation: shake 0.35s; }
+      @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
     </style>
   </head>
   <body>
-    <main class="single">
+    <main class="single" id="main">
       <header class="single-head">
         <img src="tyran://shared/logo.svg" alt="" />
         <h1 class="page-title">Lịch sử</h1>
-        <div class="seg" id="mode"><button type="button" data-mode="pages">Trang web</button><button type="button" data-mode="groups">Nhóm tab</button><button type="button" data-mode="scans">Đã quét</button></div>
+        <div class="seg" id="mode"><button type="button" data-mode="pages">Trang web</button><button type="button" data-mode="groups">Nhóm tab</button><button type="button" data-mode="scans">Đã quét</button><button type="button" data-mode="private" hidden>Ẩn danh</button></div>
         <span class="grow"></span>
+        <button class="btn" id="lock" hidden><span data-icon="lock" data-size="15"></span><span>Khóa</span></button>
         <select id="range">
           <option value="3600000">1 giờ qua</option>
           <option value="86400000">24 giờ qua</option>
@@ -46,6 +78,24 @@
         <button class="btn" id="clear"><span data-icon="trash" data-size="15"></span><span>Xóa lịch sử</span></button>
       </header>
       <input id="q" class="input search-big" type="search" placeholder="Tìm trong lịch sử…" />
+      <div class="hist-tools" id="tools" hidden>
+        <select id="span" title="Khoảng thời gian">
+          <option value="all">Mọi lúc</option>
+          <option value="hour">1 giờ qua</option>
+          <option value="today">Hôm nay</option>
+          <option value="yesterday">Hôm qua</option>
+          <option value="week">7 ngày qua</option>
+          <option value="month">30 ngày qua</option>
+          <option value="thismonth">Tháng này</option>
+          <option value="custom">Chọn ngày…</option>
+        </select>
+        <span id="custom" hidden><input type="date" id="from" class="input" title="Từ ngày" /> <span class="dash">–</span> <input type="date" id="to" class="input" title="Đến ngày" /></span>
+        <div class="seg" id="view"><button type="button" data-view="time">Theo thời gian</button><button type="button" data-view="sites">Theo trang web</button></div>
+        <select id="sort" title="Sắp xếp"></select>
+        <span id="site-chip" class="site-chip" hidden></span>
+        <span class="grow"></span>
+        <span id="count" class="hist-count"></span>
+      </div>
       <div id="list" class="list"></div>
       <div id="more" class="faint center-note"></div>
     </main>

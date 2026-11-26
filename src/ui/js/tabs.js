@@ -128,6 +128,12 @@ function snapshot(tab) {
 
 // ---------------------------------------------------------------- webview events
 function wire(tab, wv) {
+  // a page opened goes into the history; an incognito tab's only into its own, encrypted, when that
+  // is switched on (Settings → Ẩn danh, main/privhistory.js)
+  const record = (kind, entry) => {
+    if (!tab.incognito) api.invoke(`history:${kind}`, entry);
+    else if (S.settings?.privacy?.privateHistory) api.invoke(`privhistory:${kind}`, entry).catch(() => {});
+  };
   const update = () => {
     renderTab(tab);
     if (tab.id === T.activeId || inVisibleSplit(tab)) emit('tab:update', tab);
@@ -166,7 +172,7 @@ function wire(tab, wv) {
     tab.pane?.classList.toggle('internal', isInternal(e.url));
     syncNav(tab);
     applyZoom(tab);
-    if (!tab.incognito) api.invoke('history:add', { url: e.url, favicon: tab.favicon });
+    record('add', { url: e.url, favicon: tab.favicon });
     update();
     saveSession();
   });
@@ -175,14 +181,14 @@ function wire(tab, wv) {
     if (!e.isMainFrame) return;
     tab.url = e.url;
     syncNav(tab);
-    if (!tab.incognito) api.invoke('history:add', { url: e.url, title: tab.title });
+    record('add', { url: e.url, title: tab.title });
     update();
     saveSession();
   });
 
   wv.addEventListener('page-title-updated', (e) => {
     tab.title = e.title || tab.url;
-    if (!tab.incognito) api.invoke('history:update', { url: tab.url, title: tab.title });
+    record('update', { url: tab.url, title: tab.title });
     update();
     saveSession();
   });
@@ -191,7 +197,7 @@ function wire(tab, wv) {
     const icon = (e.favicons || []).find((f) => /^(https?:|data:image\/)/.test(f));
     if (!icon || isInternal(tab.url)) return;
     tab.favicon = icon;
-    if (!tab.incognito) api.invoke('history:update', { url: tab.url, favicon: icon });
+    record('update', { url: tab.url, favicon: icon });
     update();
     saveSession();
   });
@@ -326,6 +332,14 @@ export function activate(id, { focus = true } = {}) {
   emit('active', tab);
   if (focus) focusTab(tab);
   saveSession();
+  // (Lịch sử → Ẩn danh, opened with its PIN, locks once its tab is out of sight)
+  if (prev && prev !== tab && !inVisibleSplit(prev) && /^tyran:\/\/history/.test(prev.url || '') && prev.webview) {
+    try {
+      api.invoke('privhistory:hidden', prev.webview.getWebContentsId()).catch(() => {});
+    } catch {
+      /* (not loaded yet) */
+    }
+  }
 }
 
 export function focusTab(tab = active()) {
@@ -892,12 +906,20 @@ function wireStrip(strip) {
   window.addEventListener('pointerup', finish);
   window.addEventListener('pointercancel', finish);
 
-  // links dropped on the strip open in a tab there
+  // links dropped on the strip open in a tab there; files too (from File Explorer, or a download
+  // dragged out of Tải xuống gần đây), each in a tab of its own
   scroll.addEventListener('dragover', (e) => e.preventDefault());
-  scroll.addEventListener('drop', (e) => {
+  scroll.addEventListener('drop', async (e) => {
     e.preventDefault();
+    const at = indexAt(e.clientX, e.clientY);
+    const paths = [...(e.dataTransfer.files || [])].map((f) => api.pathOf?.(f)).filter(Boolean);
+    if (paths.length) {
+      const urls = await api.invoke('files:urls', paths).catch(() => []);
+      urls.forEach((url, i) => createTab({ url, index: at + i, background: i > 0 }));
+      return;
+    }
     const url = (e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain') || '').split('\n')[0].trim();
-    if (/^https?:\/\//i.test(url)) createTab({ url, index: indexAt(e.clientX, e.clientY) });
+    if (/^https?:\/\//i.test(url)) createTab({ url, index: at });
   });
 
   // where the strip is, for a tab dragged from another window (main/windows.js stripAt)

@@ -76,8 +76,6 @@ async function cookieFile(ses, url) {
   return file;
 }
 
-// (through the WARP proxy when TyranWeb's pages go through it; socks5h: names are looked up by WARP too)
-const viaWarp = () => require('./warp').proxy().replace(/^socks5:/, 'socks5h:');
 const common = (ck, ff) => [
   '--color', 'never',
   '--encoding', 'utf-8',
@@ -87,7 +85,6 @@ const common = (ck, ff) => [
   '--cache-dir', path.join(tools.DIR, 'cache'),
   ...(ck ? ['--cookies', ck] : []),
   ...(ff ? ['--ffmpeg-location', ff] : []),
-  ...(viaWarp() ? ['--proxy', viaWarp()] : []),
 ];
 
 // what went wrong, from yt-dlp's last error line

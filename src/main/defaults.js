@@ -12,6 +12,7 @@ const SETTINGS = {
     searchEngine: 'google',
     customSearchUrl: 'https://www.google.com/search?q=%s',
     searchSuggestions: true,
+    searchRegion: '', // the country search results are for (main/searchregion.js); '' the engine's own choice
     askDownloadLocation: false,
     downloadDir: '',
     scanDownloads: true, // finished downloads scanned by Windows Defender (main/filescan.js)
@@ -154,6 +155,9 @@ const SETTINGS = {
     languages: true,
     webrtc: true,
     clearOnExit: false,
+    // Lịch sử tab ẩn danh (Settings → Ẩn danh): the pages incognito tabs open, kept encrypted
+    // (main/privhistory.js); off until switched on
+    privateHistory: false,
     cookiesSealed: false, // saved cookies written again once, encrypted (main/cookieseal.js)
     // Dọn rác (main/cleaner.js): TyranWeb's caches and leftovers, Windows' temp files older than a week,
     // by itself once a week at start; when it was last done
@@ -161,7 +165,11 @@ const SETTINGS = {
     cleanTemp: true,
     autoClean: true,
     cleanedAt: 0,
-    warp: false, // the pages through Cloudflare WARP's proxy (main/warp.js)
+    vpn: false, // Đổi vị trí: the pages through Tor (main/vpn.js)
+    vpnCountry: '', // ...its exit in this country ('' any)
+    vpnMode: 'all', // every site through it ('all', but vpnSkip) or only the ones chosen ('only': vpnOnly)
+    vpnSkip: [],
+    vpnOnly: [],
   },
   shortcuts: {},
   sitePermissions: {},

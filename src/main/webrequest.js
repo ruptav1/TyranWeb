@@ -3,13 +3,13 @@
 // of the browser's own steps need the same events. Each step is (details, callback) like Electron's
 // own listeners; they run in ORDER, a cancel or redirect ends the chain, and header changes pass on
 // to the next step.
-//  - onBeforeRequest: 'debounce', 'params' (trackers' pages skipped, tracking parameters taken off:
-//    tracking.js), 'https' (HTTPS-only, privacy.js), 'adblock', 'notices' (cookie notices: adblock.js)
+//  - onBeforeRequest: 'vpnfiles' (files straight out, not through Đổi vị trí's Tor: vpn.js), 'debounce', 'params' (trackers' pages skipped, tracking parameters taken off:
+//    tracking.js), 'region' (Kết quả tìm kiếm ở: searchregion.js), 'https' (HTTPS-only, privacy.js), 'adblock', 'notices' (cookie notices: adblock.js)
 //  - onBeforeSendHeaders: 'cookies' (third-party cookies, privacy.js), 'dnt' (sessions.js), 'lang' (one
 //    language: fingerprint.js), 'referer' (the
 //    referrer of what TyranWeb fetches for a page: mediaprobe.js)
 //  - onHeadersReceived: 'adblock' (its CSP rules), 'cookies', 'media' (Truy tìm video: sniffer.js, looks only)
-const ORDER = ['debounce', 'params', 'https', 'adblock', 'notices', 'cookies', 'dnt', 'lang', 'referer', 'media'];
+const ORDER = ['vpnfiles', 'debounce', 'params', 'region', 'https', 'adblock', 'notices', 'cookies', 'dnt', 'lang', 'referer', 'media'];
 const hubs = new WeakMap(); // session -> { event: Map(name -> step) }
 
 function stepsOf(ses, event) {

@@ -796,7 +796,7 @@ body.lobby #app {
   text-align: center;
   pointer-events: none;
 }
-/* the address bar's shield (the ad blocker on this site) and VPN (Cloudflare WARP): shields.js */
+/* the address bar's shield (the ad blocker on this site) and VPN (Đổi vị trí, Tor): shields.js */
 .omni-shield {
   position: relative;
   flex: none;
@@ -847,6 +847,10 @@ body.lobby #app {
 .vpn-ico {
   background: rgba(47, 124, 246, 0.14);
   color: #2f7cf6;
+}
+.region-ico {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 .vpn-extra {
   display: flex;
@@ -988,6 +992,19 @@ body.lobby #app {
 }
 .omni-chip.manga-chip:hover {
   filter: brightness(1.08);
+}
+/* a search engine's results page: the country they are for (Kết quả tìm kiếm ở) */
+.omni-chip.region-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 7px;
+}
+.omni-chip.region-chip[hidden] {
+  display: none;
+}
+.omni-chip.region-chip:hover {
+  filter: brightness(0.96);
 }
 .omni-star {
   width: calc(var(--control-h) - 4px) !important;

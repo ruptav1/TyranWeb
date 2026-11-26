@@ -7,6 +7,7 @@ const { app } = require('electron');
 const { JsonStore, deepMerge } = require('./store');
 const { SETTINGS, BOOKMARKS } = require('./defaults');
 const { t } = require('./i18n');
+const histquery = require('./histquery');
 
 // TyranWeb's own data (these files, the wallpapers, downloaded characters, extensions...) lives in
 // the profile folder (userData) or wherever it was moved to (Settings → Giới thiệu → Thư mục dữ
@@ -56,6 +57,8 @@ if ('showBookmarksBar' in settings.data.layout) {
 // (Kiểm tra tệp: only programs, scripts and archives with them inside are scanned now, so "all files"
 // means those, as "programs and archives" does)
 if (settings.data.general.scanTab === 'all') settings.data.general.scanTab = 'risky';
+// (Cloudflare WARP gave way to Tor, main/vpn.js: off until asked for, as Tor is fetched then)
+delete settings.data.privacy.warp;
 if (settings.data.general.vtUpload === 'all') settings.data.general.vtUpload = 'risky';
 const historyStore = new JsonStore(path.join(dir, 'history.json'), { visits: [] }, { delay: 1500 });
 const bookmarkStore = new JsonStore(path.join(dir, 'bookmarks.json'), BOOKMARKS);
@@ -115,30 +118,22 @@ const history = {
     }
     return out;
   },
-  // Aggregated per-URL entries ranked by "frecency" for the address bar.
-  suggest(text, limit = 6) {
-    const q = text.trim().toLowerCase();
-    if (!q) return [];
-    const now = Date.now();
-    const byUrl = new Map();
-    const visits = historyStore.data.visits;
-    for (let i = visits.length - 1; i >= 0; i--) {
-      const v = visits[i];
-      const u = v.url.toLowerCase();
-      const t = (v.title || '').toLowerCase();
-      if (!u.includes(q) && !t.includes(q)) continue;
-      const age = (now - v.time) / 86400000;
-      const w = age < 1 ? 100 : age < 7 ? 70 : age < 30 ? 50 : age < 90 ? 30 : 10;
-      const hit = byUrl.get(v.url);
-      if (hit) hit.score += w;
-      else {
-        const host = u.replace(/^https?:\/\/(www\.)?/, '');
-        const prefix = host.startsWith(q) ? 400 : 0;
-        byUrl.set(v.url, { url: v.url, title: v.title, favicon: v.favicon, score: w + prefix });
-      }
+  // Lịch sử's list: the words typed (with or without marks), a site, a time span, an order
+  // (main/histquery.js)
+  find: (f) => histquery.find(historyStore.data.visits, f),
+  // ...the same visits counted per site (Theo trang web)
+  domains: (f) => histquery.domains(historyStore.data.visits, f),
+  // ...and taken out, all those matching (the words typed, the site, the time span): how many
+  removeWhere(f) {
+    const { keep, removed } = histquery.without(historyStore.data.visits, f);
+    if (removed) {
+      historyStore.data.visits = keep;
+      historyStore.save();
     }
-    return [...byUrl.values()].sort((a, b) => b.score - a.score).slice(0, limit);
+    return removed;
   },
+  // The address bar's suggestions: each page once, by how often and how lately it was opened.
+  suggest: (text, limit = 6) => histquery.suggest(historyStore.data.visits, text, limit),
   topSites(limit = 8) {
     const counts = new Map();
     for (const v of historyStore.data.visits.slice(-5000)) {

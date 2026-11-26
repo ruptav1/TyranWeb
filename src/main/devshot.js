@@ -30,6 +30,8 @@ module.exports = function devshot() {
     const pages = webContents.getAllWebContents().map((wc) => ({ pid: wc.getOSProcessId(), kind: wc.getType(), url: wc.getURL().slice(0, 70) }));
     return app.getAppMetrics().map((m) => ({ pid: m.pid, type: m.type, cpu: +m.cpu.percentCPUUsage.toFixed(1), mb: Math.round(m.memory.workingSetSize / 1024), pages: pages.filter((p) => p.pid === m.pid).map((p) => `${p.kind} ${p.url}`) }));
   });
+  // TYRAN_SHOT_MARK=<file>: written when a step says so (dev:mark), for a tool outside waiting on it
+  require('electron').ipcMain.handle('dev:mark', (e, text = '') => process.env.TYRAN_SHOT_MARK && fs.writeFileSync(process.env.TYRAN_SHOT_MARK, String(text)));
   let done = false;
   app.on('browser-window-created', (e, win) => {
     if (done) return;

@@ -1,16 +1,18 @@
 'use strict';
 // Preload for the browser shell (tyran://app). Exposes a small, typed IPC bridge.
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 const EVENTS = new Set([
   'settings:changed', 'shortcuts:changed', 'bookmarks:changed', 'history:changed',
   'downloads:update', 'downloads:done', 'downloads:changed', 'downloads:threat', 'scan:open',
-  'tab:open', 'command', 'perm:request', 'adblock:count', 'win:state', 'win:placement', 'share:request', 'share:tab', 'closed:cleared', 'audio:other', 'media:found', 'grab:tool', 'manga:hint', 'tabs:adopt', 'win:mergeInto', 'adblock:engine', 'warp:routed', 'cursor:changed', 'extensions:changed', 'crx:activate', 'crx:close', 'ext:popup-size',
+  'tab:open', 'command', 'perm:request', 'adblock:count', 'win:state', 'win:placement', 'share:request', 'share:tab', 'closed:cleared', 'audio:other', 'media:found', 'grab:tool', 'manga:hint', 'tabs:adopt', 'win:mergeInto', 'adblock:engine', 'vpn:routed', 'vpn:changed', 'cursor:changed', 'extensions:changed', 'crx:activate', 'crx:close', 'ext:popup-size',
   'nikke:changed', 'azur:changed', 'sekai:changed', 'apps:changed', 'update:state',
 ]);
 
 contextBridge.exposeInMainWorld('tyran', {
   invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
+  // where a file dropped on the window is on the disk (files dropped on the tabs open there)
+  pathOf: (file) => webUtils.getPathForFile(file),
   on(channel, cb) {
     if (!EVENTS.has(channel)) throw new Error('Unknown event ' + channel);
     const fn = (_e, ...args) => cb(...args);

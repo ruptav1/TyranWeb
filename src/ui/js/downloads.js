@@ -108,7 +108,9 @@ function row(d) {
     actions.push(['retry', 'reload', t('Thử lại')]); // (not one Defender stopped)
   }
   const ic = d.state === 'progressing' ? (d.paused ? 'pause' : 'download') : d.state !== 'completed' ? 'x' : flagged(d) ? 'warn' : 'check';
-  return `<div class="dl-row ${d.state} ${tone(d)}" data-id="${esc(d.id)}">
+  // (a finished one can be dragged out: into a page, onto the tabs, into a folder)
+  const drag = d.state === 'completed' && d.scan?.state !== 'removed' && d.scan?.state !== 'threat';
+  return `<div class="dl-row ${d.state} ${tone(d)}" data-id="${esc(d.id)}"${drag ? ` draggable="true" title="${esc(t('Kéo vào trang web, thanh tab hoặc thư mục'))}"` : ''}>
     <span class="dl-file">${icon(ic, 16)}</span>
     <span class="dl-info"><span class="dl-name" title="${esc(d.path || d.filename)}">${esc(d.label || d.filename)}</span>
       <span class="dl-status">${esc(statusText(d))}</span>
@@ -128,6 +130,15 @@ async function showPopover(anchor) {
       <div class="pop-foot"><button class="btn ghost small" data-all>${t('Xem tất cả')}</button></div>`;
   };
   render();
+  // a finished download dragged out: the file itself, as File Explorer gives one (main/sessions.js
+  // downloadDrag). The popover goes at once: its backdrop over the page would take the drop.
+  body.addEventListener('dragstart', (e) => {
+    const rowEl = e.target.closest('.dl-row[draggable="true"]');
+    if (!rowEl) return;
+    e.preventDefault();
+    api.invoke('downloads:drag', rowEl.dataset.id).then(told, () => {});
+    closePopover();
+  });
   body.addEventListener('click', async (e) => {
     if (e.target.closest('[data-all]')) {
       closePopover();

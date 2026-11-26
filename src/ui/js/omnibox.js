@@ -5,7 +5,8 @@ import { S } from './state.js';
 import { T, active, activate, navigate, createTab } from './tabs.js';
 import { icon } from 'tyran://shared/icons.js';
 import { t } from 'tyran://shared/i18n.js';
-import { shieldPopover, vpnPopover, shieldState, vpnState } from './shields.js';
+import { shieldPopover, vpnPopover, regionPopover, shieldState, vpnState } from './shields.js';
+import { regionName } from 'tyran://shared/regions.js';
 
 let box;
 let input;
@@ -13,6 +14,7 @@ let display;
 let siteBtn;
 let zoomBadge;
 let mangaChip;
+let regionChip;
 let starBtn;
 let shieldBtn;
 let vpnBtn;
@@ -29,11 +31,13 @@ export function buildOmnibox() {
   zoomBadge = h('button', { class: 'omni-chip zoom-chip', hidden: true, title: t('Mức thu phóng — bấm để đặt lại') });
   // (a page showing a comic chapter: its pictures can be downloaded - manga.js)
   mangaChip = h('button', { class: 'omni-chip manga-chip', hidden: true, title: t('Tải truyện tranh (Ctrl+Shift+M)') });
+  // (a search engine's results page: the country they are for - main/searchregion.js)
+  regionChip = h('button', { class: 'omni-chip region-chip', hidden: true });
   starBtn = h('button', { class: 'omni-star icon-btn', title: t('Thêm dấu trang (Ctrl+D)'), html: icon('star', 16) });
   // (the ad blocker on this site, and the VPN: shields.js)
   shieldBtn = h('button', { class: 'omni-shield icon-btn' });
-  vpnBtn = h('button', { class: 'omni-vpn', text: 'VPN', title: 'VPN · Cloudflare WARP' });
-  box = h('div', { class: 'omnibox' }, siteBtn, h('div', { class: 'omni-field' }, input, display), mangaChip, zoomBadge, shieldBtn, vpnBtn, starBtn);
+  vpnBtn = h('button', { class: 'omni-vpn', text: 'VPN', title: t('Đổi vị trí · Tor') });
+  box = h('div', { class: 'omnibox' }, siteBtn, h('div', { class: 'omni-field' }, input, display), regionChip, mangaChip, zoomBadge, shieldBtn, vpnBtn, starBtn);
 
   input.addEventListener('focus', () => {
     box.classList.add('focused');
@@ -64,6 +68,7 @@ export function buildOmnibox() {
   input.addEventListener('keydown', onKey);
   zoomBadge.addEventListener('click', () => emit('command', { id: 'page.zoomReset' }));
   mangaChip.addEventListener('click', () => emit('command', { id: 'manga.open' }));
+  regionChip.addEventListener('click', () => regionPopover(regionChip));
   starBtn.addEventListener('click', () => emit('bookmark-popover', starBtn));
   siteBtn.addEventListener('click', () => emit('site-info', siteBtn));
   shieldBtn.addEventListener('click', () => shieldPopover(shieldBtn));
@@ -98,6 +103,9 @@ export function focus() {
 // typed in now: focused, in a window that has the focus
 const typing = () => document.activeElement === input && document.hasFocus();
 
+// the results pages of the engines whose region can be picked (main/searchregion.js has the same)
+const RESULTS = /^https:\/\/((www\.)?google(\.com?)?\.[a-z]{2,3}\/search|(www\.|cn\.)?bing\.com\/(images\/|videos\/|news\/|shop\/)?search|search\.brave\.com\/(search|images|videos|news))(?=[?#]|$)|^https:\/\/(html\.|lite\.)?duckduckgo\.com\/(html\/?|lite\/?)?\?(.*&)?q=/;
+
 // Reflect the active tab in the (unfocused) address bar.
 export function sync() {
   if (!box) return;
@@ -126,6 +134,11 @@ export function sync() {
   mangaChip.hidden = pics < 4;
   if (pics >= 4) mangaChip.innerHTML = `${icon('download', 13)}<span>${esc(t('{0} ảnh', pics))}</span>`;
 
+  const region = S.settings.general.searchRegion || '';
+  regionChip.hidden = !RESULTS.test(url);
+  regionChip.innerHTML = icon('mapPin', 13) + (region ? `<span>${esc(region.toUpperCase())}</span>` : '');
+  regionChip.title = region ? t('Kết quả tìm kiếm ở {0}', regionName(region)) : t('Kết quả tìm kiếm ở');
+
   const marked = !!S.bookmarks.items.find((b) => b.url === url);
   starBtn.innerHTML = icon('star', 16, marked ? 'filled' : '');
   starBtn.classList.toggle('on', marked);
@@ -152,6 +165,20 @@ function engineName() {
 }
 
 const norm = (u) => u.replace(/^https?:\/\/(www\.)?/i, '').replace(/\/$/, '');
+// (open tabs and bookmarks match as the history does: every word typed, in any order, with or
+// without Vietnamese marks)
+const fold = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd');
+const decoded = (u) => {
+  try {
+    return decodeURI(u);
+  } catch {
+    return u;
+  }
+};
+const matchAll = (words, title, url) => {
+  const s = fold(`${title || ''} ${decoded(url || '')}`);
+  return words.every((w) => s.includes(w));
+};
 
 async function update(allowInline) {
   const text = typed.trim();
@@ -174,13 +201,14 @@ async function update(allowInline) {
   const isSearch = target.startsWith(searchUrl().split('%s')[0]) && !/^https?:\/\//i.test(text);
   push(isSearch ? { type: 'search', query: text, url: target } : { type: 'go', url: target });
 
+  const words = text.split(/\s+/).filter(Boolean).map(fold);
   for (const t of T.list) {
     if (t.id === T.activeId || isNewTab(t.url)) continue;
-    if (t.title.toLowerCase().includes(q) || t.url.toLowerCase().includes(q)) push({ type: 'tab', url: t.url, title: t.title, favicon: t.favicon, tabId: t.id });
+    if (matchAll(words, t.title, t.url)) push({ type: 'tab', url: t.url, title: t.title, favicon: t.favicon, tabId: t.id });
     if (list.length > 3) break;
   }
   for (const b of S.bookmarks.items) {
-    if ((b.title || '').toLowerCase().includes(q) || b.url.toLowerCase().includes(q)) push({ type: 'bookmark', url: b.url, title: b.title, favicon: b.favicon });
+    if (matchAll(words, b.title, b.url)) push({ type: 'bookmark', url: b.url, title: b.title, favicon: b.favicon });
     if (list.length > 5) break;
   }
   render(list);
@@ -201,6 +229,9 @@ async function update(allowInline) {
         input.value = text + completion.slice(text.length);
         input.setSelectionRange(text.length, input.value.length);
         list[0] = { type: 'go', url: 'https://' + completion + (completion === host ? '/' : ''), inline: true };
+        // (the page completed to is not listed a second time below it)
+        const same = (u) => norm(u || '').toLowerCase() === completion.toLowerCase();
+        for (let i = list.length - 1; i > 0; i--) if (list[i].url && same(list[i].url)) list.splice(i, 1);
       }
     }
   }

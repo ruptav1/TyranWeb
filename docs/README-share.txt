@@ -1,4 +1,4 @@
-TyranWeb 1.1.87 — trình duyệt anime (Windows 10/11, 64-bit)
+TyranWeb 1.1.88 — trình duyệt anime (Windows 10/11, 64-bit)
 ==========================================================
 
 CÁCH CHẠY
@@ -102,6 +102,24 @@ GHI CHÚ
   sổ (bằng thanh tiêu đề, hoặc bằng tab duy nhất của nó) thả lên thanh tab cửa sổ khác thì gộp vào.
 - Lịch sử → Nhóm tab: mỗi cửa sổ đã đóng (và các cửa sổ đang mở lúc thoát app) cùng các tab của nó;
   bấm để xem các tab, mở lại cả cửa sổ bằng nút bên phải.
+- Lịch sử → Trang web: gõ không dấu cũng tìm được ("bun bo" ra "Bún bò"), nhiều từ không cần đúng
+  thứ tự, "site:youtube.com" để chỉ tìm trong một trang. Lọc theo thời gian (1 giờ, hôm nay, hôm qua,
+  7 ngày, 30 ngày, tháng này, hoặc chọn ngày). Xem theo thời gian hoặc theo trang web (mỗi tên miền
+  một dòng kèm số lần truy cập; bấm vào để xem và tìm trong các trang của nó), sắp xếp truy cập nhiều
+  nhất / ít nhất, gần đây nhất, A → Z, Z → A, mở nhiều nhất. Đang tìm hoặc lọc thì nút xoá thành
+  "Xóa N mục có “…”": xoá hết những mục khớp từ khoá (bấm hai lần).
+- Gợi ý trên thanh địa chỉ: không dấu, nhiều từ không cần đúng thứ tự; trang mở nhiều và mới mở
+  lên trước.
+- Lịch sử tab ẩn danh (Cài đặt → Ẩn danh, mặc định tắt): các trang mở trong tab và cửa sổ ẩn danh
+  được ghi vào một tệp riêng mã hoá (khoá của Windows cho tài khoản này và mật khẩu của bạn: chép
+  sang máy khác hay mở bằng chương trình khác đều không đọc được), xem ở Lịch sử → Ẩn danh, không
+  lẫn vào lịch sử thường. Có thể đặt mật khẩu 4 hoặc 6 chữ số, chỉ hỏi khi xem lịch sử ẩn danh; đổi
+  hoặc bỏ phải nhập đúng mật khẩu đang dùng; sai 5 lần thì phải đợi. Quên mật khẩu thì chỉ xoá được
+  (cùng lịch sử ẩn danh). Trang tự khoá khi chuyển tab, bấm Khóa, hoặc để yên 5 phút.
+- Kéo thả file: thả một file (từ File Explorer) lên trang không có ô nhận file thì file mở ngay trong
+  tab đó, thả lên thanh tab thì mở ở tab mới; ô tải lên của trang vẫn nhận file như thường. File đã
+  tải xong kéo được ra khỏi Tải xuống gần đây và trang Tải xuống: vào ô tải lên của trang, lên trang
+  hoặc thanh tab để mở, hoặc ra thư mục để chép.
 - Tab vừa đóng: Ctrl+Shift+T mở lại cùng các trang trước / sau và chỗ đang cuộn tới, cả sau khi
   tắt app. Tab mở lại khi khởi động và tab ngủ cũng giữ các trang đó.
 - Lần đầu mở, hình nền là video Azusa (Racing) (Blue Archive, đi kèm app) với nhạc nền "Oriental
@@ -118,7 +136,7 @@ GHI CHÚ
     FFmpeg có sẵn trên máy, nếu không có thì tải ffmpeg.exe 6.1.1 của eugeneware/ffmpeg-static
     (khoảng 30 MB, GPL-3.0). Bài cần đăng nhập thì dùng phiên đăng nhập của trang đó trong
     TyranWeb (cookie của đúng trang đó được ghi ra file tạm cho yt-dlp và xoá ngay sau đó).
-    Khi bật Cloudflare WARP trong TyranWeb, yt-dlp cũng đi qua WARP.
+    Khi bật Đổi vị trí (Tor), yt-dlp vẫn tải bằng mạng của máy.
   + Các video trang đang phát (file mp4/webm/mov... và luồng HLS .m3u8), mỗi cái kèm ảnh, độ
     phân giải, fps, thời lượng, dung lượng; luồng HLS được ghép thành một file .mp4.
   + Không tải được video có DRM (Netflix, Spotify...) và phát trực tiếp. Chỉ tải video bạn có
@@ -141,11 +159,25 @@ GHI CHÚ
   (github.com/manga-download/haruneko, Unlicense). Chỉ tải nội dung bạn được phép tải.
 - Dọn rác (Cài đặt → Quyền riêng tư → Dọn rác): bộ nhớ đệm và file tải dở của TyranWeb, file tạm
   của Windows cũ hơn 7 ngày; dọn ngay hoặc tự dọn mỗi tuần. File đang được dùng thì giữ lại.
-- Đổi IP / VPN (nút VPN trong thanh địa chỉ, hoặc Cài đặt → Quyền riêng tư → Cloudflare WARP; nút
-  sáng xanh khi các trang đang thật sự đi qua WARP): cần cài ứng dụng Cloudflare WARP
-  (miễn phí, 1.1.1.1) và để nó ở chế độ proxy (có nút chuyển). Bật "Đi qua Cloudflare WARP" thì
-  chỉ TyranWeb đi qua WARP; "Đổi IP" kết nối lại để lấy IP khác. IP do Cloudflare cấp, không
-  chọn được quốc gia.
+- Đổi vị trí / VPN (nút VPN trong thanh địa chỉ, hoặc Cài đặt → Quyền riêng tư → Đổi vị trí
+  (Tor); nút sáng xanh khi các trang đang thật sự đi qua Tor): chỉ các trang của TyranWeb
+  đi qua mạng Tor, nên trang web thấy một địa chỉ ở quốc gia bạn chọn (Nhật,
+  Mỹ, Đức...) thay cho địa chỉ của máy; các chương trình khác và IP của máy giữ nguyên. Lần đầu bật,
+  TyranWeb tải tor.exe từ gói Tor Expert Bundle chính thức (dist.torproject.org, khoảng 24 MB,
+  BSD-3-Clause; mã SHA-256 kiểm tra sẵn), chạy nó như một proxy riêng trên máy, tự tắt theo
+  TyranWeb. "Đổi IP" lấy đường đi mới (thường là IP khác). Các trang được chia ra vài đường Tor
+  chạy song song (mỗi trang luôn đi cùng một đường) cho trang tải nhanh hơn. File tải về (trình
+  duyệt, yt-dlp, truyện tranh, video) đi thẳng bằng mạng của máy, đủ tốc độ. "Áp dụng cho": mọi
+  trang (bỏ riêng trang nào thì tắt công tắc của trang đó trong nút VPN) hoặc chỉ các trang đã chọn;
+  trang không đổi vị trí thì đi thẳng, nhanh như thường. Qua Tor vẫn chậm hơn mạng thường; nước có
+  ít nút Tor (Nhật, Singapore, Hồng Kông) rất chậm, nên chọn Đức, Hà Lan, Mỹ, Pháp khi cần nhanh.
+  Một số trang (Google, trang có Cloudflare) hay hỏi captcha hoặc chặn.
+- Kết quả tìm kiếm ở (Cài đặt → Chung, hoặc nút ghim + mã nước trong thanh địa chỉ khi đang ở trang
+  kết quả): Google, Bing, DuckDuckGo và Brave Search trả kết quả cho quốc gia bạn chọn, giống mục
+  Khu vực trong cài đặt của chính các trang đó (tham số gl / cc / kl / country tự thêm vào trang
+  kết quả, cả tìm từ thanh địa chỉ, tab mới hay ô tìm của trang). Không cần bật Đổi vị trí, nên
+  vẫn nhanh như thường. Gợi ý khi gõ của Google và DuckDuckGo cũng theo nước đó. DuckDuckGo chỉ có
+  khoảng 60 khu vực; Cốc Cốc không có lựa chọn này.
 - Giao diện "Trong suốt": mỗi nút trên thanh công cụ (và cụm 3 nút của cửa sổ) nằm trên một miếng
   kính mờ nhỏ, nên vẫn dễ nhìn trên mọi hình nền; nút đang không bấm được chỉ mờ biểu tượng. Menu
   dài hơn cửa sổ thì cuộn được.

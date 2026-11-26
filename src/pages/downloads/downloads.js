@@ -72,7 +72,18 @@ function render() {
     } else if (!flagged(d)) actions.push(['retry', 'reload', t('Tải lại')]); // (not one Defender stopped)
     if (d.state !== 'progressing') actions.push(['remove', 'x', t('Xóa khỏi danh sách')]);
     const mood = tone(d);
-    const item = h('div', { class: `list-item${mood ? ' dl-' + mood : ''}`, title: d.path || d.url });
+    // (a finished one can be dragged out: into a page, onto the tabs, into a folder: main/sessions.js downloadDrag)
+    const drag = d.state === 'completed' && !flagged(d);
+    const item = h('div', { class: `list-item${mood ? ' dl-' + mood : ''}`, title: d.path || d.url, draggable: drag ? 'true' : null });
+    if (drag) {
+      item.addEventListener('dragstart', (e) => {
+        e.preventDefault();
+        api.invoke('downloads:drag', d.id).then((r) => {
+          if (r === 'missing') host('toast', t('Không tìm thấy file (có thể đã bị xóa/di chuyển)'));
+          if (r === 'threat') host('toast', t('Tệp này có mã độc nên không được mở'));
+        }, () => {});
+      });
+    }
     const ic = d.state === 'progressing' ? (d.paused ? 'pause' : 'download') : d.state !== 'completed' ? 'x' : flagged(d) ? 'warn' : 'check';
     item.innerHTML = `<span class="state-ico ${{ done: 'ok', bad: 'bad', paused: 'warn' }[mood] || ''}">${icon(ic, 18)}</span>
       <span class="li-col"><span class="li-title">${esc(d.label || d.filename)}</span><span class="li-sub">${esc(status)} · ${esc(hostOf(d.url))}</span>

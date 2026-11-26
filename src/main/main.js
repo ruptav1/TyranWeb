@@ -260,7 +260,8 @@ app.whenReady().then(async () => {
       }
       applyPageScheme(s);
       otherSound.settingsChanged();
-      if (!!s.privacy?.warp !== !!prev.privacy?.warp) require('./warp').sync().catch(() => {});
+      if (!!s.privacy?.vpn !== !!prev.privacy?.vpn || s.privacy?.vpnCountry !== prev.privacy?.vpnCountry) require('./vpn').sync().catch(() => {});
+      else if (['vpnMode', 'vpnSkip', 'vpnOnly'].some((k) => JSON.stringify(s.privacy?.[k]) !== JSON.stringify(prev.privacy?.[k]))) require('./vpn').reroute();
     },
   });
   otherSound.init(ipc.broadcast);
@@ -274,7 +275,7 @@ app.whenReady().then(async () => {
   require('./cleaner').auto(); // (Dọn rác, once a week)
   setTimeout(() => require('./cookieseal').seal().catch(() => {}), 5000); // (saved logins encrypted on disk, once)
   setTimeout(() => require('./wpfolders').moveLive().catch((err) => console.warn('[wallpapers] live:', err.message)), 20000); // (live/ beside the wallpapers)
-  if (data.settings.data.privacy?.warp) require('./warp').sync().catch(() => {}); // (through Cloudflare WARP)
+  if (data.settings.data.privacy?.vpn) require('./vpn').sync().catch(() => {}); // (Đổi vị trí: through Tor)
 });
 
 let cleaned = false;

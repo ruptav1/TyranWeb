@@ -1177,3 +1177,54 @@ code {
   outline: 2px dashed var(--accent);
   outline-offset: 3px;
 }
+
+/* Ẩn danh: the PIN made, changed or removed, in a form under its row */
+.pin-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 18px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--hover);
+}
+.pin-form[hidden] {
+  display: none;
+}
+.pin-form + .row {
+  border-top: 1px solid var(--line);
+}
+.pin-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+.pin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-3);
+  font-size: 0.92em;
+}
+.pin-input {
+  width: 150px;
+  font-size: 1.15em;
+  letter-spacing: 0.4em;
+  text-align: center;
+}
+.pin-err {
+  min-height: 1.2em;
+  color: #d64545;
+}
+.pin-err:empty {
+  min-height: 0;
+}
+.pin-actions {
+  display: flex;
+  gap: 8px;
+}
+.pin-note {
+  margin: -8px 4px 0;
+  font-size: 0.9em;
+}

@@ -45,7 +45,9 @@ function referers(ses) {
 }
 
 // ses.fetch with that referrer
+// (files: on this computer's own network, not through Đổi vị trí's Tor: main/vpn.js direct)
 function fetchFrom(ses, url, ref, opts = {}) {
+  require('./vpn').direct(url);
   return ses.fetch(url, { ...opts, headers: { ...(opts.headers || {}), ...(ref ? { [MARK]: ref } : {}) } });
 }
 

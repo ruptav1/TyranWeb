@@ -6,6 +6,29 @@ const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 // (the top frame only, as before: the preloads run in every frame now, for src/preload/privacy.js)
 if (window === window.top) {
+  // A file dropped on a page that does not take it (no upload box there: the page did not call
+  // preventDefault on the drop) opens in this tab, any others in new tabs, as in Chrome; one the page
+  // takes stays the page's. (A file from File Explorer, or a download dragged out of a list.)
+  const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
+  window.addEventListener('dragover', (e) => {
+    if (!e.isTrusted || e.defaultPrevented || !hasFiles(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  });
+  window.addEventListener('drop', (e) => {
+    if (!e.isTrusted || !hasFiles(e)) return;
+    const paths = [...e.dataTransfer.files].map((f) => {
+      try {
+        return webUtils.getPathForFile(f);
+      } catch {
+        return '';
+      }
+    });
+    if (!paths.some(Boolean)) return;
+    // (the page's own handlers first: those on the window come after this one)
+    setTimeout(() => !e.defaultPrevented && ipcRenderer.invoke('guest:openFiles', paths.filter(Boolean)).catch(() => {}), 0);
+  });
+
   const CODE_KEYS = {
     Equal: '=', Minus: '-', Comma: ',', Period: '.', Slash: '/', Backslash: '\\', Semicolon: ';', Quote: "'",
     BracketLeft: '[', BracketRight: ']', Backquote: '`', Space: 'Space', Tab: 'Tab', Enter: 'Enter',
@@ -52,7 +75,7 @@ if (window === window.top) {
   );
 
   if (location.protocol === 'tyran:') {
-    const EVENTS = new Set(['settings:changed', 'shortcuts:changed', 'bookmarks:changed', 'history:changed', 'downloads:update', 'downloads:done', 'downloads:changed', 'ba:preview', 'wallpapers:changed', 'extensions:changed', 'nikke:progress', 'nikke:changed', 'nikke:cards', 'azur:progress', 'azur:changed', 'azur:cards', 'sekai:progress', 'sekai:changed', 'sekai:cards', 'data:progress', 'adblock:braveProgress', 'update:state', 'livewalls:progress', 'winhistory:changed', 'scanhistory:changed']);
+    const EVENTS = new Set(['settings:changed', 'shortcuts:changed', 'bookmarks:changed', 'history:changed', 'downloads:update', 'downloads:done', 'downloads:changed', 'ba:preview', 'wallpapers:changed', 'extensions:changed', 'nikke:progress', 'nikke:changed', 'nikke:cards', 'azur:progress', 'azur:changed', 'azur:cards', 'sekai:progress', 'sekai:changed', 'sekai:cards', 'data:progress', 'adblock:braveProgress', 'update:state', 'livewalls:progress', 'winhistory:changed', 'scanhistory:changed', 'vpn:changed', 'privhistory:changed', 'privhistory:locked']);
     contextBridge.exposeInMainWorld('tyran', {
       invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
       on(channel, cb) {

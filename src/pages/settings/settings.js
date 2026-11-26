@@ -3,6 +3,7 @@ import { icon } from 'tyran://shared/icons.js';
 import { frameCss, frameOf, musicKey, ownMusic } from 'tyran://shared/theme.js';
 import { ACCENTS } from 'tyran://shared/themes.js';
 import { t, LOCALE, LANGS } from 'tyran://shared/i18n.js';
+import { regionOptions } from 'tyran://shared/regions.js';
 
 let S = null;
 let section = 'appearance';
@@ -259,6 +260,7 @@ const SECTIONS = [
   ['newtab', t('Trang tab mới'), 'sparkles', newtab],
   ['general', t('Chung'), 'sliders', general],
   ['privacy', t('Quyền riêng tư'), 'shield', privacy],
+  ['incognito', t('Ẩn danh'), 'incognito', incognitoSection],
   ['extensions', t('Tiện ích'), 'puzzle', extensionsSection],
   ['shortcuts', t('Phím tắt'), 'keyboard', shortcutsSection],
   ['css', t('CSS tùy chỉnh'), 'code', cssSection],
@@ -2004,6 +2006,7 @@ function general() {
       row(t('Trang chủ'), '', text('general.homepage', 'tyran://newtab', { validate: (v) => /^(https?|tyran):\/\//.test(v) })),
       row(t('Công cụ tìm kiếm'), '', select('general.searchEngine', engineOptions, () => render())),
       g.searchEngine === 'custom' ? row(t('URL tìm kiếm tùy chỉnh'), '', text('general.customSearchUrl', 'https://example.com/?q=%s', { width: 320, validate: (v) => v.includes('%s') })) : null,
+      row(t('Kết quả tìm kiếm ở'), '', select('general.searchRegion', [['', t('Mặc định')], ...regionOptions()])),
       row(t('Gợi ý khi gõ'), '', sw('general.searchSuggestions'))
     ),
     stitle(t('Tab')),
@@ -2145,8 +2148,8 @@ function privacy() {
         toast(t('Đã xóa dữ liệu ✿'));
       }, { ic: 'trash', cls: 'primary' }))
     ),
-    stitle('Cloudflare WARP'),
-    warpSection(),
+    stitle(t('Đổi vị trí (Tor)')),
+    vpnSection(),
     stitle(t('Dọn rác')),
     cleanerSection(),
     stitle(t('Quyền đã cấp cho trang web')),
@@ -2160,44 +2163,187 @@ function privacy() {
   ];
 }
 
-// Cloudflare WARP (main/warp.js): the switch, WARP's state and where the pages come from now, and
-// the one thing to press for: getting WARP (not installed), its proxy mode (in its VPN mode), or a
-// new connection (often another IP)
-function warpSection() {
+// ---------------------------------------------------------------- Ẩn danh
+// Lịch sử tab ẩn danh (main/privhistory.js): off until switched on, kept encrypted, looked at in
+// Lịch sử → Ẩn danh. Its PIN (4 or 6 digits) is asked for there only; made here, and changed or
+// removed only with the one set. Forgotten: the history goes with it.
+function pinInput(len, onFull) {
+  const el = h('input', { class: 'input pin-input', type: 'password', inputmode: 'numeric', autocomplete: 'off', maxlength: len, placeholder: '•'.repeat(len), 'aria-label': t('Mật khẩu') });
+  el.addEventListener('input', () => {
+    el.value = el.value.replace(/\D/g, '').slice(0, Number(el.maxLength) || len);
+    if (el.value.length === (Number(el.maxLength) || len)) onFull?.(el.value);
+  });
+  return el;
+}
+
+const pinWait = (r) => (r.wait > 0 ? t('Sai quá nhiều lần. Thử lại sau {0} giây', Math.ceil(r.wait / 1000)) : r.left ? t('Sai mật khẩu, còn {0} lần thử', r.left) : t('Sai mật khẩu'));
+
+function incognitoSection() {
+  const pinText = h('span', { text: '…' });
+  const pinCtl = h('div', { class: 'row-ctl' });
+  const pinRow = h('div', { class: 'row', dataset: { search: `${t('Mật khẩu xem lịch sử ẩn danh')} PIN` } }, h('div', { class: 'row-text' }, h('b', { text: t('Mật khẩu xem lịch sử ẩn danh') }), pinText), pinCtl);
+  const form = h('div', { class: 'pin-form', hidden: true });
+  let st = null;
+
+  const close = () => {
+    form.hidden = true;
+    form.innerHTML = '';
+  };
+  // one step of the form: what it asks, its fields, a message line, its buttons
+  const step = (title, fields, buttons = []) => {
+    const err = h('span', { class: 'pin-err' });
+    form.innerHTML = '';
+    form.append(h('b', { text: title }), h('div', { class: 'pin-fields' }, ...fields), err, h('div', { class: 'pin-actions' }, ...buttons, button(t('Hủy'), close, { cls: 'small ghost' })));
+    form.hidden = false;
+    fields.find((f) => f.tagName === 'INPUT')?.focus();
+    return err;
+  };
+
+  // the new PIN: 4 or 6 digits, typed twice
+  const askNew = (current) => {
+    let len = st?.pin || 4;
+    const a = pinInput(len, () => b.focus());
+    const b = pinInput(len);
+    const lens = h('div', { class: 'seg' });
+    for (const n of [4, 6]) {
+      const btn = h('button', { type: 'button', text: t('{0} chữ số', n), class: n === len ? 'on' : '' });
+      btn.addEventListener('click', () => {
+        len = n;
+        for (const x of [a, b]) {
+          x.maxLength = n;
+          x.placeholder = '•'.repeat(n);
+          x.value = '';
+        }
+        lens.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === btn));
+        a.focus();
+      });
+      lens.append(btn);
+    }
+    const save = button(t('Lưu mật khẩu'), async () => {
+      if (a.value.length !== len) return (err.textContent = t('Mật khẩu cần đủ {0} chữ số', len));
+      if (a.value !== b.value) return (err.textContent = t('Hai lần nhập không khớp'));
+      save.disabled = true;
+      const r = await api.invoke('privhistory:setPin', current, a.value).catch(() => ({ ok: false }));
+      save.disabled = false;
+      if (!r.ok) return (err.textContent = r.wait || r.left !== undefined ? pinWait(r) : t('Không lưu được mật khẩu'));
+      close();
+      toast(current ? t('Đã đổi mật khẩu ✿') : t('Đã đặt mật khẩu ✿'));
+      paint();
+    }, { cls: 'small primary', ic: 'lock' });
+    b.addEventListener('keydown', (e) => e.key === 'Enter' && save.click());
+    const err = step(current ? t('Mật khẩu mới') : t('Tạo mật khẩu'), [lens, h('label', { class: 'pin-field' }, h('span', { text: t('Mật khẩu') }), a), h('label', { class: 'pin-field' }, h('span', { text: t('Nhập lại') }), b)], [save]);
+  };
+
+  // the PIN set, before it is changed or removed
+  const askCurrent = (then) => {
+    const input = pinInput(st.pin, async (pin) => {
+      input.disabled = true;
+      const r = await api.invoke('privhistory:check', pin).catch(() => ({ ok: false }));
+      input.disabled = false;
+      input.value = '';
+      if (!r.ok) {
+        err.textContent = pinWait(r);
+        return input.focus();
+      }
+      then(pin);
+    });
+    const err = step(t('Nhập mật khẩu hiện tại'), [input]);
+  };
+
+  const paint = async () => {
+    st = await api.invoke('privhistory:status').catch(() => null);
+    pinCtl.innerHTML = '';
+    if (!st) return;
+    if (st.broken) {
+      pinText.textContent = t('Tệp lịch sử ẩn danh không mở được trên máy tính hoặc tài khoản Windows này');
+      return;
+    }
+    if (!st.available) {
+      pinText.textContent = t('Windows không cho mã hóa trên máy này');
+      return;
+    }
+    pinText.textContent = st.pin ? t('Mã {0} số, hỏi khi xem Lịch sử → Ẩn danh', st.pin) : t('Chưa đặt: ai mở Lịch sử → Ẩn danh cũng xem được');
+    if (!st.pin) pinCtl.append(button(t('Tạo mật khẩu'), () => askNew(null), { cls: 'small', ic: 'lock' }));
+    else {
+      pinCtl.append(
+        button(t('Đổi mật khẩu'), () => askCurrent((pin) => askNew(pin)), { cls: 'small' }),
+        button(t('Bỏ mật khẩu'), () =>
+          askCurrent(async (pin) => {
+            const r = await api.invoke('privhistory:setPin', pin, null).catch(() => ({ ok: false }));
+            if (!r.ok) return toast(t('Không bỏ được mật khẩu'));
+            close();
+            toast(t('Đã bỏ mật khẩu'));
+            paint();
+          }), { cls: 'small' })
+      );
+    }
+  };
+  paint();
+
+  return [
+    ...head(t('Ẩn danh')),
+    section_(
+      row(t('Lưu lịch sử tab ẩn danh'), t('Các trang mở trong tab và cửa sổ ẩn danh được ghi vào một tệp mã hóa riêng, chỉ xem được trong Lịch sử → Ẩn danh.'), sw('privacy.privateHistory')),
+      pinRow,
+      form,
+      row(t('Xem lịch sử ẩn danh'), '', button(t('Mở'), () => openUrl('tyran://history/#private', true), { cls: 'small', ic: 'history' })),
+      row(t('Xóa lịch sử ẩn danh và mật khẩu'), t('Dùng khi quên mật khẩu: lịch sử ẩn danh mất hẳn, không lấy lại được.'), confirmButton(t('Xóa'), t('Bấm lần nữa để xác nhận'), async () => {
+        await api.invoke('privhistory:reset');
+        close();
+        toast(t('Đã xóa lịch sử ẩn danh'));
+        paint();
+      }))
+    ),
+    h('p', { class: 'muted pin-note', text: t('Tệp lịch sử ẩn danh được mã hóa bằng khóa của Windows cho tài khoản này và bằng mật khẩu của bạn: chép sang máy khác hay mở bằng chương trình khác đều không đọc được. Nhập sai 5 lần thì phải đợi rồi mới thử lại được.') }),
+  ];
+}
+
+// Đổi vị trí (main/vpn.js, Tor): the switch, the country, what Tor is doing and where the pages come
+// from now, and a new address
+const regionName = (cc) => {
+  if (!cc) return t('Bất kỳ');
+  try {
+    return new Intl.DisplayNames([LOCALE], { type: 'region' }).of(cc.toUpperCase()) || cc.toUpperCase();
+  } catch {
+    return cc.toUpperCase();
+  }
+};
+function vpnText(s) {
+  if (!s) return '';
+  if (s.downloading) return t('Đang tải Tor… {0}%', Math.round(s.downloading * 100));
+  if (s.error && !s.running) return t('Không chạy được Tor: {0}', s.error);
+  if (!s.on) return t('Đang tắt');
+  if (!s.ready) return t('Đang kết nối Tor… {0}%', s.bootstrap || 0);
+  if (!s.exit) return t('Đã kết nối');
+  if (!s.exit.ip) return t('Đã kết nối, chưa lấy được địa chỉ');
+  return `IP ${s.exit.ip}${s.exit.country ? ' · ' + regionName(s.exit.country) : ''}`;
+}
+function vpnSection() {
   const status = h('span', { class: 'muted', text: '…' });
-  const actions = h('span', { style: { display: 'inline-flex', gap: '6px' } });
-  const press = (what) => async (e) => {
+  const renew = button(t('Đổi IP'), async (e) => {
     const b = e.currentTarget;
     b.disabled = true;
-    status.textContent = '…';
     try {
-      await api.invoke('warp:action', what);
+      draw(await api.invoke('vpn:action', 'renew'));
     } catch (err) {
-      toast(errText(err) || t('Không điều khiển được WARP'));
+      toast(errText(err) || t('Không đổi được IP'));
     }
-    draw();
+    b.disabled = false;
+  }, { ic: 'reload', cls: 'small' });
+  const country = h('span');
+  const draw = (s) => {
+    status.textContent = vpnText(s);
+    renew.hidden = !s?.ready;
+    if (s && !country.firstChild) country.append(select('privacy.vpnCountry', ['', ...s.countries].map((cc) => [cc, regionName(cc)])));
   };
-  async function draw() {
-    const s = await api.invoke('warp:state').catch(() => null);
-    actions.replaceChildren();
-    if (!s) return void (status.textContent = '');
-    if (!s.installed) {
-      status.textContent = t('Chưa cài WARP');
-      return void actions.append(button(t('Tải WARP'), () => openUrl('https://one.one.one.one/', true), { ic: 'external', cls: 'small' }));
-    }
-    const w = s.where;
-    status.textContent = [
-      s.proxy ? (s.connected ? t('Đã kết nối') : t('Chưa kết nối')) : t('WARP đang ở chế độ VPN'),
-      w?.ip ? `IP ${w.ip}${w.loc ? ` (${w.loc})` : ''}` : '',
-      w?.warp ? `warp=${w.warp}` : '',
-    ].filter(Boolean).join(' · ');
-    if (!s.proxy) actions.append(button(t('Chuyển WARP sang chế độ proxy'), press('proxy'), { cls: 'small' }));
-    else actions.append(button(t('Đổi IP'), press('renew'), { ic: 'reload', cls: 'small' }));
-  }
-  draw();
-  const toggle = sw('privacy.warp');
-  toggle.addEventListener('change', () => setTimeout(draw, 3000));
-  return section_(row(t('Đi qua Cloudflare WARP'), '', toggle), row(t('Trạng thái'), '', status, actions));
+  api.invoke('vpn:state').then(draw, () => draw(null));
+  const off = api.on('vpn:changed', (s) => (status.isConnected ? draw(s) : off()));
+  return section_(
+    row(t('Đổi vị trí của TyranWeb'), '', sw('privacy.vpn')),
+    row(t('Quốc gia'), '', country),
+    row(t('Áp dụng cho'), '', select('privacy.vpnMode', [['all', t('Mọi trang')], ['only', t('Chỉ trang đã chọn')]])),
+    row(t('Trạng thái'), '', status, renew)
+  );
 }
 
 // Dọn rác (main/cleaner.js): how much there is (measured when shown), what to clear, by itself

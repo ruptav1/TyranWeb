@@ -73,7 +73,7 @@ function ipc() {
 // ---------------------------------------------------------------- WebRTC
 function webrtcPolicy() {
   if (!data.settings.data.privacy.webrtc) return 'default';
-  return require('./warp').routed() ? 'disable_non_proxied_udp' : 'default_public_interface_only';
+  return require('./vpn').routed() ? 'disable_non_proxied_udp' : 'default_public_interface_only';
 }
 function webrtc(wc) {
   try {
@@ -118,7 +118,7 @@ function setup(ses) {
   if (!watching) {
     watching = true;
     app.on('web-contents-created', (e, wc) => webrtc(wc));
-    require('./warp').onRouteChange(() => refreshWebrtc());
+    require('./vpn').onRouteChange(() => refreshWebrtc());
   }
 }
 

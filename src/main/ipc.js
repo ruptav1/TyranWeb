@@ -73,6 +73,21 @@ function afterSettingsChange(prev) {
 // the search engines, the ones named in words (Cốc Cốc, Tùy chỉnh) in the user's language
 const enginesNamed = () => Object.fromEntries(Object.entries(SEARCH_ENGINES).map(([k, v]) => [k, { ...v, name: t(v.name) }]));
 
+// file:// addresses of the files given that are there (dropped from File Explorer, or a download)
+function fileUrls(paths) {
+  const { pathToFileURL } = require('url');
+  return (Array.isArray(paths) ? paths : [])
+    .slice(0, 20)
+    .filter((p) => {
+      try {
+        return typeof p === 'string' && path.isAbsolute(p) && fs.statSync(p).isFile();
+      } catch {
+        return false;
+      }
+    })
+    .map((p) => pathToFileURL(p).href);
+}
+
 function changeSettings(patch) {
   const prev = structuredClone(data.settings.data);
   data.updateSettings(patch);
@@ -115,9 +130,11 @@ function register({ onSettings } = {}) {
   // the ad blocker: the engine in use, and blocking on or off for a page's site (the address bar's
   // shield; on its own list, the rest stays as it is)
   handle('adblock:engine', () => adblock.engine());
-  // whether TyranWeb's pages go through Cloudflare WARP right now (the address bar's VPN button)
-  handle('warp:routed', () => require('./warp').routed());
-  require('./warp').onRouteChange((on) => broadcast('warp:routed', on));
+  // whether TyranWeb's pages go through Tor right now (the address bar's VPN button), and its state
+  // as it changes (the VPN popup, Settings)
+  handle('vpn:routed', () => require('./vpn').routed());
+  require('./vpn').onRouteChange((on) => broadcast('vpn:routed', on));
+  require('./vpn').onChange(() => broadcast('vpn:changed', require('./vpn').state()));
   adblock.onEngineChange((name, asked) => broadcast('adblock:engine', { name, asked }));
   handle('adblock:site', (e, url, on) => {
     const site = adblock.siteOf(String(url || ''));
@@ -172,6 +189,7 @@ function register({ onSettings } = {}) {
     return map;
   });
   handle('search:engines', () => enginesNamed());
+  handle('search:regionUrl', (e, url) => require('./searchregion').regionUrl(String(url || '')));
 
   // ---- history ----
   handle('history:query', (e, q) => data.history.query(q));
@@ -181,6 +199,37 @@ function register({ onSettings } = {}) {
   handle('history:clear', (e, since) => (data.history.clear(since), broadcast('history:changed'), true));
   handle('history:add', (e, entry) => data.history.add(entry), { uiOnly: true });
   handle('history:update', (e, entry) => data.history.update(entry), { uiOnly: true });
+  // Lịch sử's list: words (with or without marks), a site, a time span, an order; per site; and all
+  // those matching deleted (main/histquery.js)
+  handle('history:find', (e, f) => data.history.find(f));
+  handle('history:domains', (e, f) => data.history.domains(f));
+  handle('history:removeWhere', (e, f) => {
+    const n = data.history.removeWhere(f);
+    if (n) broadcast('history:changed');
+    return n;
+  });
+
+  // ---- Lịch sử tab ẩn danh (main/privhistory.js): written by the incognito tabs, read in Lịch sử →
+  // Ẩn danh (the page that opened it with the PIN only), the PIN set in Settings → Ẩn danh
+  const privHistory = require('./privhistory');
+  const fromPage = (e, page) => {
+    if (!new RegExp(`^tyran://${page}(?:[/?#]|$)`).test(e.senderFrame?.url || '')) throw new Error('Not allowed');
+  };
+  privHistory.onChange = () => broadcast('privhistory:changed');
+  handle('privhistory:add', (e, entry) => privHistory.add(entry), { uiOnly: true });
+  handle('privhistory:update', (e, entry) => privHistory.update(entry), { uiOnly: true });
+  handle('privhistory:status', (e) => privHistory.status(e.sender.id));
+  handle('privhistory:unlock', (e, pin) => (fromPage(e, 'history'), privHistory.unlock(e.sender.id, pin)));
+  handle('privhistory:lock', (e) => privHistory.lock(e.sender.id));
+  // (its tab out of sight: the window says so, as a page in a tab behind others may not know it)
+  handle('privhistory:hidden', (e, wcId) => privHistory.hide(guestOf(e, wcId).id), { uiOnly: true });
+  handle('privhistory:find', (e, f) => (fromPage(e, 'history'), privHistory.find(e.sender.id, f)));
+  handle('privhistory:domains', (e, f) => (fromPage(e, 'history'), privHistory.domains(e.sender.id, f)));
+  handle('privhistory:remove', (e, ids) => (fromPage(e, 'history'), privHistory.remove(e.sender.id, Array.isArray(ids) ? ids : [])));
+  handle('privhistory:removeWhere', (e, f) => (fromPage(e, 'history'), privHistory.removeWhere(e.sender.id, f)));
+  handle('privhistory:check', (e, pin) => (fromPage(e, 'settings'), privHistory.check(pin)));
+  handle('privhistory:setPin', (e, current, next) => (fromPage(e, 'settings'), privHistory.setPin(current, next ?? null)));
+  handle('privhistory:reset', (e) => (fromPage(e, 'settings'), privHistory.reset()));
 
   // ---- bookmarks ----
   const bm = (fn) => (...args) => {
@@ -215,6 +264,20 @@ function register({ onSettings } = {}) {
   // ---- downloads ----
   handle('downloads:list', () => sessions.downloadsList());
   handle('downloads:action', (e, id, action) => sessions.downloadAction(id, action));
+  handle('downloads:drag', (e, id) => sessions.downloadDrag(e.sender, String(id || '')));
+  // files dropped on the tabs (from File Explorer, or a download dragged out): their addresses
+  handle('files:urls', (e, paths) => fileUrls(paths), { uiOnly: true });
+  // a file dropped on a page that did not take it (preload/webview.js): it opens in that tab, any
+  // others in new tabs beside it, as in Chrome
+  ipcMain.handle('guest:openFiles', (e, paths) => {
+    const guest = e.sender;
+    if (!guest.hostWebContents) return false;
+    const urls = fileUrls(paths);
+    if (!urls.length) return false;
+    guest.loadURL(urls[0]);
+    for (const url of urls.slice(1)) guest.hostWebContents.send('tab:open', { url, background: true, openerWcId: guest.id });
+    return true;
+  });
   handle('downloads:clear', () => sessions.clearDownloads());
   // Kiểm tra tệp tải về: the result page (tyran://scan) and the VirusTotal key (Settings)
   handle('scan:get', (e, id) => require('./filescan').details(id));
@@ -267,12 +330,9 @@ function register({ onSettings } = {}) {
   handle('manga:download', (e, wcId, opts) => require('./manga').start(guestOf(e, wcId), opts || {}), { uiOnly: true });
   handle('cleaner:measure', () => require('./cleaner').measure());
   handle('cleaner:clean', (e, what) => require('./cleaner').clean({ app: !!what?.app, temp: !!what?.temp }));
-  // Cloudflare WARP (main/warp.js): its state, where the pages come from, and the user's presses
-  handle('warp:state', async () => {
-    const warp = require('./warp');
-    return { ...(await warp.state()), where: await warp.where() };
-  });
-  handle('warp:action', (e, what) => require('./warp').action(String(what || '')));
+  // Đổi vị trí (main/vpn.js, Tor): its state, where the pages come from, and the user's presses
+  handle('vpn:state', () => require('./vpn').state());
+  handle('vpn:action', (e, what) => require('./vpn').action(String(what || '')));
   // Web động → Special: interactive web wallpapers on GitHub (main/specials.js)
   handle('specials:search', (e, q, page) => require('./specials').search(q, page));
   handle('specials:inspect', (e, full, branch) => require('./specials').inspect(String(full || ''), String(branch || '')));

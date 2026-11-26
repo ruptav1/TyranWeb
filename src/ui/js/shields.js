@@ -3,14 +3,17 @@
 //    site only (its list: privacy.adblockOff), the page reloaded. It names the engine really in use
 //    and counts what it blocked on the page; an engine change made in Settings is told when it
 //    takes over.
-//  - VPN: Cloudflare WARP (main/warp.js), on or off for TyranWeb's pages, its address and country, a
-//    new address.
+//  - VPN: Đổi vị trí (main/vpn.js, Tor), on or off for TyranWeb's pages, the country they seem to
+//    come from, their address there, a new address.
+//  - on a search engine's results page: the country its results are for (main/searchregion.js),
+//    the page asked for again in the one picked.
 import { api, h, emit } from './util.js';
 import { S } from './state.js';
-import { T, active, byWc, reload, createTab } from './tabs.js';
+import { T, active, byWc, reload, navigate, createTab } from './tabs.js';
 import { openPopover, closePopover, toast } from './menus.js';
 import { icon } from 'tyran://shared/icons.js';
 import { t } from 'tyran://shared/i18n.js';
+import { regionName as named, regionOptions } from 'tyran://shared/regions.js';
 
 const ENGINE_NAME = { ghostery: 'Thông thường', brave: 'Brave', 'brave-full': 'Brave đầy đủ' };
 const ENGINE_DESC = { ghostery: 'Bộ lọc Ghostery (EasyList, EasyPrivacy…)', brave: 'Danh sách bộ lọc của Brave', 'brave-full': 'Bộ máy chặn quảng cáo của Brave (adblock-rust)' };
@@ -34,11 +37,11 @@ api.on('adblock:count', ({ wcId, count }) => {
   tab.blocked = count;
   if (tab.id === T.activeId) emit('shields');
 });
-// (the VPN button lights when the pages really go through WARP, not only when it is asked for)
+// (the VPN button lights when the pages really go through Tor, not only when it is asked for)
 let routed = false;
-export const vpnState = () => ({ on: routed, asked: !!S.settings.privacy.warp });
-api.invoke('warp:routed').then((v) => ((routed = !!v), emit('shields')), () => {});
-api.on('warp:routed', (v) => {
+export const vpnState = () => ({ on: routed, asked: !!S.settings.privacy.vpn });
+api.invoke('vpn:routed').then((v) => ((routed = !!v), emit('shields')), () => {});
+api.on('vpn:routed', (v) => {
   routed = !!v;
   emit('shields');
 });
@@ -114,65 +117,119 @@ export async function shieldPopover(anchor) {
   openPopover(body, anchor, { align: 'end', focus: false });
 }
 
-// ---- VPN (Cloudflare WARP)
+// ---- VPN: Đổi vị trí (main/vpn.js, Tor)
+// a country's name in the user's language ('' any)
+const regionName = (cc) => (cc ? named(cc) : t('Bất kỳ'));
+// what Tor is doing, in words: fetching it, connecting, connected (and from where), its error
+export function vpnStatus(s) {
+  if (!s) return '';
+  if (s.downloading) return t('Đang tải Tor… {0}%', Math.round(s.downloading * 100));
+  if (s.error && !s.running) return t('Không chạy được Tor: {0}', s.error);
+  if (!s.on) return t('Đang tắt');
+  if (!s.ready) return t('Đang kết nối Tor… {0}%', s.bootstrap || 0);
+  if (!s.exit) return t('Đã kết nối');
+  if (!s.exit.ip) return t('Đã kết nối, chưa lấy được địa chỉ');
+  return `IP ${s.exit.ip}${s.exit.country ? ' · ' + regionName(s.exit.country) : ''}`;
+}
+
 export async function vpnPopover(anchor) {
   const status = h('div', { class: 'muted small', text: '…' });
-  const sw = h('input', { type: 'checkbox', checked: !!S.settings.privacy.warp });
-  const extra = h('div', { class: 'vpn-extra' });
+  const sw = h('input', { type: 'checkbox', checked: !!S.settings.privacy.vpn });
+  const pick = h('select', { class: 'select small' });
+  // every site through it, or only the ones chosen; and this tab's site in or out
+  const mode = h('select', { class: 'select small' }, h('option', { value: 'all', text: t('Mọi trang') }), h('option', { value: 'only', text: t('Chỉ trang đã chọn') }));
+  mode.value = S.settings.privacy.vpnMode === 'only' ? 'only' : 'all';
+  const tab = active();
+  let site = '';
+  try {
+    site = /^https?:/.test(tab?.url || '') ? new URL(tab.url).hostname.replace(/^www\./, '') : '';
+  } catch {
+    /* (no page) */
+  }
+  const siteSw = h('input', { type: 'checkbox' });
+  const siteRow = h('label', { class: 'site-row' }, h('span', { text: t('Đổi vị trí cho {0}', site) }), h('span', { class: 'switch' }, siteSw, h('span')));
+  const listKey = () => (mode.value === 'only' ? 'vpnOnly' : 'vpnSkip');
+  const paintSite = () => {
+    const list = S.settings.privacy[listKey()] || [];
+    const listed = list.includes(site);
+    siteSw.checked = mode.value === 'only' ? listed : !listed;
+    siteRow.hidden = !site;
+  };
+  paintSite();
+  const renew = h('button', { class: 'btn small', html: `${icon('reload', 14)}<span>${t('Đổi IP')}</span>` });
+  renew.hidden = true;
   const body = h(
     'div',
     { class: 'site-pop vpn-pop' },
-    h('div', { class: 'pop-head' }, h('span', { class: 'pop-head-ico vpn-ico', html: icon('globe', 18) }), h('div', {}, h('b', { text: 'VPN · Cloudflare WARP' }), status)),
-    h('label', { class: 'site-row' }, h('span', { text: t('Đi qua Cloudflare WARP') }), h('span', { class: 'switch' }, sw, h('span'))),
-    extra
+    h('div', { class: 'pop-head' }, h('span', { class: 'pop-head-ico vpn-ico', html: icon('globe', 18) }), h('div', {}, h('b', { text: t('Đổi vị trí · Tor') }), status)),
+    h('label', { class: 'site-row' }, h('span', { text: t('Đổi vị trí của TyranWeb') }), h('span', { class: 'switch' }, sw, h('span'))),
+    h('div', { class: 'site-row' }, h('span', { text: t('Quốc gia') }), pick),
+    h('div', { class: 'site-row' }, h('span', { text: t('Áp dụng cho') }), mode),
+    siteRow,
+    h('div', { class: 'vpn-extra' }, renew)
   );
   const pop = openPopover(body, anchor, { align: 'end', focus: false });
-  const press = (what, b) => async () => {
-    b.disabled = true;
+  const draw = (s) => {
+    if (!body.isConnected) return off();
+    status.textContent = vpnStatus(s);
+    if (s && !pick.options.length) {
+      for (const cc of ['', ...s.countries]) pick.append(h('option', { value: cc, text: regionName(cc) }));
+      pick.value = S.settings.privacy.vpnCountry || '';
+    }
+    renew.hidden = !s?.ready;
+    pop.reposition();
+  };
+  const off = api.on('vpn:changed', draw);
+  api.invoke('vpn:state').then(draw, () => draw(null));
+  sw.addEventListener('change', async () => {
+    await api.invoke('settings:set', { privacy: { vpn: sw.checked } });
+    toast(t(sw.checked ? 'Đã bật đổi vị trí' : 'Đã tắt đổi vị trí'), { icon: 'globe' });
+    emit('shields');
+  });
+  pick.addEventListener('change', () => api.invoke('settings:set', { privacy: { vpnCountry: pick.value } }));
+  mode.addEventListener('change', async () => {
+    await api.invoke('settings:set', { privacy: { vpnMode: mode.value } });
+    paintSite();
+    if (tab) reload(tab.id);
+  });
+  siteSw.addEventListener('change', async () => {
+    const key = listKey();
+    const list = (S.settings.privacy[key] || []).filter((d) => d !== site);
+    const listed = mode.value === 'only' ? siteSw.checked : !siteSw.checked;
+    await api.invoke('settings:set', { privacy: { [key]: listed ? [...list, site] : list } });
+    if (tab) reload(tab.id);
+  });
+  renew.addEventListener('click', async () => {
+    renew.disabled = true;
     status.textContent = '…';
     try {
-      await api.invoke('warp:action', what);
+      draw(await api.invoke('vpn:action', 'renew'));
     } catch {
-      toast(t('Không điều khiển được WARP'), { icon: 'info' });
+      toast(t('Không đổi được IP'), { icon: 'info' });
     }
-    draw();
-  };
-  async function draw() {
-    const s = await api.invoke('warp:state').catch(() => null);
-    if (!body.isConnected) return;
-    extra.replaceChildren();
-    if (!s) return void (status.textContent = '');
-    if (!s.installed) {
-      status.textContent = t('Chưa cài WARP');
-      sw.disabled = true;
-      const b = h('button', { class: 'btn small', html: `${icon('external', 14)}<span>${t('Tải WARP')}</span>` });
-      b.addEventListener('click', () => (createTab({ url: 'https://one.one.one.one/' }), pop.close()));
-      return void extra.append(b);
-    }
-    const w = s.where;
-    const on = !!S.settings.privacy.warp && s.proxy && s.connected;
-    status.textContent = [s.proxy ? (on ? t('Đã kết nối') : t('Chưa kết nối')) : t('WARP đang ở chế độ VPN'), w?.ip ? `IP ${w.ip}${w.loc ? ` (${w.loc})` : ''}` : ''].filter(Boolean).join(' · ');
-    if (!s.proxy) {
-      const b = h('button', { class: 'btn small', text: t('Chuyển WARP sang chế độ proxy') });
-      b.addEventListener('click', press('proxy', b));
-      extra.append(b);
-    } else if (S.settings.privacy.warp) {
-      const b = h('button', { class: 'btn small', html: `${icon('reload', 14)}<span>${t('Đổi IP')}</span>` });
-      b.addEventListener('click', press('renew', b));
-      extra.append(b);
-    }
-    pop.reposition();
-  }
-  sw.addEventListener('change', async () => {
-    sw.disabled = true;
-    status.textContent = '…';
-    await api.invoke('settings:set', { privacy: { warp: sw.checked } });
-    toast(t(sw.checked ? 'Đã bật VPN' : 'Đã tắt VPN'), { icon: 'globe' });
-    emit('shields');
-    setTimeout(() => {
-      sw.disabled = false;
-      draw();
-    }, 2500);
+    renew.disabled = false;
   });
-  draw();
+}
+
+// ---- Kết quả tìm kiếm ở (main/searchregion.js), from the chip on a results page
+export function regionPopover(anchor) {
+  const tab = active();
+  const cur = () => S.settings.general.searchRegion || '';
+  const status = h('div', { class: 'muted small' });
+  const paint = () => (status.textContent = cur() ? named(cur()) : t('Mặc định'));
+  const pick = h('select', { class: 'select small' }, h('option', { value: '', text: t('Mặc định') }), ...regionOptions().map(([cc, name]) => h('option', { value: cc, text: name })));
+  pick.value = cur();
+  paint();
+  const body = h(
+    'div',
+    { class: 'site-pop region-pop' },
+    h('div', { class: 'pop-head' }, h('span', { class: 'pop-head-ico region-ico', html: icon('mapPin', 18) }), h('div', {}, h('b', { text: t('Kết quả tìm kiếm ở') }), status)),
+    h('div', { class: 'site-row' }, h('span', { text: t('Quốc gia') }), pick)
+  );
+  openPopover(body, anchor, { align: 'end', focus: false });
+  pick.addEventListener('change', async () => {
+    await api.invoke('settings:set', { general: { searchRegion: pick.value } });
+    paint();
+    if (tab?.url) navigate(tab.id, await api.invoke('search:regionUrl', tab.url));
+  });
 }
